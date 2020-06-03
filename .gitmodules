@@ -1,0 +1,3 @@
+[submodule "libket"]
+	path = libket
+	url = git@gitlab.com:quantum-ket/libket.git
