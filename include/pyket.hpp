@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 
-class ___PyKet {
+class PyKet {
 public:
-    ___PyKet(const std::vector<std::string> &argv);
-    ~___PyKet();
+    PyKet(const std::vector<std::string> &argv);
+    ~PyKet();
 };

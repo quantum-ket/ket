@@ -9,7 +9,7 @@ inline char* str_copy(const std::string& str) {
     return ptr;
 }
 
-___PyKet::___PyKet(const std::vector<std::string> &argv) {
+PyKet::PyKet(const std::vector<std::string> &argv) {
     int argc = argv.size();
     char* c_argv[argc];
     for (int i = 0; i < argc; i++) 
@@ -17,6 +17,6 @@ ___PyKet::___PyKet(const std::vector<std::string> &argv) {
     ket_init_new(argc, c_argv);    
 }
 
-___PyKet::~___PyKet() {
+PyKet::~PyKet() {
     ket_init_free();
 }
