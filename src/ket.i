@@ -27,8 +27,14 @@ from sys import argv
 ket___ = PyKet(argv)
 
 def ctrl(control, func, *args):
-  ctrl_begin(control)
-  func(*args)
-  ctrl_end(control)
+    ctrl_begin(control)
+    ret = func(*args)
+    ctrl_end(control)
+    return ret
+
+def adj(func, *args):
+    adj_begin()
+    func(*args)
+    adj_end()
 
 %}

@@ -5,22 +5,24 @@ LABEL @entry
 	CTRL	q1 	X	q2
 	ALLOC 	q0
 	H	q0
+	Z	q0
 	CTRL	q0 	X	q1
 	H	q0
 	MEASURE	q1	c1
 	INT	i1	ZE	c1 
-	BR	i1	@ket_tmp_if_then___0	@ket_tmp_if_end___1
-LABEL @ket_tmp_if_then___0
-	Z	q2
-	JUMP	@ket_tmp_if_end___1
-LABEL @ket_tmp_if_end___1
+	BR	i1	@if.then0	@if.end1
+LABEL @if.then0
+	X	q2
+	JUMP	@if.end1
+LABEL @if.end1
 	MEASURE	q0	c0
 	INT	i0	ZE	c0 
-	BR	i0	@ket_tmp_if_then___2	@ket_tmp_if_end___3
-LABEL @ket_tmp_if_then___2
-	X	q2
-	JUMP	@ket_tmp_if_end___3
-LABEL @ket_tmp_if_end___3
+	BR	i0	@if.then2	@if.end3
+LABEL @if.then2
+	Z	q2
+	JUMP	@if.end3
+LABEL @if.end3
+	H	q2
 	MEASURE	q2	c2
 	INT	i2	ZE	c2 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

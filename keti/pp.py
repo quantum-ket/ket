@@ -1,26 +1,30 @@
 import ast
-from sys import argv
 
-class ket_pp (ast.NodeTransformer):
+class ketpp (ast.NodeTransformer):
+
+    def __init__(self):
+        self.id_count = 0
 
     def visit_If(self, node):
         self.generic_visit(node)
 
         ########### LABEL #############
-        label_call = lambda name : ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=name, kind=None)], keywords=[])
-        label_assing = lambda name : ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call(name))
-        then_name = 'ket_tmp_if_then___'
-        then_label_stmt = label_assing(then_name)
-        end_name = 'ket_tmp_if_end___'
-        end_label_stmt = label_assing(end_name)
+        label_call = lambda name, label_id : ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
+        label_assing = lambda name, label_id : ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call(name, label_id))
+        then_name = 'ket_tmp_if_then'+str(self.id_count)+'___'
+        then_label_stmt = label_assing(then_name, 'if.then')
+        end_name = 'ket_tmp_if_end'+str(self.id_count)+'___'
+        end_label_stmt = label_assing(end_name, 'if.end')
         if len(node.orelse) != 0:
-            else_name = 'ket_tmp_if_else___' 
-            else_label_stmt = label_assing(else_name)
+            else_name = 'ket_tmp_if_else'+str(self.id_count)+'___' 
+            else_label_stmt = label_assing(else_name, 'if.else')
             if_body = [then_label_stmt, else_label_stmt, end_label_stmt]
             branch_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[node.test, ast.Name(id=then_name, ctx=ast.Load()), ast.Name(id=else_name, ctx=ast.Load())], keywords=[])
         else:
             branch_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[node.test, ast.Name(id=then_name, ctx=ast.Load()), ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
             if_body = [then_label_stmt, end_label_stmt]
+        
+        self.id_count += 1
         
         branch_stmt = ast.Expr(branch_call)
 
@@ -56,20 +60,3 @@ class ket_pp (ast.NodeTransformer):
         if_future_stmt = ast.If(test=type_eq_int_exp, body=if_body, orelse=[node])
 
         return [if_future_stmt]
-
-def main():
-    with open(argv[1], 'r') as source:
-        tree = ast.parse(source.read())
-
-    tree.body.insert(0, ast.ImportFrom(module='ket', names=[ast.alias(name='*', asname=None)], level=0))
-
-    pp = ket_pp()
-
-    pp.visit(tree)
-    ast.fix_missing_locations(tree)
-
-    obj = compile(tree, argv[1], 'exec', optimize=2)
-    exec(obj, globals())
-
-if __name__ == '__main__':
-    main()

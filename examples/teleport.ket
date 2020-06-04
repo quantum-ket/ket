@@ -15,13 +15,15 @@ def teleport(a):
     m0 = measure(a)
     m1 = measure(b(0))
     if m1:
-        z(b(1))
-    if m0:
         x(b(1))
+    if m0:
+        z(b(1))
     return b(1)
 
 a = alloc(1)
 h(a)
+z(a)
 y = teleport(a)
+h(y)
 print(measure(y).get())
      
