@@ -4,7 +4,7 @@
 
 %template(vec_str) std::vector<std::string>;
 
-%module ket
+%module __init__
 %{
     #include "include/pyket.hpp"
     #include "libket/include/ket"
@@ -24,5 +24,11 @@
 %pythoncode 
 %{
 from sys import argv
-pyket___ = PyKet(argv)
+ket___ = PyKet(argv)
+
+def ctrl(control, func, *args):
+  ctrl_begin(control)
+  func(*args)
+  ctrl_end(control)
+
 %}
