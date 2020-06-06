@@ -12,6 +12,10 @@ def main():
 
     args = parser.parse_args()
 
+    if len(args.input) == 0:
+        print("No input")
+        exit()
+
     with open(args.input[0], 'r') as source:
         tree = ast.parse(source.read())
 

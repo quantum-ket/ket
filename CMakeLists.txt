@@ -2,14 +2,15 @@ cmake_minimum_required(VERSION 3.15)
 
 project(ketpy)
 
-add_subdirectory(libket EXCLUDE_FROM_ALL)
+add_subdirectory(libket)
+add_subdirectory(kbw)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 FIND_PACKAGE(SWIG REQUIRED)
 INCLUDE(${SWIG_USE_FILE})
 
 FIND_PACKAGE(PythonLibs)
-INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_PATH})
+INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
 
 SET_PROPERTY(SOURCE src/ket.i
              PROPERTY CPLUSPLUS ON)
@@ -23,3 +24,6 @@ SET_TARGET_PROPERTIES(ketpy PROPERTIES
                       CXX_STANDARD 17)
                       
 SWIG_LINK_LIBRARIES(ketpy ${PYTHON_LIBRARIES} ket)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ket DESTINATION ${PYTHON_PACKAGES})
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/keti DESTINATION ${PYTHON_PACKAGES})
