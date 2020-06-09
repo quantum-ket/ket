@@ -1,0 +1,48 @@
+name: ket
+title: Ket Interpreter 
+version: '0.1b'
+summary: Ket Interpreter
+description: The Ket Interpreter
+
+base: core20
+confinement: strict
+
+parts:
+  python:
+    plugin: python
+    python-packages: 
+      - conan 
+      - ast_decompiler
+    build-packages: 
+      - python3-wheel
+    stage-packages:
+      - libpython3.8
+
+  libket:
+    plugin: cmake
+    source: .
+    build-packages: 
+      - pkg-config
+      - uuid-dev
+      - swig
+      - make
+      - default-jre
+      - g++
+      - gcc
+    build-environment: 
+      - PATH: /root/parts/python/install/bin:$PATH
+      - PYTHONPATH: /root/parts/python/install/lib/python3.8/site-packages
+    cmake-parameters:
+      - -DPYTHON_PACKAGES=/lib/python3.8/site-packages
+      - -DSNAP=1
+    after:
+      - python
+  
+apps:
+  ket:
+    command: bin/python3 -m keti
+    plugs:
+      - home
+    environment:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
