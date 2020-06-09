@@ -29,7 +29,7 @@ from ast_decompiler import decompile
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Ket interprester')
+    parser = argparse.ArgumentParser(prog='ket', description='Ket interprester')
     parser.add_argument('input', metavar='.ket', nargs=argparse.REMAINDER, type=str, help='source code')
     parser.add_argument('-e', '--preprocessor', metavar='.py', help='emit preprocessor output')
 
