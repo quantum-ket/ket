@@ -1,6 +1,7 @@
 name: ket
 title: Ket Interpreter 
 version: '0.1b'
+license: MIT
 summary: Ket Interpreter
 description: The Ket Interpreter
 
