@@ -10,19 +10,23 @@ LABEL @entry
 	H	q0
 	MEASURE	q1	c1
 	INT	i1	ZE	c1 
-	BR	i1	@if.then0	@if.end1
+	INT	i2	1
+	INT	i3	i1	==	i2
+	BR	i3	@if.then0	@if.end1
 LABEL @if.then0
 	X	q2
 	JUMP	@if.end1
 LABEL @if.end1
 	MEASURE	q0	c0
 	INT	i0	ZE	c0 
-	BR	i0	@if.then2	@if.end3
+	INT	i4	1
+	INT	i5	i0	==	i4
+	BR	i5	@if.then2	@if.end3
 LABEL @if.then2
 	Z	q2
 	JUMP	@if.end3
 LABEL @if.end3
 	H	q2
 	MEASURE	q2	c2
-	INT	i2	ZE	c2 
+	INT	i6	ZE	c2 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
