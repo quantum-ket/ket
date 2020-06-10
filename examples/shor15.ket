@@ -1,0 +1,32 @@
+from math import pi, gcd
+
+def qft(q):
+    lambd = lambda k : pi*k/2
+    for i in range(len(q)):
+        for j in range(i):
+            ctrl(q(i), u1, lambd(i-j), q(j))
+        h(q(i))
+
+def period():
+    reg1 = alloc(4)
+    h(reg1)
+
+    reg2 = pown(7, reg1, 15)
+
+    qft(reg1)
+
+    return measure(reg1.invert()).get()
+
+r = period()
+results = [r]
+for _ in range(4):
+    results.append(period())
+    r = gcd(r, results[-1])
+
+r = 2**4/r
+
+print('measurements =', results)
+print('r =', r)
+p = gcd(int(7**(r/2))+1, 15)
+q = gcd(int(7**(r/2))-1, 15)
+print(15, '=', p , "x", q)
