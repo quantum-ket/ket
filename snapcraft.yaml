@@ -10,16 +10,19 @@ base: core20
 confinement: strict
 
 parts:
-  py:
+  python:
     plugin: python
     python-packages: 
       - conan 
       - ast_decompiler
-    build-packages: 
-      - python3-wheel
     stage-packages:
-      - python3
+      - python3.8-minimal
       - libpython3.8
+    override-stage:
+      snapcraftctl stage &&
+      rm bin/python3 &&
+      ln -s ../usr/bin/python3.8 bin/python3 
+
 
   libket:
     plugin: cmake
@@ -30,20 +33,18 @@ parts:
       - swig
       - make
       - default-jre
+      - unzip
       - g++
       - gcc
-    build-environment: 
-      - PATH: /root/parts/python/install/bin:$PATH
-      - PYTHONPATH: /root/parts/python/install/lib/python3.8/site-packages
     cmake-parameters:
       - -DPYTHON_PACKAGES=/lib/python3/site-packages
       - -DSNAP=1
     after:
-      - py
+      - python
   
 apps:
   ket:
-    command: usr/bin/python3.8 -m keti
+    command: bin/python3 -m keti
     plugs:
       - home
     environment:
