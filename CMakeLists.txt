@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 project(ketpy)
 
+if(DEFINED SNAP)
+    add_definitions(-DSNAP)
+endif()
+
 add_subdirectory(libket)
 add_subdirectory(kbw)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -17,7 +21,7 @@ SET_PROPERTY(SOURCE src/ket.i
 SWIG_ADD_LIBRARY(ketpy 
                  LANGUAGE python
                  OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/ket
-                 SOURCES src/ket.i src/pyket.cpp)
+                 SOURCES src/ket.i)
 
 SET_TARGET_PROPERTIES(ketpy PROPERTIES 
                       LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ket

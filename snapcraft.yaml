@@ -23,7 +23,6 @@ parts:
       rm bin/python3 &&
       ln -s ../usr/bin/python3.8 bin/python3 
 
-
   libket:
     plugin: cmake
     source: .
@@ -36,8 +35,11 @@ parts:
       - unzip
       - g++
       - gcc
+    build-environment:
+      - PATH : $PATH:/root/parts/python/install/bin
+      - PYTHONPATH: /root/parts/python/install/lib/python3.8/site-packages
     cmake-parameters:
-      - -DPYTHON_PACKAGES=/lib/python3/site-packages
+      - -DPYTHON_PACKAGES=/lib/python3.8/site-packages
       - -DSNAP=1
     after:
       - python

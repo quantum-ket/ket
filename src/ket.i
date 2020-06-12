@@ -30,7 +30,6 @@
 
 %module __init__
 %{
-    #include "include/pyket.hpp"
     #include "libket/include/ket"
 %}
 
@@ -42,13 +41,11 @@
   }
 }
 
-%include "include/pyket.hpp"
 %include "libket/include/ket"
 
 %pythoncode 
 %{
 from sys import argv
-ket___ = PyKet(argv)
 
 def ctrl(control, func, *args):
     ctrl_begin(control)
