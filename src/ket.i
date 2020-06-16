@@ -45,7 +45,13 @@
 
 %pythoncode 
 %{
-from sys import argv
+class run:
+    def __enter__ (self):
+        process_begin()
+    
+    def __exit__ (self, type, value, tb):
+        process_end()
+
 
 def ctrl(control, func, *args):
     ctrl_begin(control)
