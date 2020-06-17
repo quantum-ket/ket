@@ -8,7 +8,7 @@ def qft(q):
         h(q(i))
 
 def period():
-    reg1 = alloc(4)
+    reg1 = qalloc(4)
     h(reg1)
 
     reg2 = pown(7, reg1, 15)

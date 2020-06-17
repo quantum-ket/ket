@@ -1,7 +1,7 @@
 from ket import *
 
 def bell(aux0, aux1):
-    q = alloc(2)
+    q = qalloc(2)
     ket_temp_if_test0___ = aux0 == 1
     if type(ket_temp_if_test0___) == future:
         ket_tmp_if_then0___ = label('if.then')
@@ -11,7 +11,7 @@ def bell(aux0, aux1):
         x(q(0))
         jump(ket_tmp_if_end0___)
         ket_tmp_if_end0___.begin()
-    elif aux0 == 1:
+    elif ket_temp_if_test0___:
         x(q(0))
     ket_temp_if_test1___ = aux1 == 1
     if type(ket_temp_if_test1___) == future:
@@ -22,7 +22,7 @@ def bell(aux0, aux1):
         x(q(1))
         jump(ket_tmp_if_end1___)
         ket_tmp_if_end1___.begin()
-    elif aux1 == 1:
+    elif ket_temp_if_test1___:
         x(q(1))
     h(q(0))
     ctrl(q(0), x, q(1))
@@ -43,7 +43,7 @@ def teleport(a):
         x(b(1))
         jump(ket_tmp_if_end2___)
         ket_tmp_if_end2___.begin()
-    elif m1 == 1:
+    elif ket_temp_if_test2___:
         x(b(1))
     ket_temp_if_test3___ = m0 == 1
     if type(ket_temp_if_test3___) == future:
@@ -54,10 +54,10 @@ def teleport(a):
         z(b(1))
         jump(ket_tmp_if_end3___)
         ket_tmp_if_end3___.begin()
-    elif m0 == 1:
+    elif ket_temp_if_test3___:
         z(b(1))
     return b(1)
-a = alloc(1)
+a = qalloc(1)
 h(a)
 z(a)
 y = teleport(a)

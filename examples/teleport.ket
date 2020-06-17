@@ -1,5 +1,5 @@
 def bell(aux0, aux1):
-    q = alloc(2)
+    q = qalloc(2)
     if aux0 == 1:
         x(q(0))
     if aux1 == 1:
@@ -20,7 +20,7 @@ def teleport(a):
         z(b(1))
     return b(1)
 
-a = alloc(1)
+a = qalloc(1)
 h(a)
 z(a)
 y = teleport(a)

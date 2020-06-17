@@ -1,9 +1,9 @@
 LABEL @entry
-	ALLOC 	q1
+	ALLOC	q1
 	H	q1
-	ALLOC 	q2
+	ALLOC	q2
 	CTRL	q1 	X	q2
-	ALLOC 	q0
+	ALLOC	q0
 	H	q0
 	Z	q0
 	CTRL	q0 	X	q1

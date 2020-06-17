@@ -1,16 +1,16 @@
 LABEL @entry
-	ALLOC 	q0
+	ALLOC	q0
 	H	q0
-	ALLOC 	q1
+	ALLOC	q1
 	H	q1
-	ALLOC 	q2
+	ALLOC	q2
 	H	q2
-	ALLOC 	q3
+	ALLOC	q3
 	H	q3
-	ALLOC 	q4
-	ALLOC 	q5
-	ALLOC 	q6
-	ALLOC 	q7
+	ALLOC	q4
+	ALLOC	q5
+	ALLOC	q6
+	ALLOC	q7
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
@@ -29,18 +29,18 @@ LABEL @entry
 	INT	i0	ZE	c0 c1 c2 c3 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LABEL @entry
-	ALLOC 	q0
+	ALLOC	q0
 	H	q0
-	ALLOC 	q1
+	ALLOC	q1
 	H	q1
-	ALLOC 	q2
+	ALLOC	q2
 	H	q2
-	ALLOC 	q3
+	ALLOC	q3
 	H	q3
-	ALLOC 	q4
-	ALLOC 	q5
-	ALLOC 	q6
-	ALLOC 	q7
+	ALLOC	q4
+	ALLOC	q5
+	ALLOC	q6
+	ALLOC	q7
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
@@ -59,18 +59,18 @@ LABEL @entry
 	INT	i0	ZE	c0 c1 c2 c3 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LABEL @entry
-	ALLOC 	q0
+	ALLOC	q0
 	H	q0
-	ALLOC 	q1
+	ALLOC	q1
 	H	q1
-	ALLOC 	q2
+	ALLOC	q2
 	H	q2
-	ALLOC 	q3
+	ALLOC	q3
 	H	q3
-	ALLOC 	q4
-	ALLOC 	q5
-	ALLOC 	q6
-	ALLOC 	q7
+	ALLOC	q4
+	ALLOC	q5
+	ALLOC	q6
+	ALLOC	q7
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
@@ -89,18 +89,18 @@ LABEL @entry
 	INT	i0	ZE	c0 c1 c2 c3 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LABEL @entry
-	ALLOC 	q0
+	ALLOC	q0
 	H	q0
-	ALLOC 	q1
+	ALLOC	q1
 	H	q1
-	ALLOC 	q2
+	ALLOC	q2
 	H	q2
-	ALLOC 	q3
+	ALLOC	q3
 	H	q3
-	ALLOC 	q4
-	ALLOC 	q5
-	ALLOC 	q6
-	ALLOC 	q7
+	ALLOC	q4
+	ALLOC	q5
+	ALLOC	q6
+	ALLOC	q7
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
@@ -119,18 +119,18 @@ LABEL @entry
 	INT	i0	ZE	c0 c1 c2 c3 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 LABEL @entry
-	ALLOC 	q0
+	ALLOC	q0
 	H	q0
-	ALLOC 	q1
+	ALLOC	q1
 	H	q1
-	ALLOC 	q2
+	ALLOC	q2
 	H	q2
-	ALLOC 	q3
+	ALLOC	q3
 	H	q3
-	ALLOC 	q4
-	ALLOC 	q5
-	ALLOC 	q6
-	ALLOC 	q7
+	ALLOC	q4
+	ALLOC	q5
+	ALLOC	q6
+	ALLOC	q7
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
