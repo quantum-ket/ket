@@ -81,6 +81,8 @@ class ketpp (ast.NodeTransformer):
         type_call_exp = ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[])
         type_eq_int_exp = ast.Compare(left=type_call_exp, ops=[ast.Eq()], comparators=[ast.Name(id=type_check, ctx=ast.Load())])
 
+        node.test = ast.Name(id=test_assing_name, ctx=ast.Load())
+
         if_future_stmt = ast.If(test=type_eq_int_exp, body=if_body, orelse=[node])
 
         self.id_count += 1
