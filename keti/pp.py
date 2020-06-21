@@ -34,6 +34,7 @@ class ketpp (ast.NodeTransformer):
         test_assing_name = 'ket_temp_if_test'+str(self.id_count)+'___' 
         test_assing_stmt = ast.Assign(targets=[ast.Name(id=test_assing_name, ctx=ast.Store())], value=node.test)
 
+        ########### FUTURE #############
         ########### LABEL #############
         label_call = lambda name, label_id : ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
         label_assing = lambda name, label_id : ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call(name, label_id))
@@ -76,15 +77,35 @@ class ketpp (ast.NodeTransformer):
         if_body.append(end_begin_stmt)
 
         ##############################
+        ########### QUANT #############
 
-        type_check = 'future'
-        type_call_exp = ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[])
-        type_eq_int_exp = ast.Compare(left=type_call_exp, ops=[ast.Eq()], comparators=[ast.Name(id=type_check, ctx=ast.Load())])
+        ctlr_begin_stmt = ast.Expr(ast.Call(func=ast.Name(id='ctrl_begin', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[]))
+        ctlr_end_stmt = ast.Expr(ast.Call(func=ast.Name(id='ctrl_end', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[]))
+        
+        ctrl_body = [ctlr_begin_stmt]
+        ctrl_body.extend(node.body)
+        ctrl_body.append(ctlr_end_stmt)
+        
+        ########### ELSE #############
+
+        if len(node.orelse) != 0:
+            ctlr_x_stmt = ast.Expr(ast.Call(func=ast.Name(id='x', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[]))
+            ctrl_body.extend([ctlr_x_stmt, ctlr_begin_stmt])
+            ctrl_body.extend(node.orelse)
+            ctrl_body.extend([ctlr_end_stmt, ctlr_x_stmt])
+
+        ##############################
+
+        type_call_exp = lambda type_check : ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[])
+        type_eq_exp = lambda type_check : ast.Compare(left=type_call_exp(type_check), ops=[ast.Eq()], comparators=[ast.Name(id=type_check, ctx=ast.Load())])
+
+        type_eq_future_exp = type_eq_exp('future')
+        type_eq_quant_exp = type_eq_exp('quant')
 
         node.test = ast.Name(id=test_assing_name, ctx=ast.Load())
-
-        if_future_stmt = ast.If(test=type_eq_int_exp, body=if_body, orelse=[node])
+        if_future_stmt = ast.If(test=type_eq_future_exp, body=if_body, orelse=[node])
+        if_quant_stmt = ast.If(test=type_eq_quant_exp, body=ctrl_body, orelse=[if_future_stmt])
 
         self.id_count += 1
         
-        return [test_assing_stmt, if_future_stmt]
+        return [test_assing_stmt, if_quant_stmt]

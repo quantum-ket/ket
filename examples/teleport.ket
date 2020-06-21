@@ -5,12 +5,14 @@ def bell(aux0, aux1):
     if aux1 == 1:
         x(q(1))
     h(q(0))
-    ctrl(q(0), x, q(1))
+    if q(0):
+        x(q(1))
     return q
 
 def teleport(a):
     b = bell(0, 0)
-    ctrl(a, x, b(0))
+    if a:
+        x(b(0))
     h(a)
     m0 = measure(a)
     m1 = measure(b(0))
