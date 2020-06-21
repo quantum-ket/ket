@@ -52,6 +52,22 @@ class run:
     def __exit__ (self, type, value, tb):
         process_end()
 
+class inverse:
+    def __enter__ (self):
+        adj_begin()     
+
+    def __exit__ (self, type, value, tb):
+        adj_end()     
+
+class control:
+  def __init__(self, c):
+      self.c = c
+
+  def __enter__ (self):
+      ctrl_begin(self.c)
+         
+  def __exit__ (self, type, value, tb):
+      ctrl_end(self.c)
 
 def ctrl(control, func, *args):
     ctrl_begin(control)
