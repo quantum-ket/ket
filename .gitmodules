@@ -1,6 +1,6 @@
 [submodule "libket"]
 	path = libket
-	url = git@gitlab.com:quantum-ket/libket.git
+	url = https://gitlab.com/quantum-ket/libket.git
 [submodule "kbw"]
 	path = kbw
-	url = git@gitlab.com:quantum-ket/kbw.git
+	url = https://gitlab.com/quantum-ket/kbw.git
