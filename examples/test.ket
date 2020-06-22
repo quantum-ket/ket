@@ -1,0 +1,11 @@
+with run():
+    q = qalloc(3)
+    a = qalloc(3)
+    m = measure(a)
+    if m == 1:
+        z(q)
+    elif m == 2:
+        x(q)
+    else:
+        y(q) 
+    print(measure(q).get())

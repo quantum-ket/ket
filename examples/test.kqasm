@@ -1,0 +1,41 @@
+LABEL @entry
+	ALLOC	q5
+	ALLOC	q4
+	ALLOC	q3
+	ALLOC	q2
+	ALLOC	q1
+	ALLOC	q0
+	MEASURE	q3	c0
+	MEASURE	q4	c1
+	MEASURE	q5	c2
+	INT	i0	ZE	c0 c1 c2 
+	INT	i1	1
+	INT	i2	i0	==	i1
+	BR	i2	@if.then0	@if.else1
+LABEL @if.then0
+	Z	q2
+	Z	q1
+	Z	q0
+	JUMP	@if.end2
+LABEL @if.else1
+	INT	i3	2
+	INT	i4	i0	==	i3
+	BR	i4	@if.then3	@if.else4
+LABEL @if.then3
+	X	q2
+	X	q1
+	X	q0
+	JUMP	@if.end5
+LABEL @if.else4
+	Y	q2
+	Y	q1
+	Y	q0
+	JUMP	@if.end5
+LABEL @if.end5
+	JUMP	@if.end2
+LABEL @if.end2
+	MEASURE	q0	c3
+	MEASURE	q1	c4
+	MEASURE	q2	c5
+	INT	i5	ZE	c3 c4 c5 
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
