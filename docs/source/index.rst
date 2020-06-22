@@ -9,9 +9,11 @@ Ket is a quantum programming framework that features:
 * The Ket Bitwise Simulator for quantum circuit simulator with bitwise
   operation [arXiv:2004.03560]_.
 
+Contents
+--------
+
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    ket 
    license
