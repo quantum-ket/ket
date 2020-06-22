@@ -9,6 +9,22 @@ Ket is a quantum programming framework that features:
 * The Ket Bitwise Simulator for quantum circuit simulator with bitwise
   operation [arXiv:2004.03560]_.
 
+Source code
+-----------
+
+* Ket interpreter (keti) and libket for Python: https://gitlab.com/quantum-ket/ket
+* libket for C++ and C: https://gitlab.com/quantum-ket/libket
+* Ket Bitwise Simulator (kbw): https://gitlab.com/quantum-ket/kbw 
+
+Install ket on your Linux distribution
+--------------------------------------
+
+.. code-block:: bash
+
+   sudo snap install ket --beta
+   
+For help to install snapd see https://snapcraft.io/docs/installing-snapd
+
 Contents
 --------
 
