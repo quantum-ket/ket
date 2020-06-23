@@ -30,6 +30,7 @@ parts:
       - pkg-config
       - uuid-dev
       - swig
+      - curl
       - make
       - default-jre
       - unzip
