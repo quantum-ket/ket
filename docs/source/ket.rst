@@ -101,17 +101,17 @@ For example to apply a inverse Quantum Fourier Transform:
         w = lambda k : pi*k/2
         for i in range(len(q)):
             for j in range(i):
-                ctrl(q(i), u1, w(i-j), q(j))
-            h(q(i))
+                ctrl(q[i], u1, w(i-j), q[j])
+            h(q[i])
     
     q = qalloc(5)
 
     # inverse Quantum Fourier Transform 
-    adj(qft, q)
-    
-    # inverse Quantum Fourier Transform 
     with inverse():
         qft(q)
+        
+    # inverse Quantum Fourier Transform 
+    adj(qft, q)
         
 .. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
     ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
