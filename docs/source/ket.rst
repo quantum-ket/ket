@@ -4,8 +4,8 @@ Ket quantum programming language
 This documentation aims to present the Ket quantum programming embedded in
 Python. Previous knowledge of Python and quantum computation is required.
 
-The type ``quant`` 
-------------------
+The type quant 
+--------------
 
 The type ``quant`` holds an array of qubits and that is initialized with the
 function ``qalloc(n)`` or ``qalloc_dirty(n)``.  To reference a single qubit of a
@@ -116,8 +116,8 @@ For example to apply a inverse Quantum Fourier Transform:
 .. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
     ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
 
-The type ``future`` 
--------------------
+The type future 
+---------------
 
 The type ``future`` holds an ``int`` that is primarily available at the quantum
 computer, as proposed by [arXiv:2006.00131]_.
@@ -136,9 +136,9 @@ execute the necessary quantum code.
 
     result = m5.get() # result is a int
     
-.. note:: The available operations between ``future`` ``future`` and ``future``
-    ``int`` are ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``+``, ``-``, ``*``,
-    ``/``, ``<<``, ``>>``, ``&``, ``^``, ``|``
+.. note:: The available operations between ``future``-``future`` and 
+    ``future``-``int`` are ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``+``,
+    ``-``, ``*``, ``/``, ``<<``, ``>>``, ``and``, ``xor``, and ``or``.
 
 Statement integration 
 ^^^^^^^^^^^^^^^^^^^^^
