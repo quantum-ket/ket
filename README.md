@@ -1,3 +1,6 @@
+[![Documentation Status](https://readthedocs.org/projects/ket/badge/?version=latest)](https://ket.readthedocs.io/en/latest/?badge=latest)
+[![ket](https://snapcraft.io//ket/badge.svg)](https://snapcraft.io/ket)
+
 # Ket quantum programming
 
 Repository for the Ket library for Python and the Ket Interpreter.

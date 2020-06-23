@@ -1,6 +1,6 @@
 name: ket
 title: Ket quantum programming
-version: '0.1'
+version: git
 grade: devel
 license: MIT
 summary: The Ket quantum programming language interpreter
