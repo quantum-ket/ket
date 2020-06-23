@@ -4,7 +4,7 @@ Ket quantum programming language
 This documentation aims to present the Ket quantum programming embedded in
 Python. Previous knowledge of Python and quantum computation is required.
 
-The ``quant`` type
+The type ``quant`` 
 ------------------
 
 The type ``quant`` holds an array of qubits and that is initialized with the
@@ -116,7 +116,7 @@ For example to apply a inverse Quantum Fourier Transform:
 .. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
     ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
 
-The ``future`` type
+The type ``future`` 
 -------------------
 
 The type ``future`` holds an ``int`` that is primarily available at the quantum
@@ -126,19 +126,19 @@ result of operations with measurement results and ``int``.
 To receive the value of a ``future`` use the function ``.get()``, which will
 execute the necessary quantum code.
 
-.. note:: The available operations between ``future`` ``future`` and ``future``
-    ``int`` are ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``+``, ``-``, ``*``,
-    ``/``, ``<<``, ``>>``, ``&``, ``^``, ``|``
-
 .. code-block:: python
 
     q = qalloc(60)
     h(q)
 
-    random_number = measure(q)    # random_number is a future 
-    operation = random_number + 5 # operation is a future
+    m = measure(q) # m is a future 
+    m5 = m * 5     # m5 is a future
 
-    result = random_sum.get() # result is a int
+    result = m5.get() # result is a int
+    
+.. note:: The available operations between ``future`` ``future`` and ``future``
+    ``int`` are ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``+``, ``-``, ``*``,
+    ``/``, ``<<``, ``>>``, ``&``, ``^``, ``|``
 
 Statement integration 
 ^^^^^^^^^^^^^^^^^^^^^
