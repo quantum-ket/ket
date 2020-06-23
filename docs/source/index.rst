@@ -19,9 +19,13 @@ Source code
 Install ket on your Linux distribution
 --------------------------------------
 
+.. image:: https://snapcraft.io/static/images/badges/en/snap-store-black.svg
+   :target: https://snapcraft.io/ket
+   :alt: Get it from the Snap Store
+
 .. code-block:: bash
 
-   sudo snap install ket --beta
+   sudo snap install ket --edge
    
 For help to install snapd see https://snapcraft.io/docs/installing-snapd
 

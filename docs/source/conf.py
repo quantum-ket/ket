@@ -22,7 +22,7 @@ copyright = '2020, Evandro Chagas Ribeiro da Rosa'
 author = 'Evandro Chagas Ribeiro da Rosa'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = 'beta'
 
 
 # -- General configuration ---------------------------------------------------

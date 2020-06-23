@@ -8,7 +8,7 @@ The ``quant`` type
 ------------------
 
 The type ``quant`` hols an array of qubits and that is initialized with the
-function ``qalloc`` or ``qalloc_dirty``.  To reference a single qubit of a
+function ``qalloc(n)`` or ``qalloc_dirty(n)``.  To reference a single qubit of a
 quant use brackets.
 
 .. code-block:: python
@@ -50,4 +50,69 @@ The available quantum gate are:
 +--------------+--------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
+.. code-block:: python
+
+    a = qalloc(5)                        # a = |00000>
+    x(a) # apply Pauli X on every qubit of a = |11111>
+
+
+Controlled operations
+---------------------
+
+To apply a controlled quantum operation use the statement ``with control(c):``
+or the function ``ctrl(c, gate, *args)``.
+
+For example, to apply a CNOT or a Toffoli gate:
+
+.. code-block:: python
+
+    c = qalloc(2)
+    t = qalloc(1)
+
+    # CNOT(c[0], t)
+    with control(c[0]):
+        x(t)            
+
+    # CNOT(c[0], t)
+    ctrl(c[0], x, t)    
+
+    # Toffoli(c[0], c[1], t)
+    with control(c):
+        x(t)            
+
+    # Toffoli(c[0], c[1], t)
+    ctrl(c, x, t)    
+
+.. warning:: ``with control(c):`` and ``ctrl(c, gate, *args)`` does not operate
+    with ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
+    
+Inverse operations
+------------------
+
+To apply a inverse quantum operation use the statement ``with inverse():`` or
+the function ``adj(gate, *args)``.
+
+For example to apply a inverse Quantum Fourier Transform:
+
+.. code-block:: python
+    
+    # Quantum Fourier Transform
+    def qft(q):
+        w = lambda k : pi*k/2
+        for i in range(len(q)):
+            for j in range(i):
+                ctrl(q(i), u1, w(i-j), q(j))
+            h(q(i))
+    
+    q = qalloc(5)
+
+    # inverse Quantum Fourier Transform 
+    adj(qft, q)
+    
+    # inverse Quantum Fourier Transform 
+    with inverse():
+        qft(q)
+        
+.. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
+    ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
 
