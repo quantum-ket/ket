@@ -7,7 +7,7 @@ Python. Previous knowledge of Python and quantum computation is required.
 The ``quant`` type
 ------------------
 
-The type ``quant`` hols an array of qubits and that is initialized with the
+The type ``quant`` holds an array of qubits and that is initialized with the
 function ``qalloc(n)`` or ``qalloc_dirty(n)``.  To reference a single qubit of a
 quant use brackets.
 
@@ -15,11 +15,11 @@ quant use brackets.
 
     a = qalloc(3)       # a = |000>
     b = qalloc_dirty(2) # b = 2 qubits quant in a random state
-    c = a[0]            # c = reference to the first qubit of a
-    d = b[1]            # d = reference to the last qubit of a
+    c = a[0]            # c is a reference to the first qubit of a
+    d = b[1]            # d is a reference to the last qubit of a
 
 Quantum Gates
--------------
+^^^^^^^^^^^^^
 
 The available quantum gate are:
 
@@ -57,7 +57,7 @@ The available quantum gate are:
 
 
 Controlled operations
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 To apply a controlled quantum operation use the statement ``with control(c):``
 or the function ``ctrl(c, gate, *args)``.
@@ -87,7 +87,7 @@ For example, to apply a CNOT or a Toffoli gate:
     with ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
     
 Inverse operations
-------------------
+^^^^^^^^^^^^^^^^^^
 
 To apply a inverse quantum operation use the statement ``with inverse():`` or
 the function ``adj(gate, *args)``.
@@ -116,3 +116,29 @@ For example to apply a inverse Quantum Fourier Transform:
 .. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
     ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
 
+The ``future`` type
+-------------------
+
+The type ``future`` holds an ``int`` that is primarily available at the quantum
+computer, as proposed by [arXiv:2006.00131]_.
+Its central usage is to reference measurement results, but it also stores the
+result of operations with measurement results and ``int``.  
+To receive the value of a ``future`` use the function ``.get()``, which will
+execute the necessary quantum code.
+
+.. note:: The available operations between ``future`` ``future`` and ``future``
+    ``int`` are ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``+``, ``-``, ``*``,
+    ``/``, ``<<``, ``>>``, ``&``, ``^``, ``|``
+
+.. code-block:: python
+
+    q = qalloc(60)
+    h(q)
+
+    random_number = measure(q)    # random_number is a future 
+    operation = random_number + 5 # operation is a future
+
+    result = random_sum.get() # result is a int
+
+Statement integration 
+^^^^^^^^^^^^^^^^^^^^^
