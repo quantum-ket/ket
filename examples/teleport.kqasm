@@ -8,6 +8,8 @@ LABEL @entry
 	Z	q0
 	CTRL	q0 	X	q1
 	H	q0
+	MEASURE	q0	c0
+	INT	i0	ZE	c0 
 	MEASURE	q1	c1
 	INT	i1	ZE	c1 
 	INT	i2	1
@@ -17,8 +19,6 @@ LABEL @if.then0
 	X	q2
 	JUMP	@if.end1
 LABEL @if.end1
-	MEASURE	q0	c0
-	INT	i0	ZE	c0 
 	INT	i4	1
 	INT	i5	i0	==	i4
 	BR	i5	@if.then2	@if.end3

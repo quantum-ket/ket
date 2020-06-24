@@ -1,7 +1,7 @@
 from ket import *
 
 def bell(aux0, aux1):
-    q = qalloc(2)
+    q = quant(2)
     ket_temp_if_test0___ = aux0 == 1
     if type(ket_temp_if_test0___) == future:
         ket_tmp_if_then0___ = label('if.then')
@@ -59,7 +59,7 @@ def teleport(a):
     elif ket_temp_if_test3___:
         z(b[1])
     return b[1]
-a = qalloc(1)
+a = quant(1)
 h(a)
 z(a)
 y = teleport(a)
