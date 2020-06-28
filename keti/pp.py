@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import ast
+import ast, copy
 
 class ketpp (ast.NodeTransformer):
 
@@ -102,3 +102,90 @@ class ketpp (ast.NodeTransformer):
         self.id_count += 1
         self.if_future_count -= 1
         return ret_body
+
+    def visit_While(self, node):
+        self.generic_visit(node)
+
+        test_assing_name = 'ket_temp_while_out_test'+str(self.id_count)+'___' 
+        test_assing_stmt = ast.Assign(targets=[ast.Name(id=test_assing_name, ctx=ast.Store())], value=node.test)
+
+        ########### LABEL #############
+        label_call = lambda name, label_id : ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
+        label_assing = lambda name, label_id : ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call(name, label_id))
+
+        test_name = 'ket_tmp_while_test'+str(self.id_count)+'___'
+        test_label_stmt = label_assing(test_name, 'while.test')
+        
+        loop_name = 'ket_tmp_while_loop'+str(self.id_count)+'___'
+        loop_label_stmt = label_assing(loop_name, 'while.loop')
+        
+        end_name = 'ket_tmp_while_end'+str(self.id_count)+'___'
+        end_label_stmt = label_assing(end_name, 'while.end')
+
+        ########### THEN #############
+
+        
+        branch_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load()), ast.Name(id=loop_name, ctx=ast.Load()), ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
+        branch_stmt = ast.Expr(branch_call)
+
+        if_body = [test_label_stmt, loop_label_stmt, end_label_stmt, branch_stmt]
+
+        label_begin = lambda name : ast.Call(func=ast.Attribute(value=ast.Name(id=name, ctx=ast.Load()), attr='begin', ctx=ast.Load()), args=[], keywords=[])
+        test_begin_stmt = ast.Expr(label_begin(test_name))
+        
+        test_in_assing_name = 'ket_temp_while_in_test'+str(self.id_count)+'___' 
+        test_in_assing_stmt = ast.Assign(targets=[ast.Name(id=test_in_assing_name, ctx=ast.Store())], value=node.test)
+        
+        branch_in_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_in_assing_name, ctx=ast.Load()), ast.Name(id=loop_name, ctx=ast.Load()), ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
+        branch_in_stmt = ast.Expr(branch_in_call)
+        
+        loop_begin_stmt = ast.Expr(label_begin(loop_name))
+
+        jump_call = ast.Call(func=ast.Name(id='jump', ctx=ast.Load()), args=[ast.Name(id=test_name, ctx=ast.Load())], keywords=[])
+        jump_stmt = ast.Expr(jump_call)
+
+        end_begin_stmt = ast.Expr(label_begin(end_name))
+
+        if_body.extend([test_begin_stmt, test_in_assing_stmt, branch_in_stmt, loop_begin_stmt])
+        if_body.extend(node.body)
+        if_body.extend([jump_stmt, end_begin_stmt])
+
+        if node.orelse:
+            if_body.extend(node.orelse)
+        
+         
+        ########### IF IN #############
+
+        if_in_body = node.body
+        if_in_body.append(copy.deepcopy(node))
+        if_in_else = node.orelse
+        if_in_stmt = ast.If(test=ast.Name(id=test_assing_name, ctx=ast.Load()), body=if_in_body, orelse=if_in_else)
+
+        ########### IF OUT #############
+        
+        type_call_exp = lambda type_check : ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[])
+        type_eq_exp = lambda type_check : ast.Compare(left=type_call_exp(type_check), ops=[ast.Eq()], comparators=[ast.Name(id=type_check, ctx=ast.Load())])
+        
+        type_eq_future_exp = type_eq_exp('future')
+
+        node.test = ast.Name(id=test_assing_name, ctx=ast.Load())
+        
+        if_future_stmt = ast.If(test=type_eq_future_exp, body=if_body, orelse=[if_in_stmt])
+
+        '''
+        t = test()
+        if future:
+            br t while.loop while.end
+            label while.begin
+            t = test()
+            br t while.loop while.end
+            label loop
+            body()
+            jump while.begin
+            label while.end
+            else()
+        else: 
+            while
+        '''
+        self.id_count += 1
+        return [test_assing_stmt, if_future_stmt]

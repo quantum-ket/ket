@@ -26,8 +26,6 @@
 %include <std_vector.i>
 %include <stdint.i>
 
-%template(vec_str) std::vector<std::string>;
-
 %module __init__
 %{
     #include "libket/include/ket"
@@ -67,12 +65,12 @@ class control:
       ctrl_begin(self.c)
          
   def __exit__ (self, type, value, tb):
-      ctrl_end(self.c)
+      ctrl_end()
 
 def ctrl(control, func, *args):
     ctrl_begin(control)
     ret = func(*args)
-    ctrl_end(control)
+    ctrl_end()
     return ret
 
 def adj(func, *args):
