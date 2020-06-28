@@ -1,32 +1,32 @@
 LABEL @entry
-	ALLOC	q1
-	H	q1
-	ALLOC	q2
-	CTRL	q1 	X	q2
 	ALLOC	q0
 	H	q0
 	Z	q0
+	ALLOC	q1
+	ALLOC	q2
+	H	q1
+	CTRL	q1 	X	q2
 	CTRL	q0 	X	q1
 	H	q0
-	MEASURE	q0	c0
+	MEASURE	q0
 	INT	i0	ZE	c0 
-	MEASURE	q1	c1
+	MEASURE	q1
 	INT	i1	ZE	c1 
 	INT	i2	1
 	INT	i3	i1	==	i2
-	BR	i3	@if.then0	@if.end1
+	BR	i1	@if.then0	@if.end1
 LABEL @if.then0
 	X	q2
 	JUMP	@if.end1
 LABEL @if.end1
 	INT	i4	1
 	INT	i5	i0	==	i4
-	BR	i5	@if.then2	@if.end3
+	BR	i1	@if.then2	@if.end3
 LABEL @if.then2
 	Z	q2
 	JUMP	@if.end3
 LABEL @if.end3
 	H	q2
-	MEASURE	q2	c2
+	MEASURE	q2
 	INT	i6	ZE	c2 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+=========================

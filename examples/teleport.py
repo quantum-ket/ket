@@ -24,7 +24,7 @@ def bell(aux0, aux1):
         ket_tmp_if_end1___.begin()
     elif ket_temp_if_test1___:
         x(q[1])
-    h(q(0))
+    h(q[0])
     with control(q[0]):
         x(q[1])
     return q

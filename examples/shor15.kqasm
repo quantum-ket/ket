@@ -1,11 +1,11 @@
 LABEL @entry
 	ALLOC	q0
-	H	q0
 	ALLOC	q1
-	H	q1
 	ALLOC	q2
-	H	q2
 	ALLOC	q3
+	H	q0
+	H	q1
+	H	q2
 	H	q3
 	ALLOC	q4
 	ALLOC	q5
@@ -14,28 +14,28 @@ LABEL @entry
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
-	CTRL	q2 	U1(3.1415926535897931)	q0
-	CTRL	q3 	U1(4.7123889803846897)	q0
 	H	q1
+	CTRL	q2 	U1(3.1415926535897931)	q0
 	CTRL	q2 	U1(1.5707963267948966)	q1
-	CTRL	q3 	U1(3.1415926535897931)	q1
 	H	q2
+	CTRL	q3 	U1(4.7123889803846897)	q0
+	CTRL	q3 	U1(3.1415926535897931)	q1
 	CTRL	q3 	U1(1.5707963267948966)	q2
 	H	q3
-	MEASURE	q3	c0
-	MEASURE	q2	c1
-	MEASURE	q1	c2
-	MEASURE	q0	c3
-	INT	i0	ZE	c0 c1 c2 c3 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	MEASURE	q3
+	MEASURE	q2
+	MEASURE	q1
+	MEASURE	q0
+	INT	i0	ZE	c3 c2 c1 c0 
+=========================
 LABEL @entry
 	ALLOC	q0
-	H	q0
 	ALLOC	q1
-	H	q1
 	ALLOC	q2
-	H	q2
 	ALLOC	q3
+	H	q0
+	H	q1
+	H	q2
 	H	q3
 	ALLOC	q4
 	ALLOC	q5
@@ -44,28 +44,28 @@ LABEL @entry
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
-	CTRL	q2 	U1(3.1415926535897931)	q0
-	CTRL	q3 	U1(4.7123889803846897)	q0
 	H	q1
+	CTRL	q2 	U1(3.1415926535897931)	q0
 	CTRL	q2 	U1(1.5707963267948966)	q1
-	CTRL	q3 	U1(3.1415926535897931)	q1
 	H	q2
+	CTRL	q3 	U1(4.7123889803846897)	q0
+	CTRL	q3 	U1(3.1415926535897931)	q1
 	CTRL	q3 	U1(1.5707963267948966)	q2
 	H	q3
-	MEASURE	q3	c0
-	MEASURE	q2	c1
-	MEASURE	q1	c2
-	MEASURE	q0	c3
-	INT	i0	ZE	c0 c1 c2 c3 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	MEASURE	q3
+	MEASURE	q2
+	MEASURE	q1
+	MEASURE	q0
+	INT	i0	ZE	c3 c2 c1 c0 
+=========================
 LABEL @entry
 	ALLOC	q0
-	H	q0
 	ALLOC	q1
-	H	q1
 	ALLOC	q2
-	H	q2
 	ALLOC	q3
+	H	q0
+	H	q1
+	H	q2
 	H	q3
 	ALLOC	q4
 	ALLOC	q5
@@ -74,28 +74,28 @@ LABEL @entry
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
-	CTRL	q2 	U1(3.1415926535897931)	q0
-	CTRL	q3 	U1(4.7123889803846897)	q0
 	H	q1
+	CTRL	q2 	U1(3.1415926535897931)	q0
 	CTRL	q2 	U1(1.5707963267948966)	q1
-	CTRL	q3 	U1(3.1415926535897931)	q1
 	H	q2
+	CTRL	q3 	U1(4.7123889803846897)	q0
+	CTRL	q3 	U1(3.1415926535897931)	q1
 	CTRL	q3 	U1(1.5707963267948966)	q2
 	H	q3
-	MEASURE	q3	c0
-	MEASURE	q2	c1
-	MEASURE	q1	c2
-	MEASURE	q0	c3
-	INT	i0	ZE	c0 c1 c2 c3 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	MEASURE	q3
+	MEASURE	q2
+	MEASURE	q1
+	MEASURE	q0
+	INT	i0	ZE	c3 c2 c1 c0 
+=========================
 LABEL @entry
 	ALLOC	q0
-	H	q0
 	ALLOC	q1
-	H	q1
 	ALLOC	q2
-	H	q2
 	ALLOC	q3
+	H	q0
+	H	q1
+	H	q2
 	H	q3
 	ALLOC	q4
 	ALLOC	q5
@@ -104,28 +104,28 @@ LABEL @entry
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
-	CTRL	q2 	U1(3.1415926535897931)	q0
-	CTRL	q3 	U1(4.7123889803846897)	q0
 	H	q1
+	CTRL	q2 	U1(3.1415926535897931)	q0
 	CTRL	q2 	U1(1.5707963267948966)	q1
-	CTRL	q3 	U1(3.1415926535897931)	q1
 	H	q2
+	CTRL	q3 	U1(4.7123889803846897)	q0
+	CTRL	q3 	U1(3.1415926535897931)	q1
 	CTRL	q3 	U1(1.5707963267948966)	q2
 	H	q3
-	MEASURE	q3	c0
-	MEASURE	q2	c1
-	MEASURE	q1	c2
-	MEASURE	q0	c3
-	INT	i0	ZE	c0 c1 c2 c3 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	MEASURE	q3
+	MEASURE	q2
+	MEASURE	q1
+	MEASURE	q0
+	INT	i0	ZE	c3 c2 c1 c0 
+=========================
 LABEL @entry
 	ALLOC	q0
-	H	q0
 	ALLOC	q1
-	H	q1
 	ALLOC	q2
-	H	q2
 	ALLOC	q3
+	H	q0
+	H	q1
+	H	q2
 	H	q3
 	ALLOC	q4
 	ALLOC	q5
@@ -134,17 +134,17 @@ LABEL @entry
 	PLUGIN	ket_pown	q0 q1 q2 q3 q4 q5 q6 q7 	"15 7"
 	H	q0
 	CTRL	q1 	U1(1.5707963267948966)	q0
-	CTRL	q2 	U1(3.1415926535897931)	q0
-	CTRL	q3 	U1(4.7123889803846897)	q0
 	H	q1
+	CTRL	q2 	U1(3.1415926535897931)	q0
 	CTRL	q2 	U1(1.5707963267948966)	q1
-	CTRL	q3 	U1(3.1415926535897931)	q1
 	H	q2
+	CTRL	q3 	U1(4.7123889803846897)	q0
+	CTRL	q3 	U1(3.1415926535897931)	q1
 	CTRL	q3 	U1(1.5707963267948966)	q2
 	H	q3
-	MEASURE	q3	c0
-	MEASURE	q2	c1
-	MEASURE	q1	c2
-	MEASURE	q0	c3
-	INT	i0	ZE	c0 c1 c2 c3 
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	MEASURE	q3
+	MEASURE	q2
+	MEASURE	q1
+	MEASURE	q0
+	INT	i0	ZE	c3 c2 c1 c0 
+=========================
