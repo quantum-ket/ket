@@ -1,0 +1,28 @@
+LABEL @entry
+	INT	i0	0
+	INT	i1	0
+	INT	i2	4
+	INT	i3	i0	<	i2
+	BR	i3	@while.loop1	@while.end2
+LABEL @while.test0
+	INT	i4	4
+	INT	i5	i0	<	i4
+	BR	i5	@while.loop1	@while.end2
+LABEL @while.loop1
+	ALLOC	q0
+	ALLOC	q1
+	ALLOC	q2
+	H	q0
+	H	q1
+	H	q2
+	MEASURE	q0
+	MEASURE	q1
+	MEASURE	q2
+	INT	i6	ZE	c0 c1 c2 
+	SET	i0	i6
+	INT	i7	1
+	INT	i8	i1	+	i7
+	SET	i1	i8
+	JUMP	@while.test0
+LABEL @while.end2
+=========================
