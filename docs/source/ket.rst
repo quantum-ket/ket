@@ -7,14 +7,14 @@ Python. Previous knowledge of Python and quantum computation is required.
 The type quant 
 --------------
 
-The type ``quant`` holds an array of qubits and that is initialized with the
-function ``qalloc(n)`` or ``qalloc_dirty(n)``.  To reference a single qubit of a
+The type ``quant`` holds an array of qubits and it is initialized with 
+``quant(size)`` or ``quant.dirty(size)``.  To reference a single qubit of a
 quant use brackets.
 
 .. code-block:: python
 
-    a = qalloc(3)       # a = |000>
-    b = qalloc_dirty(2) # b = 2 qubits quant in a random state
+    a = quant(3)        # a = |000>
+    b = quant,dirty(2)  # b = 2 qubits quant in a random state
     c = a[0]            # c is a reference to the first qubit of a
     d = b[1]            # d is a reference to the last qubit of a
 
@@ -52,7 +52,7 @@ The available quantum gate are:
 
 .. code-block:: python
 
-    a = qalloc(5)                        # a = |00000>
+    a = quant(5)                         # a = |00000>
     x(a) # apply Pauli X on every qubit of a = |11111>
 
 
@@ -66,8 +66,8 @@ For example, to apply a CNOT or a Toffoli gate:
 
 .. code-block:: python
 
-    c = qalloc(2)
-    t = qalloc(1)
+    c = quant(2)
+    t = quant(1)
 
     # CNOT(c[0], t)
     with control(c[0]):
@@ -104,7 +104,7 @@ For example to apply a inverse Quantum Fourier Transform:
                 ctrl(q[i], u1, w(i-j), q[j])
             h(q[i])
     
-    q = qalloc(5)
+    q = quant(5)
 
     # inverse Quantum Fourier Transform 
     with inverse():
