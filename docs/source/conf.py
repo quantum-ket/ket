@@ -59,4 +59,5 @@ html_static_path = []
 breathe_projects = { 'libket': '../../libket/docs/xml'}
 breathe_default_project = 'libket'
 
+subprocess.call('git submodule update --init', shell=True)
 subprocess.call('cd ../../libket/docs && doxygen', shell=True)
