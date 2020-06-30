@@ -36,5 +36,6 @@ Contents
    :maxdepth: 2
 
    ket
+   libket
    references 
    license
