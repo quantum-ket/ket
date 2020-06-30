@@ -14,6 +14,7 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+import subprocess
 
 # -- Project information -----------------------------------------------------
 
@@ -58,9 +59,4 @@ html_static_path = []
 breathe_projects = { 'libket': '../../libket/docs/xml'}
 breathe_default_project = 'libket'
 
-import subprocess, os
-
-read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
-
-if read_the_docs_build:
-    subprocess.call('cd ../../libket/docs && doxygen', shell=True)
+subprocess.call('cd ../../libket/docs && doxygen', shell=True)
