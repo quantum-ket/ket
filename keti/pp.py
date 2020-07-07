@@ -27,165 +27,196 @@ class ketpp (ast.NodeTransformer):
 
     def __init__(self):
         self.id_count = 0
-        self.if_future_count = -1
+        self.in_if = False
+        self.in_while = False
+
+    def label_new(self, name, label_id):
+        label_call = ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
+        return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call)
+    
+    def label_begin(self, name):
+        call = ast.Call(func=ast.Attribute(value=ast.Name(id=name, ctx=ast.Load()), attr='begin', ctx=ast.Load()), args=[], keywords=[])
+        return ast.Expr(call)
+
+    def branch_call(self, test_name, true_name, false_name):
+        call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_name, ctx=ast.Load()), ast.Name(id=true_name, ctx=ast.Load()), ast.Name(id=false_name, ctx=ast.Load())], keywords=[])
+        return ast.Expr(call)
+
+    def jump_call(self, label_name):
+        call =  ast.Call(func=ast.Name(id='jump', ctx=ast.Load()), args=[ast.Name(id=label_name, ctx=ast.Load())], keywords=[])
+        return ast.Expr(call)
+    
+    def type_future(self, test_name):
+        type_call_exp = ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_name, ctx=ast.Load())], keywords=[])
+        return ast.Compare(left=type_call_exp, ops=[ast.Eq()], comparators=[ast.Name(id='future', ctx=ast.Load())])
 
     def visit_If(self, node):
-        self.if_future_count += 1
-        
-        test_assing_name = 'ket_temp_if_test'+str(self.id_count)+'___' 
-        test_assing_stmt = ast.Assign(targets=[ast.Name(id=test_assing_name, ctx=ast.Store())], value=node.test)
-
-        orelse = []
-        for i in node.orelse:
-            orelse.append(self.generic_visit(i))
-        
-        orelse_stmt = ast.If(test=ast.Name(id=test_assing_name, ctx=ast.Load()), body=node.body, orelse=orelse)
-
+        tmp = self.in_if
+        self.in_if = True
+        node_copy = copy.deepcopy(node)
         self.generic_visit(node)
+        self.in_if = tmp
+ 
+        test_name = 'ket_temp_if_test'+str(self.id_count)+'___' 
+        test_assing = ast.Assign(targets=[ast.Name(id=test_name, ctx=ast.Store())], value=node.test)
 
         ########### LABEL #############
-        label_call = lambda name, label_id : ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
-        label_assing = lambda name, label_id : ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call(name, label_id))
+
         then_name = 'ket_tmp_if_then'+str(self.id_count)+'___'
-        then_label_stmt = label_assing(then_name, 'if.then')
+        then_label = self.label_new(then_name, 'if.then')
+
         end_name = 'ket_tmp_if_end'+str(self.id_count)+'___'
-        end_label_stmt = label_assing(end_name, 'if.end')
-        if len(node.orelse) != 0:
+        end_label = self.label_new(end_name, 'if.end')
+
+        if node.orelse:
             else_name = 'ket_tmp_if_else'+str(self.id_count)+'___' 
-            else_label_stmt = label_assing(else_name, 'if.else')
-            if_body = [then_label_stmt, else_label_stmt, end_label_stmt]
-            branch_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load()), ast.Name(id=then_name, ctx=ast.Load()), ast.Name(id=else_name, ctx=ast.Load())], keywords=[])
+            else_label = self.label_new(else_name, 'if.else')
+            if_body = [then_label, else_label, end_label]
+
+            branch_stmt = self.branch_call(test_name, then_name, else_name)
         else:
-            branch_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load()), ast.Name(id=then_name, ctx=ast.Load()), ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
-            if_body = [then_label_stmt, end_label_stmt]
+            branch_stmt = self.branch_call(test_name, then_name, end_name)
+            if_body = [then_label, end_label]
         
-        branch_stmt = ast.Expr(branch_call)
-
         ########### THEN #############
-        label_begin = lambda name : ast.Call(func=ast.Attribute(value=ast.Name(id=name, ctx=ast.Load()), attr='begin', ctx=ast.Load()), args=[], keywords=[])
-        then_begin_stmt = ast.Expr(label_begin(then_name))
 
-        if_body.extend([branch_stmt, then_begin_stmt])
+        then_begin = self.label_begin(then_name)
+
+        if_body.extend([branch_stmt, then_begin])
         if_body.extend(node.body)
 
-        jump_call = ast.Call(func=ast.Name(id='jump', ctx=ast.Load()), args=[ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
-        jump_stmt = ast.Expr(jump_call)
+        jump_stmt = self.jump_call(end_name)
 
         if_body.append(jump_stmt)
 
         ########### ELSE #############
-        if len(node.orelse) != 0:
-            else_begin_stmt = ast.Expr(label_begin(else_name))
-            if_body.append(else_begin_stmt)
+
+        if node.orelse:
+            else_begin = self.label_begin(else_name)
+            if_body.append(else_begin)
             if_body.extend(node.orelse)
             if_body.append(jump_stmt)
 
-        end_begin_stmt = ast.Expr(label_begin(end_name))
+        end_begin = self.label_begin(end_name)
         
-        if_body.append(end_begin_stmt)
+        if_body.append(end_begin)
 
         ##############################
 
-        if self.if_future_count == 0:
-            type_call_exp = lambda type_check : ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[])
-            type_eq_exp = lambda type_check : ast.Compare(left=type_call_exp(type_check), ops=[ast.Eq()], comparators=[ast.Name(id=type_check, ctx=ast.Load())])
+        self.id_count += 1
+        
+        if not self.in_if:
+            test_type = self.type_future(test_name)
 
-            type_eq_future_exp = type_eq_exp('future')
+            node_copy.test = ast.Name(id=test_name, ctx=ast.Load())
+            if_future_stmt = ast.If(test=test_type, body=if_body, orelse=[node_copy])
 
-            node.test = ast.Name(id=test_assing_name, ctx=ast.Load())
-            if_future_stmt = ast.If(test=type_eq_future_exp, body=if_body, orelse=[orelse_stmt])
-            ret_body = [test_assing_stmt, if_future_stmt]
+            return [test_assing, if_future_stmt]
         else:
-            ret_body = [test_assing_stmt]
+            ret_body = [test_assing]
             ret_body.extend(if_body)
 
-        self.id_count += 1
-        self.if_future_count -= 1
-        return ret_body
+            return ret_body
 
     def visit_While(self, node):
+        tmp = self.in_while
+        self.in_while = True
+        node_copy = copy.deepcopy(node)
         self.generic_visit(node)
+        self.in_while = tmp
 
-        test_assing_name = 'ket_temp_while_out_test'+str(self.id_count)+'___' 
-        test_assing_stmt = ast.Assign(targets=[ast.Name(id=test_assing_name, ctx=ast.Store())], value=node.test)
+        test_out_name = 'ket_temp_while_out_test'+str(self.id_count)+'___' 
+        test_out_assing = ast.Assign(targets=[ast.Name(id=test_out_name, ctx=ast.Store())], value=node.test)
 
         ########### LABEL #############
-        label_call = lambda name, label_id : ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
-        label_assing = lambda name, label_id : ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call(name, label_id))
 
         test_name = 'ket_tmp_while_test'+str(self.id_count)+'___'
-        test_label_stmt = label_assing(test_name, 'while.test')
+        test_new = self.label_new(test_name, 'while.test')
         
         loop_name = 'ket_tmp_while_loop'+str(self.id_count)+'___'
-        loop_label_stmt = label_assing(loop_name, 'while.loop')
+        loop_new = self.label_new(loop_name, 'while.loop')
         
         end_name = 'ket_tmp_while_end'+str(self.id_count)+'___'
-        end_label_stmt = label_assing(end_name, 'while.end')
-
-        ########### THEN #############
-
+        end_new = self.label_new(end_name, 'while.end')
         
-        branch_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load()), ast.Name(id=loop_name, ctx=ast.Load()), ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
-        branch_stmt = ast.Expr(branch_call)
+        if_body = [test_new, loop_new, end_new]
+        if node.orelse:
+            else_name = 'ket_tmp_while_else'+str(self.id_count)+'___'
+            else_new = self.label_new(else_name, 'while.else')
+            if_body.append(else_new)
 
-        if_body = [test_label_stmt, loop_label_stmt, end_label_stmt, branch_stmt]
-
-        label_begin = lambda name : ast.Call(func=ast.Attribute(value=ast.Name(id=name, ctx=ast.Load()), attr='begin', ctx=ast.Load()), args=[], keywords=[])
-        test_begin_stmt = ast.Expr(label_begin(test_name))
+        ########### TEST #############
         
-        test_in_assing_name = 'ket_temp_while_in_test'+str(self.id_count)+'___' 
-        test_in_assing_stmt = ast.Assign(targets=[ast.Name(id=test_in_assing_name, ctx=ast.Store())], value=node.test)
+        if node.orelse: 
+            branch_stmt = self.branch_call(test_out_name, loop_name, else_name)
+        else:
+            branch_stmt = self.branch_call(test_out_name, loop_name, end_name)
+
+        test_begin = self.label_begin(test_name)
         
-        branch_in_call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_in_assing_name, ctx=ast.Load()), ast.Name(id=loop_name, ctx=ast.Load()), ast.Name(id=end_name, ctx=ast.Load())], keywords=[])
-        branch_in_stmt = ast.Expr(branch_in_call)
+        test_in_name = 'ket_temp_while_in_test'+str(self.id_count)+'___' 
+        test_in_assing = ast.Assign(targets=[ast.Name(id=test_in_name, ctx=ast.Store())], value=node.test)
         
-        loop_begin_stmt = ast.Expr(label_begin(loop_name))
+        if node.orelse: 
+            branch_in_stmt = self.branch_call(test_in_name, loop_name, else_name)
+        else:
+            branch_in_stmt = self.branch_call(test_in_name, loop_name, end_name)
 
-        jump_call = ast.Call(func=ast.Name(id='jump', ctx=ast.Load()), args=[ast.Name(id=test_name, ctx=ast.Load())], keywords=[])
-        jump_stmt = ast.Expr(jump_call)
+        ########### LOOP #############
 
-        end_begin_stmt = ast.Expr(label_begin(end_name))
+        loop_begin = self.label_begin(loop_name)
 
-        if_body.extend([test_begin_stmt, test_in_assing_stmt, branch_in_stmt, loop_begin_stmt])
+        if_body.extend([branch_stmt, test_begin, test_in_assing, branch_in_stmt, loop_begin])
         if_body.extend(node.body)
-        if_body.extend([jump_stmt, end_begin_stmt])
+
+        jump_stmt = self.jump_call(test_name)
+
+        if_body.append(jump_stmt)
+
+        ########### ELSE #############
 
         if node.orelse:
+            else_begin = self.label_begin(else_name)
+            
+            if_body.append(else_begin)
             if_body.extend(node.orelse)
-        
-         
-        ########### IF IN #############
 
-        if_in_body = node.body
-        if_in_body.append(copy.deepcopy(node))
-        if_in_else = node.orelse
-        if_in_stmt = ast.If(test=ast.Name(id=test_assing_name, ctx=ast.Load()), body=if_in_body, orelse=if_in_else)
+            jump_end = self.jump_call(end_name)
+            
+            if_body.append(jump_end)
+            
+        end_begin =  self.label_begin(end_name)
 
-        ########### IF OUT #############
-        
-        type_call_exp = lambda type_check : ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_assing_name, ctx=ast.Load())], keywords=[])
-        type_eq_exp = lambda type_check : ast.Compare(left=type_call_exp(type_check), ops=[ast.Eq()], comparators=[ast.Name(id=type_check, ctx=ast.Load())])
-        
-        type_eq_future_exp = type_eq_exp('future')
+        if_body.append(end_begin)
 
-        node.test = ast.Name(id=test_assing_name, ctx=ast.Load())
+        ########### IF #############
         
-        if_future_stmt = ast.If(test=type_eq_future_exp, body=if_body, orelse=[if_in_stmt])
+        test_out_type = self.type_future(test_out_name)
 
-        '''
-        t = test()
-        if future:
-            br t while.loop while.end
-            label while.begin
-            t = test()
-            br t while.loop while.end
-            label loop
-            body()
-            jump while.begin
-            label while.end
-            else()
-        else: 
-            while
-        '''
+        if_future = ast.If(test=test_out_type, body=if_body, orelse=[node_copy])
+
         self.id_count += 1
-        return [test_assing_stmt, if_future_stmt]
+        return [test_out_assing, if_future]
+
+    def visit_Break(self, node):
+        if self.in_while:
+            continuing_name = 'ket_tmp_continuing'+str(self.id_count)+'___'
+            continue_label = self.label_new(continuing_name, 'continuing')
+            end_name = 'ket_tmp_while_end'+str(self.id_count)+'___'
+            jump = self.jump_call(end_name)
+            continue_begin = self.label_begin(continuing_name)
+            return [continue_label, jump, continue_begin]
+        else:
+            return node
+         
+    def visit_Continue(self, node):
+        if self.in_while:
+            continuing_name = 'ket_tmp_continuing'+str(self.id_count)+'___'
+            continue_label = self.label_new(continuing_name, 'continuing')
+            test_name = 'ket_tmp_while_test'+str(self.id_count)+'___'
+            jump = self.jump_call(test_name)
+            continue_begin = self.label_begin(continuing_name)
+            return [continue_label, jump, continue_begin]
+        else:
+            return node
+               

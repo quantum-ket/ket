@@ -14,14 +14,14 @@ LABEL @entry
 	INT	i1	ZE	c1 
 	INT	i2	1
 	INT	i3	i1	==	i2
-	BR	i1	@if.then0	@if.end1
+	BR	i3	@if.then0	@if.end1
 LABEL @if.then0
 	X	q2
 	JUMP	@if.end1
 LABEL @if.end1
 	INT	i4	1
 	INT	i5	i0	==	i4
-	BR	i1	@if.then2	@if.end3
+	BR	i5	@if.then2	@if.end3
 LABEL @if.then2
 	Z	q2
 	JUMP	@if.end3

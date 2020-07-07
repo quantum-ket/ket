@@ -17,11 +17,7 @@ if type(ket_temp_while_out_test0___) == future:
     count.set(count + 1)
     jump(ket_tmp_while_test0___)
     ket_tmp_while_end0___.begin()
-elif ket_temp_while_out_test0___:
-    q = quant(3)
-    h(q)
-    i.set(measure(q))
-    count.set(count + 1)
+else:
     while i < 4:
         q = quant(3)
         h(q)
