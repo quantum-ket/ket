@@ -43,6 +43,20 @@
 
 %pythoncode 
 %{
+class __quant__iter__:
+    def __init__(self, q):
+        self.q = q
+        self.idx = -1
+        self.size = len(q)
+
+    def __next__(self): 
+        self.idx += 1
+        if self.idx < self.size:
+            return self.q[self.idx]
+        raise StopIteration
+
+quant.__iter__ = lambda self : __quant__iter__(self)
+
 class run:
     def __enter__ (self):
         process_begin()
