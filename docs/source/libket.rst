@@ -1,8 +1,14 @@
 libket API
 ==========
 
-Gates
------
+Classes
+-------
+
+.. doxygenclass:: ket::quant
+   :members: quant, dirty, operator(), operator|, invert, len, free
+
+Quantum gates
+-------------
 
 .. doxygenfunction:: x
 
