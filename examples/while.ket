@@ -1,9 +1,0 @@
-i = future(0)
-count = future(0)
-while i < 4:
-    q = quant(3)
-    h(q)
-    i.set(measure(q))
-    count.set(count + 1)
-
-print(count.get())

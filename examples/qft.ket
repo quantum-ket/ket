@@ -1,0 +1,8 @@
+from math import pi
+
+def qft(q):
+    lambd = lambda k : pi*k/2
+    for i in range(len(q)):
+        for j in range(i):
+            ctrl(q[i], u1, lambd(i-j), q[j])
+        h(q[i])

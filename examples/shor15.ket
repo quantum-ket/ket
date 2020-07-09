@@ -1,17 +1,11 @@
-from math import pi, gcd
-
-def qft(q):
-    lambd = lambda k : pi*k/2
-    for i in range(len(q)):
-        for j in range(i):
-            ctrl(q[i], u1, lambd(i-j), q[j])
-        h(q[i])
+from math import gcd
+from qft.ket import qft
 
 def period():
     reg1 = quant(4)
     h(reg1)
 
-    reg2 = plugin.pown(7, reg1, 15)
+    reg2 = pown(7, reg1, 15)
 
     qft(reg1)
 
