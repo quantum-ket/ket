@@ -92,4 +92,7 @@ def adj(func, *args):
     func(*args)
     adj_end()
 
+def cnot(c, t):
+    for i, j in zip(c, t):
+        ctrl(i, x, j)
 %}
