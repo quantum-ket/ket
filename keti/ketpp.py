@@ -237,3 +237,18 @@ class ketpp (ast.NodeTransformer):
         if import_list:
             ket_import_list.append(ast.Import(import_list))
         return ket_import_list
+    
+    def visit_ImportFrom(self, node):
+        if node.module[-4:] == '.ket':
+            ret_list = []
+            import_call = ast.Call(func=ast.Name(id='__import_module_ket__', ctx=ast.Load()), args=[ast.Constant(value=node.module, kind=None), ast.Constant(value=self.workdir, kind=None) ], keywords=[])
+            for name in node.names:
+                if name.asname:
+                    to_name = name.asname
+                else:
+                    to_name = name.name
+                element  = ast.Attribute(value=import_call, attr=name.name, ctx=ast.Load())
+                ret_list.append(ast.Assign(targets=[ast.Name(id=to_name, ctx=ast.Store())], value=element))
+            return ret_list
+        else:
+            return node
