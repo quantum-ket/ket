@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .import_ket import __import_module_ket__
+from .import_ket import __import_module_ket__, __import_from_ket__
 from ket import *
 
 def __ket__():

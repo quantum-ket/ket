@@ -21,6 +21,11 @@ def __import_module_ket__(source : str, workdir : str):
     exec(obj, module.__dict__)
 
     module.__dict__['__import_module_ket__'] = globals()['__import_module_ket__']
+    module.__dict__['__import_from_ket__'] = globals()['__import_from_ket__']
 
     exec(__import_ket__(source, workdir), module.__dict__)
     return module
+
+def __import_from_ket__(source : str, workdir : str, *names):
+    module = __import_module_ket__(source, workdir)
+    return tuple(module.__dict__[name] for name in names)
