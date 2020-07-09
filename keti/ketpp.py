@@ -25,10 +25,11 @@ import ast, copy
 
 class ketpp (ast.NodeTransformer):
 
-    def __init__(self):
+    def __init__(self, workdir : str):
         self.id_count = 0
         self.in_if = False
         self.in_while = False
+        self.workdir = workdir
 
     def label_new(self, name, label_id):
         label_call = ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
@@ -219,4 +220,20 @@ class ketpp (ast.NodeTransformer):
             return [continue_label, jump, continue_begin]
         else:
             return node
-               
+
+    def visit_Import(self, node):
+        import_list = []
+        ket_import_list = []
+        for name in node.names:
+            if name.name[-4:] == '.ket':
+                if name.asname:
+                    module_name = name.asname
+                else:
+                    module_name = name.name[:-4]
+                import_call = ast.Call(func=ast.Name(id='__import_module_ket__', ctx=ast.Load()), args=[ast.Constant(value=name.name, kind=None), ast.Constant(value=self.workdir, kind=None) ], keywords=[])
+                ket_import_list.append(ast.Assign(targets=[ast.Name(id=module_name, ctx=ast.Store())], value=import_call))
+            else:
+                import_list.append(name)
+        if import_list:
+            ket_import_list.append(ast.Import(import_list))
+        return ket_import_list
