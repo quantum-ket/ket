@@ -13,8 +13,8 @@ parts:
   python:
     plugin: python
     python-packages: 
+      - distro==1.1.0
       - scikit-build
-      - cmake
       - conan
     stage-packages:
       - python3.8-minimal
@@ -25,6 +25,8 @@ parts:
       ln -s ../usr/bin/python3.8 bin/python3 
     source: .
     build-packages:
+      - cmake
+      - swig
       - ninja-build
       - pkg-config
       - uuid-dev
