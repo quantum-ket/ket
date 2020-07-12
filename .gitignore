@@ -3,6 +3,6 @@
 **.vscode
 ket*.snap
 docs/make.bat
-ket.egg-info
+ket_lang.egg-info/
 dist/
 .eggs/

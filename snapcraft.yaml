@@ -24,12 +24,10 @@ parts:
       rm bin/python3 &&
       ln -s ../usr/bin/python3.8 bin/python3 
     source: .
-    build-packages: 
+    build-packages:
+      - ninja-build
       - pkg-config
       - uuid-dev
-      - curl
-      - default-jre
-      - unzip
       - g++
       - gcc
   

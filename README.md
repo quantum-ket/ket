@@ -1,5 +1,7 @@
 [![Documentation Status](https://readthedocs.org/projects/ket/badge/?version=latest)](https://ket.readthedocs.io/en/latest/?badge=latest)
 [![ket](https://snapcraft.io//ket/badge.svg)](https://snapcraft.io/ket)
+[![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
+
 
 # Ket quantum programming
 
@@ -7,27 +9,41 @@ Repository for the Ket library for Python and the Ket Interpreter.
 
 ## Installation
 
-Dependencies:
+The Ket Bitwise Simulator is required for quantum execution.
+```bash
+sudo snap install kbw --edge
+```
 
-* CONAN
-* SWIG  
+# pip 
+
+```bash
+pip install ket-lang
+```
+
+# Snap
+
+```bash
+sudo snap install ket --edge
+```
+
+# From source
 
 ```bash
 git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-mkdir ket/build
-cd ket/build
-cmake .. -DPYTHON_PACKAGES=/home/<user>/.local/lib/python3.<minor versions>/site-packages
-sudo make install
+pip install scikit-build
+python setup.py install
 ```
 
-## Run
+## Execute
+
+# From pip and source installation
 
 ```bash
-python -m keti
+python -m ket example/teleport.ket
 ```
 
-## Example
+# From Snap installation
 
 ```bash
-python -m keti examples/teleport.ket
+ket example/teleport.ket
 ```
