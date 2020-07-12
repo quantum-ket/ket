@@ -32,7 +32,14 @@ parts:
       - uuid-dev
       - g++
       - gcc
-  
+
+plugs:
+  kbw:
+    interface: content
+    content: executables
+    target: $SNAP/kbw
+    default-provider: kbw
+
 apps:
   ket:
     command: bin/python3 -m ket
@@ -41,3 +48,4 @@ apps:
     environment:
       LC_ALL: C.UTF-8
       LANG: C.UTF-8
+      PATH: $SNAP/kbw:$PATH
