@@ -21,25 +21,42 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .import_ket import __import_module_ket__, __import_from_ket__
-from ket import *
+from .ketpp import ketpp
+from types import ModuleType
+from os import path
+import ast
 
-def __ket__():
-    import argparse
-    from .import_ket import __import_ket__
-    from os import path, getcwd
+def __import_ket__(source : str, workdir : str):
+    with open(path.join(workdir, source), 'r') as file:
+        tree = ast.parse(file.read())
+    
+    pp = ketpp(workdir)
 
-    parser = argparse.ArgumentParser(prog='ket', description='Ket interprester')
-    parser.add_argument('input', metavar='.ket', nargs=argparse.REMAINDER, type=str, help='source code')
+    pp.visit(tree)
+    ast.fix_missing_locations(tree)
 
-    args = parser.parse_args()
+    return compile(tree, source, 'exec', optimize=2)
+    
+def __import_globals_ket__(source : str, workdir : str, globals):
+    exec(__import_ket__(source, workdir), globals)    
 
-    if len(args.input) == 0:
-        print("No input")
-        exit()
-        
-    workdir = path.dirname(path.join(getcwd(), args.input[0]))
-    return __import_ket__(path.basename(args.input[0]), workdir)
+def __import_module_ket__(source : str, workdir : str):
+    module = ModuleType(source[:-4])
 
-if __name__ == '__main__':
-    exec(__ket__(), globals())
+    src = '''from ket import *
+from ket.import_ket import __import_module_ket__, __import_from_ket__, __import_globals_ket__
+
+    '''
+    obj = compile(src, 'ket build-in functions', 'exec', optimize=2)
+    exec(obj, module.__dict__)
+
+    __import_globals_ket__(source, workdir, module.__dict__)
+    return module
+
+def __import_from_ket__(source : str, workdir : str, *names):
+    module = __import_module_ket__(source, workdir)
+    return tuple(module.__dict__[name] for name in names)
+
+def import_ket(source : str):
+    workdir = path.dirname(path.abspath(source))
+    return __import_module_ket__(path.basename(source), workdir)

@@ -47,7 +47,7 @@ parts:
   
 apps:
   ket:
-    command: bin/python3 -m keti
+    command: bin/python3 -m ket
     plugs:
       - home
     environment:

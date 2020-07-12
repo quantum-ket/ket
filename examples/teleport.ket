@@ -1,4 +1,4 @@
-from bell.ket import bell
+from bell.ket import *
 
 def teleport(a):
     b = bell(0, 0)

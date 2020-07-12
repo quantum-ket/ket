@@ -240,10 +240,14 @@ class ketpp (ast.NodeTransformer):
     
     def visit_ImportFrom(self, node):
         if node.module[-4:] == '.ket':
-            call_args = [ast.Constant(value=node.module, kind=None), ast.Constant(value=self.workdir, kind=None)]
-            call_args.extend([ast.Constant(value=name.name, kind=None) for name in node.names])
-            import_call = ast.Call(func=ast.Name(id='__import_from_ket__', ctx=ast.Load()), args=call_args, keywords=[])
-            asname_list = [name.asname if name.asname else name.name for name in node.names]
-            return ast.Assign(targets=[ast.Tuple(elts=[ast.Name(id=name, ctx=ast.Store()) for name in asname_list], ctx=ast.Store())], value=import_call)
+            if node.names[0].name == "*":
+                globals_call = ast.Call(func=ast.Name(id="globals", ctx=ast.Load()), args=[], keywords=[])
+                return ast.Expr(ast.Call(func=ast.Name(id='__import_globals_ket__', ctx=ast.Load()), args=[ast.Constant(value=node.module, kind=None), ast.Constant(value=self.workdir, kind=None), globals_call], keywords=[]))
+            else:
+                call_args = [ast.Constant(value=node.module, kind=None), ast.Constant(value=self.workdir, kind=None)]
+                call_args.extend([ast.Constant(value=name.name, kind=None) for name in node.names])
+                import_call = ast.Call(func=ast.Name(id='__import_from_ket__', ctx=ast.Load()), args=call_args, keywords=[])
+                asname_list = [name.asname if name.asname else name.name for name in node.names]
+                return ast.Assign(targets=[ast.Tuple(elts=[ast.Name(id=name, ctx=ast.Store()) for name in asname_list], ctx=ast.Store())], value=import_call)
         else:
             return node
