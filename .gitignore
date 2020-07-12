@@ -4,3 +4,5 @@
 ket*.snap
 docs/make.bat
 ket.egg-info
+dist/
+.eggs/

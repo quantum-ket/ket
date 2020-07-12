@@ -13,8 +13,9 @@ parts:
   python:
     plugin: python
     python-packages: 
-      - conan 
-      - ast_decompiler
+      - scikit-build
+      - cmake
+      - conan
     stage-packages:
       - python3.8-minimal
       - libpython3.8
@@ -22,28 +23,15 @@ parts:
       snapcraftctl stage &&
       rm bin/python3 &&
       ln -s ../usr/bin/python3.8 bin/python3 
-
-  libket:
-    plugin: cmake
     source: .
     build-packages: 
       - pkg-config
       - uuid-dev
-      - swig
       - curl
-      - make
       - default-jre
       - unzip
       - g++
       - gcc
-    build-environment:
-      - PATH : $PATH:/root/parts/python/install/bin
-      - PYTHONPATH: /root/parts/python/install/lib/python3.8/site-packages
-    cmake-parameters:
-      - -DPYTHON_PACKAGES=/lib/python3.8/site-packages
-      - -DSNAP=1
-    after:
-      - python
   
 apps:
   ket:
