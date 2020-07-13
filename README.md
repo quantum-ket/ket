@@ -3,30 +3,49 @@
 [![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
 
 
-# Ket quantum programming
+# Ket Quantum Programming Language
 
-Repository for the Ket library for Python and the Ket Interpreter.
+Ket is a Python embedded quantum programming language for dynamic interaction
+between classical and quantum computers.
 
 ## Installation
 
-The Ket Bitwise Simulator is required for quantum execution.
+The Ket Bitwise Simulator is required for quantum execution. It is available
+in most Linux distribution through the Snap Store.
+
+Information on how to enable Snap on your Linux distribution is available on
+https://snapcraft.io/kbw.
+
 ```bash
 sudo snap install kbw --edge
 ```
 
-# pip 
+See https://gitlab.com/quantum-ket/kbw for kbw installation from source.
 
-```bash
-pip install ket-lang
-```
+### Snap
 
-# Snap
+The Ket Quantum Programming Language is also available in the Snap Store.
 
 ```bash
 sudo snap install ket --edge
 ```
 
-# From source
+> **Usage:** `ket <source.ket>`
+
+### PyPI
+
+You can install Ket from using pip as well.
+
+```bash
+pip install ket-lang
+```
+> **Usage:** `python -m ket <source.ket>`
+
+You can import Ket source code as a Python module using the `ket.import_ket.import_ket` function.
+
+### Install from source 
+
+To install from source, follow the commands:
 
 ```bash
 git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
@@ -34,16 +53,7 @@ pip install scikit-build
 python setup.py install
 ```
 
-## Execute
+-----------
 
-# From pip and source installation
-
-```bash
-python -m ket example/teleport.ket
-```
-
-# From Snap installation
-
-```bash
-ket example/teleport.ket
-```
+This project is part of the Ket Quantum Programming, see the documentation for
+more information http://ket.readthedocs.io.
