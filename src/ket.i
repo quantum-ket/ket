@@ -39,6 +39,20 @@
   }
 }
 
+%extend ket::quant {
+    quant __getitem__(PyObject *param) {
+        if (PySlice_Check(param)) {
+            Py_ssize_t start, stop, step, size = $self->len();
+            PySlice_Unpack(param, &start, &stop, &step);
+            PySlice_AdjustIndices(size, &start, &stop, step);
+            return (*$self)(start, stop, step);
+        } else if (PyLong_Check(param)) {
+            return (*$self)(PyLong_AsLong(param));
+        }
+        throw std::runtime_error("quant.__getitem__ accepts a slice or int as param");
+    }
+}
+
 %include "libket/include/ket"
 
 %pythoncode 
