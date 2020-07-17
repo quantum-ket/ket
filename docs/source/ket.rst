@@ -1,4 +1,4 @@
-Ket quantum programming language
+Ket Quantum Programming Language
 ================================
 
 This documentation aims to present the Ket quantum programming embedded in
@@ -11,7 +11,7 @@ The type ``quant`` holds an array of qubits and it is initialized with
 ``quant(size)`` or ``quant.dirty(size)``.  To reference a single qubit of a
 quant use brackets.
 
-.. code-block:: python
+.. code-block:: ket
 
     a = quant(3)        # a = |000>
     b = quant,dirty(2)  # b = 2 qubits quant in a random state
@@ -50,7 +50,7 @@ The available quantum gate are:
 +--------------+--------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 
-.. code-block:: python
+.. code-block:: ket
 
     a = quant(5)                         # a = |00000>
     x(a) # apply Pauli X on every qubit of a = |11111>
@@ -64,24 +64,24 @@ or the function ``ctrl(c, gate, *args)``.
 
 For example, to apply a CNOT or a Toffoli gate:
 
-.. code-block:: python
+.. code-block:: ket
 
-    c = quant(2)
-    t = quant(1)
+    contr = quant(2)
+    target = quant(1)
 
-    # CNOT(c[0], t)
-    with control(c[0]):
-        x(t)            
+    # CNOT(contr[0], target)
+    with control(contr[0]):
+        x(target)            
 
-    # CNOT(c[0], t)
-    ctrl(c[0], x, t)    
+    # CNOT(contr[0], target)
+    ctrl(contr[0], x, target)    
 
-    # Toffoli(c[0], c[1], t)
-    with control(c):
-        x(t)            
+    # Toffoli(c[0], c[1], target)
+    with control(contr):
+        x(target)            
 
-    # Toffoli(c[0], c[1], t)
-    ctrl(c, x, t)    
+    # Toffoli(contr[0], contr[1], target)
+    ctrl(contr, x, target)    
 
 .. warning:: ``with control(c):`` and ``ctrl(c, gate, *args)`` does not operate
     with ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
@@ -94,7 +94,7 @@ the function ``adj(gate, *args)``.
 
 For example to apply a inverse Quantum Fourier Transform:
 
-.. code-block:: python
+.. code-block:: ket
     
     # Quantum Fourier Transform
     def qft(q):
@@ -126,9 +126,9 @@ result of operations with measurement results and ``int``.
 To receive the value of a ``future`` use the function ``.get()``, which will
 execute the necessary quantum code.
 
-.. code-block:: python
+.. code-block:: ket
 
-    q = qalloc(60)
+    q = quant(60)
     h(q)
 
     m = measure(q) # m is a future 

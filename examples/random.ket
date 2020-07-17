@@ -1,0 +1,9 @@
+
+def random(n_bits):
+  with run():
+     q = quant(n_bits)
+     h(q)
+     return measure(q).get()
+
+n_bits = 32
+print(n_bits, 'bits random number', random(n_bits))
