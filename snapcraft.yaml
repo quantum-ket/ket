@@ -39,6 +39,12 @@ plugs:
     content: executables
     target: $SNAP/kbw
     default-provider: kbw
+    
+  plugins:
+    interface: content
+    content: libraries
+    target: $SNAP/usr/lib/kbw
+    default-provider: kbw
 
 apps:
   ket:
