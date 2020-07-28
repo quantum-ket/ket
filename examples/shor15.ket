@@ -9,7 +9,7 @@ def period():
 
     qft(reg1)
 
-    return measure(reg1.invert()).get()
+    return measure(reg1.inverted()).get()
 
 r = period()
 results = [r]
@@ -17,6 +17,7 @@ for _ in range(4):
     results.append(period())
     r = gcd(r, results[-1])
 
+print(results)
 r = 2**4/r
 
 print('measurements =', results)
