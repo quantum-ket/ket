@@ -84,7 +84,7 @@ For example, to apply a CNOT or a Toffoli gate:
     ctrl(contr, x, target)    
 
 .. warning:: ``with control(c):`` and ``ctrl(c, gate, *args)`` does not operate
-    with ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
+    with ``measure(q)``, ``quant(n)``, or ``quant.dirty(n)``.
     
 Inverse operations
 ^^^^^^^^^^^^^^^^^^
@@ -114,7 +114,7 @@ For example to apply a inverse Quantum Fourier Transform:
     adj(qft, q)
         
 .. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
-    ``measure(q)``, ``qalloc(n)``, or ``qalloc_dirty(n)``.
+    ``measure(q)``, ``quant(n)``, or ``quant.dirty(n)``.
 
 The type future 
 ---------------
