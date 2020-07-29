@@ -26,12 +26,13 @@ parts:
     source: .
     build-packages:
       - cmake
-      - swig
-      - ninja-build
-      - pkg-config
-      - uuid-dev
       - g++
       - gcc
+      - libssl-dev
+      - ninja-build
+      - pkg-config
+      - swig
+      - uuid-dev
 
 plugs:
   kbw:
