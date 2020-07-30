@@ -26,7 +26,7 @@
 %include <std_vector.i>
 %include <stdint.i>
 
-%module __init__
+%module ket
 %{
     #include "libket/include/ket"
 %}

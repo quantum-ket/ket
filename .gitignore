@@ -6,3 +6,5 @@ docs/make.bat
 ket_lang.egg-info/
 dist/
 .eggs/
+ket/__init__.py
+src/ket.cpp
