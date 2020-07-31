@@ -27,15 +27,23 @@ parts:
       - pkg-config
       - swig
       - uuid-dev
-    stage-packages:
-      - python3.8-minimal
-      - libpython3.8
     override-build:
       make &&
       snapcraftctl build
-    stage:
-      - lib/python3.8/site-packages/ket*
-    
+    stage-packages:
+      - python3.8-minimal
+      - libpython3.8-dev
+    filesets:
+      ket-files:
+        - lib/python3.8/site-packages/ket*
+      python-files:
+        - usr/lib/python3.8/
+        - usr/bin/python3.8
+        - usr/lib/x86_64-linux-gnu/libpython3.8.so*
+    prime:
+      - $ket-files
+      - $python-files
+ 
 plugs:
   kbw:
     interface: content
@@ -58,4 +66,4 @@ apps:
       LC_ALL: C.UTF-8
       LANG: C.UTF-8
       PATH: $SNAP/kbw:$PATH
-      PYTHONPATH: $HOME/python-packages/lib/python3.8/site-packages
+      PYTHONPATH: $SNAP/lib/python3.8/site-packages
