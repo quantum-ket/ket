@@ -35,10 +35,6 @@ parts:
       snapcraftctl build
     stage:
       - lib/python3.8/site-packages/ket*
-    override-stage:
-      snapcraftctl stage &&
-      rm bin/python3 &&
-      ln -s ../usr/bin/python3.8 bin/python3 
     
 plugs:
   kbw:
@@ -55,7 +51,7 @@ plugs:
 
 apps:
   ket:
-    command: bin/python3 -m ket
+    command: usr/bin/python3.8 -m ket
     plugs:
       - home
     environment:
