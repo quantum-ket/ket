@@ -8,3 +8,4 @@ dist/
 .eggs/
 ket/__init__.py
 src/ket.cpp
+MANIFEST

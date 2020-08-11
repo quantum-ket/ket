@@ -22,9 +22,7 @@ n_bits = 32
 print(n_bits, 'bits random number:', random(n_bits))
 ```
 
-> ```
 > 32 bits random number: 3830764503
-> ```
 
 ### Quantum Teleportation:
 
@@ -60,9 +58,7 @@ h(y)            # y = |1>
 print('Expected measure 1, result =', measure(y).get())
 ```
 
-> ```
 > Expected measure 1, result = 1
-> ```
 
 ### Shor's Algorithm Factoring 15:
 
@@ -100,11 +96,9 @@ q = gcd(int(7**(r/2))-1, 15)
 print(15, '=', p , "x", q)
 ```
 
-> ```
-> measurements = [12, 0, 12, 8, 0]
-> r = 4.0
+> measurements = [12, 0, 12, 8, 0]\
+> r = 4.0\
 > 15 = 5 x 3
-> ```
 
 ## Usage 
 
