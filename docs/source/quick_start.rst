@@ -6,7 +6,8 @@ Install
 
 The easy way to start programming in Ket is to install the following Snap
 packages. For instruction on how to install and enable the Snap daemon on your
-linux distribution see https://snapcraft.io/docs/installing-snapd.
+linux distribution see https://snapcraft.io/docs/installing-snapd.  See the
+repositories README for alternative installation.
 
 .. code-block:: bash
 
