@@ -5,7 +5,8 @@
 
 # Ket Quantum Programming Language
 
-Ket is a Python-embedded classical-quantum programming language for dynamic interaction between classical and quantum computers.
+Ket is a Python-embedded classical-quantum programming language for dynamic
+interaction between classical and quantum computers.
 
 ## Code examples
 
@@ -121,7 +122,7 @@ in most Linux distribution through the Snap Store.
 > Information on how to enable Snap on your Linux distribution is available on
 https://snapcraft.io/kbw.
 
-```bash
+```shell
 sudo snap install kbw --edge
 ```
 

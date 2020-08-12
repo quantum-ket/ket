@@ -1,10 +1,41 @@
 name: ket
 title: Ket quantum programming
+summary: Quantum programming language
+description: |
+  Ket is a Python-embedded classical-quantum programming language for dynamic
+  interaction between classical and quantum computers.
+
+  The Ket Bitwise simulator is necessary to simulate quantum execution. Before
+  installing ket, you need to install kbw:
+
+      sudo snap install kbw --edge
+
+  Usage:
+
+      $ ket <input.ket> -h
+      Ket program options:
+        -h [ --help ]         Show this information
+        -s [ --seed ]         Pseudo random number generator seed
+        -o [ --out ]          kqasm output file
+        -b [ --kbw ]          Path to the Ket Bitwise simulator
+        -p [ --plugin ]       Ket Bitwise plugin directory path
+        --no-execute          Do not execute the quantum code, measuments will return
+                              0
+
+  This project is part of the Ket Quantum Programming framework that also
+  features:
+
+  * The C++ quantum programming library Libket.
+  * The Ket Bitwise Simulator for quantum computation.
+
+  See the documentation for more information http://ket.readthedocs.io.
+
+icon: docs/source/img/logo11.svg
+
+license: MIT
+
 version: git
 grade: devel
-license: MIT
-summary: The Ket quantum programming language interpreter
-description: For more information see the documentation at http://ket.readthedocs.io
 
 base: core20
 confinement: strict
