@@ -40,6 +40,7 @@
 }
 
 %extend ket::quant {
+    //! x.__getitem__(y) <==> x[y]
     quant __getitem__(PyObject *param) {
         if (PySlice_Check(param)) {
             Py_ssize_t start, stop, step, size = $self->len();
@@ -72,6 +73,16 @@ class __quant__iter__:
 quant.__iter__ = lambda self : __quant__iter__(self)
 
 class run:
+    """Run the quantum operations in a new process.
+    
+    Usage:
+
+    .. code-block:: ket
+
+        with run():
+            ...
+
+    """
     def __enter__ (self):
         process_begin()
     
@@ -79,6 +90,16 @@ class run:
         process_end()
 
 class inverse:
+    """Apply the quantum operations backwards.
+    
+    Usage:
+
+    .. code-block:: ket
+
+        with inverse():
+            ...
+            
+    """
     def __enter__ (self):
         adj_begin()     
 
@@ -86,27 +107,35 @@ class inverse:
         adj_end()     
 
 class control:
-  def __init__(self, c):
-      self.c = c
+    """Apply controlled quantum operations.
+    
+    Usage:
 
-  def __enter__ (self):
-      ctrl_begin(self.c)
-         
-  def __exit__ (self, type, value, tb):
-      ctrl_end()
+    .. code-block:: ket
+    
+        with control(cont):
+            ...
+            
+    """
+    def __init__(self, c):
+        self.c = c
+
+    def __enter__ (self):
+        ctrl_begin(self.c)
+     
+    def __exit__ (self, type, value, tb):
+        ctrl_end()
 
 def ctrl(control, func, *args):
+    """Add qubits of controll to a operation call."""
     ctrl_begin(control)
     ret = func(*args)
     ctrl_end()
     return ret
 
 def adj(func, *args):
+    """Call the inverse of a quantum operation."""
     adj_begin()
     func(*args)
     adj_end()
-
-def cnot(c, t):
-    for i, j in zip(c, t):
-        ctrl(i, x, j)
 %}

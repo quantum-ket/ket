@@ -4,7 +4,7 @@ Ket Quantum Programming Language
 This documentation aims to present the Ket quantum programming embedded in
 Python. Previous knowledge of Python and quantum computation is required.
 
-The type quant 
+The Type quant 
 --------------
 
 The type ``quant`` holds an array of qubits and it is initialized with 
@@ -56,7 +56,7 @@ The available quantum gate are:
     x(a) # apply Pauli X on every qubit of a = |11111>
 
 
-Controlled operations
+Controlled Operations
 ^^^^^^^^^^^^^^^^^^^^^
 
 To apply a controlled quantum operation use the statement ``with control(c):``
@@ -86,7 +86,7 @@ For example, to apply a CNOT or a Toffoli gate:
 .. warning:: ``with control(c):`` and ``ctrl(c, gate, *args)`` does not operate
     with ``measure(q)``, ``quant(n)``, or ``quant.dirty(n)``.
     
-Inverse operations
+Inverse Operations
 ^^^^^^^^^^^^^^^^^^
 
 To apply a inverse quantum operation use the statement ``with inverse():`` or
@@ -116,7 +116,7 @@ For example to apply a inverse Quantum Fourier Transform:
 .. warning:: ``with inverse():`` and ``adj(gate, *args)`` does not operate with
     ``measure(q)``, ``quant(n)``, or ``quant.dirty(n)``.
 
-The type future 
+The Type future 
 ---------------
 
 The type ``future`` holds an ``int`` that is primarily available at the quantum
@@ -140,5 +140,5 @@ execute the necessary quantum code.
     ``future``-``int`` are ``==``, ``!=``, ``<``, ``<=``, ``>``, ``>=``, ``+``,
     ``-``, ``*``, ``/``, ``<<``, ``>>``, ``and``, ``xor``, and ``or``.
 
-Statement integration 
+Statement Integration 
 ^^^^^^^^^^^^^^^^^^^^^

@@ -1,4 +1,5 @@
 import subprocess
+import setuptools
 import sys
 
 try:
@@ -22,7 +23,7 @@ setup_requirements = ['scikit-build>=0.11.1',
                       ]
 
 setup (name = 'ket-lang',
-       version='0.1b1',
+       version='0.1b2',
        cmake_source_dir='.',
        author='Evandro Chagas Ribeiro da Rosa',
        author_email='evandro.crr@posgrad.ufsc.br',
@@ -31,7 +32,7 @@ setup (name = 'ket-lang',
        long_description_content_type='text/markdown',
        url='https://gitlab.com/quantum-ket/ket',
        license='MIT',
-       packages=['ket'],
+       packages=setuptools.find_namespace_packages(include=['ket', 'ket.*']),
        setup_requires=setup_requirements,
        classifiers=['Programming Language :: Python :: 3 :: Only',
                     'Programming Language :: C++',

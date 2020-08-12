@@ -7,7 +7,7 @@ Classes
 .. doxygenclass:: ket::quant
    :members: quant, dirty, operator(), operator|, inverted, len, free
 
-Quantum gates
+Quantum Gates
 -------------
 
 .. doxygenfunction:: x

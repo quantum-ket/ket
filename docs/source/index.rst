@@ -24,6 +24,7 @@ Contents
 
    quick_start
    ket
+   ket_api
    libket
    references 
    license
