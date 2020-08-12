@@ -155,7 +155,6 @@ To install from source, follow the commands:
 
 ```shell
 git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-pip install scikit-build
 cd ket
 make
 python setup.py install
