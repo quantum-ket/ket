@@ -1,3 +1,5 @@
+conan
+scikit-build
 breathe==4.19.2
 pygments-ket
 ket-lang
