@@ -163,4 +163,4 @@ python setup.py install
 -----------
 
 This project is part of the Ket Quantum Programming, see the documentation for
-more information http://ket.readthedocs.io.
+more information https://quantum-ket.gitlab.io.
