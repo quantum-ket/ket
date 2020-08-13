@@ -117,7 +117,7 @@ class control:
             ...
             
     """
-    def __init__(self, c):
+    def __init__(self, c : quant):
         self.c = c
 
     def __enter__ (self):
@@ -126,7 +126,7 @@ class control:
     def __exit__ (self, type, value, tb):
         ctrl_end()
 
-def ctrl(control, func, *args):
+def ctrl(control : quant, func, *args):
     """Add qubits of controll to a operation call."""
     ctrl_begin(control)
     ret = func(*args)

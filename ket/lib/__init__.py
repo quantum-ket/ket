@@ -14,10 +14,16 @@ def qft(q : quant):
             ctrl(q[i], u1, lambd(i-j), q[j])
         h(q[i])
 
-def cnot(c, t):
+def cnot(c : quant, t : quant):
     """Quantum-bitwise Controlled-NOT."""
     for i, j in zip(c, t):
         ctrl(i, x, j)
+
+def swap(a : quant, b : quant):
+    """Quantum-bitwise swap."""
+    cnot(a, b)
+    cnot(b, a)
+    cnot(a, b)
 
 def bell(aux0 : int, aux1 : int) -> quant:
     """Return two entangle qubits in the Bell state."""
