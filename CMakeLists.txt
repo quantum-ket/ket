@@ -35,6 +35,7 @@ ADD_LIBRARY(ket SHARED
 SET_TARGET_PROPERTIES(ket PROPERTIES 
                       CXX_STANDARD 17
                       PREFIX "_"
+                      POSITION_INDEPENDENT_CODE ON
                      )
                       
 TARGET_LINK_LIBRARIES(ket ${PYTHON_LIBRARIES} CONAN_PKG::boost)
