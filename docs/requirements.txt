@@ -1,6 +1,0 @@
-conan
-scikit-build
-six==1.15.0
-breathe==4.19.2
-pygments-ket
-ket-lang
