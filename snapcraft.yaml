@@ -12,7 +12,7 @@ description: |
 
   Usage:
 
-      $ ket <input.ket> -h
+      $ ket input.ket -h
       Ket program options:
         -h [ --help ]         Show this information
         -s [ --seed ]         Pseudo random number generator seed
