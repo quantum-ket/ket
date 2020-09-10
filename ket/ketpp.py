@@ -251,3 +251,9 @@ class ketpp (ast.NodeTransformer):
                 return ast.Assign(targets=[ast.Tuple(elts=[ast.Name(id=name, ctx=ast.Store()) for name in asname_list], ctx=ast.Store())], value=import_call)
         else:
             return node
+
+    def visit_FunctionDef(self, node):
+        new_decorators = [dec for dec in node.decorator_list if dec.id != 'code_ket']
+        node.decorator_list = new_decorators
+        self.generic_visit(node)
+        return node

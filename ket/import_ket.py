@@ -27,8 +27,9 @@ from os import path
 import ast
 
 def __import_ket__(source : str, workdir : str):
-    with open(path.join(workdir, source), 'r') as file:
-        tree = ast.parse(file.read())
+    joined_path = path.join(workdir, source)
+    with open(joined_path, 'r') as file:
+        tree = ast.parse(file.read(), joined_path)
     
     pp = ketpp(workdir)
 
