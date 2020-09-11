@@ -39,17 +39,20 @@ def qft(q : quant):
 
 def cnot(c : quant, t : quant):
     """Quantum-bitwise Controlled-NOT."""
+    
     for i, j in zip(c, t):
         ctrl(i, x, j)
 
 def swap(a : quant, b : quant):
     """Quantum-bitwise swap."""
+   
     cnot(a, b)
     cnot(b, a)
     cnot(a, b)
 
 def bell(aux0 : int, aux1 : int) -> quant:
     """Return two entangle qubits in the Bell state."""
+   
     q = quant(2)
     if aux0 == 1:
         x(q[0])
@@ -59,3 +62,21 @@ def bell(aux0 : int, aux1 : int) -> quant:
     ctrl(q[0], x, q[1])
     return q
 
+def pauli_prepare(basis, q : quant):
+    """Prepares qubits in the +1 eigenstate of a given Pauli operator."""
+
+    if basis == x:
+        h(q)
+    elif basis == y:
+        h(q)
+        s(q)
+    elif basis == z:
+        pass
+    else:
+        raise ValueError('param basis must be x, y, or z.')
+
+def pauli_measure(basis, q : quant):
+    """Pauli measurement."""
+
+    adj(pauli_prepare, basis, q)
+    return measure(q)
