@@ -21,10 +21,10 @@ def teleport(a):
         z(b[1])
     return b[1]
 
-a = quant(1)    # a = |0>
-h(a)            # a = |+> 
-z(a)            # a = |->
+a = quant(1)    # a = |0⟩
+h(a)            # a = |+⟩ 
+z(a)            # a = |-⟩
 y = teleport(a) # y <- a
-h(y)            # y = |1>
+h(y)            # y = |1⟩
 print('Expected measure 1, result =', measure(y).get())
      
