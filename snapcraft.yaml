@@ -28,9 +28,9 @@ description: |
   * The C++ quantum programming library Libket.
   * The Ket Bitwise Simulator for quantum computation.
 
-  See the documentation for more information http://ket.readthedocs.io.
+  See the documentation for more information http://quantum-ket.gitlab.io.
 
-icon: docs/source/img/logo11.svg
+icon: icon/ket.svg
 
 license: MIT
 
@@ -45,9 +45,10 @@ parts:
     plugin: python
     source: .
     python-packages: 
-      - distro==1.1.0
-      - scikit-build
       - conan
+      - distro==1.1.0
+      - ninja 
+      - scikit-build
     build-packages:
       - cmake
       - g++
