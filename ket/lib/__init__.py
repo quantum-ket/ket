@@ -23,6 +23,7 @@
 
 from .. import *
 from math import pi
+from typing import Union, List
 
 def qft(q : quant):
     """Apply a Quantum Fourier Transformation.
@@ -62,8 +63,15 @@ def bell(aux0 : int, aux1 : int) -> quant:
     ctrl(q[0], x, q[1])
     return q
 
-def pauli_prepare(basis, q : quant):
-    """Prepares qubits in the +1 eigenstate of a given Pauli operator."""
+def pauli_prepare(basis : Union[x, y, z], q : quant, state : int = +1):
+    """Prepares qubits in the +1 or -1 eigenstate of a given Pauli operator."""
+
+    if state == -1:
+        x(q)
+    elif state == 1:
+        pass
+    else:
+        raise ValueError('param state must be +1 or -1.')
 
     if basis == x:
         h(q)
@@ -75,8 +83,31 @@ def pauli_prepare(basis, q : quant):
     else:
         raise ValueError('param basis must be x, y, or z.')
 
-def pauli_measure(basis, q : quant):
+def pauli_measure(basis : Union[x, y, z], q : quant):
     """Pauli measurement."""
 
     adj(pauli_prepare, basis, q)
     return measure(q)
+
+def within(around, apply):
+    around()
+    apply()
+    around()
+
+def ctrl_mask(c : quant, mask : List[int], func, *args):
+    """Applay an operation if the qubits of control math the mask."""
+
+    def around():
+        for i in range(len(mask)):
+            if mask[i] == 0:
+                x(c[i])
+
+    within(around, lambda : ctrl(c, func, *args))
+
+def x_mask(q : quant, mask : List[int]):
+    """Apply Pauli X gates follwing a bit mask."""
+    
+    for i, b in zip(mask, q):
+        if i:
+            x(b)
+            

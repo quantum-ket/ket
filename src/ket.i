@@ -58,6 +58,19 @@
 
 %pythoncode 
 %{
+
+X = x
+Y = y
+Z = z
+H = h
+S = s
+Sd = sd
+T = t
+Td = td    
+U1 = u1
+U2 = u2
+U3 = u3
+
 class __quant__iter__:
     def __init__(self, q):
         self.q = q
