@@ -76,19 +76,6 @@ parts:
       - $ket-files
       - $python-files
  
-plugs:
-  kbw:
-    interface: content
-    content: executables
-    target: $SNAP/kbw
-    default-provider: kbw
-    
-  plugins:
-    interface: content
-    content: libraries
-    target: $SNAP/usr/lib/kbw
-    default-provider: kbw
-
 apps:
   ket:
     command: usr/bin/python3.8 -m ket
@@ -97,5 +84,4 @@ apps:
     environment:
       LC_ALL: C.UTF-8
       LANG: C.UTF-8
-      PATH: $SNAP/kbw:$PATH
       PYTHONPATH: $SNAP/lib/python3.8/site-packages
