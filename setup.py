@@ -23,7 +23,7 @@ setup_requirements = ['scikit-build>=0.11.1',
                       ]
 
 setup (name = 'ket-lang',
-       version='0.1b5',
+       version='0.1b6',
        cmake_source_dir='.',
        author='Evandro Chagas Ribeiro da Rosa',
        author_email='evandro.crr@posgrad.ufsc.br',

@@ -1,0 +1,41 @@
+from math import pi, gcd
+from ket import plugins
+
+def qft(q): # Quantum Fourier Transformation
+    lambd = lambda k : pi*k/2
+    for i in range(len(q)):
+        for j in range(i):
+            ctrl(q[i], u1, lambd(i-j), q[j])
+        h(q[i])
+
+reg1 = quant(4)
+
+h(reg1)
+
+reg2 = plugins.pown(7, reg1, 15)
+
+after_pown = dump(reg1|reg2)
+
+qft(reg1)
+
+result = dump(reg1.inverted())
+
+print('|x⟩|aˣ mod 15⟩:')
+print('==============')
+print(after_pown.show('i4'))
+
+print('Result:')
+print('=======')
+print(result.show())
+
+r = result.get_states()[0]
+for i in result.get_states():
+    r = gcd(r, i)
+
+r = 2**4/r
+
+print('measurements =', result.get_states())
+print('r =', r)
+p = gcd(int(7**(r/2))+1, 15)
+q = gcd(int(7**(r/2))-1, 15)
+print(15, '=', p , "x", q)

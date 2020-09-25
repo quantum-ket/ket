@@ -54,6 +54,22 @@
     }
 }
 
+%typemap(out) std::vector<unsigned long long> ket::dump::get_states
+%{
+  $result = PyList_New($1.size());
+  for (size_t i = 0; i < $1.size(); i++) {
+    PyList_SetItem($result, i, PyLong_FromUnsignedLongLong($1.at(i)));
+  }
+%}
+
+%typemap(out) std::vector<std::complex<double>> ket::dump::amplitude
+%{
+  $result = PyList_New($1.size());
+  for (size_t i = 0; i < $1.size(); i++) {
+    PyList_SetItem($result, i, PyComplex_FromDoubles($1.at(i).real(), $1.at(i).imag()));
+  }
+%}
+
 %include "libket/include/ket"
 
 %pythoncode 
@@ -151,4 +167,5 @@ def adj(func, *args):
     adj_begin()
     func(*args)
     adj_end()
+
 %}
