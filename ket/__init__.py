@@ -21,20 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from inspect import getsource, getsourcefile
-from .ketpp import ketpp
-from ast import parse, fix_missing_locations
-from types import ModuleType
-
-def code_ket(func):
-    tree = parse(getsource(func), '<function ' + func.__name__ + '>')
-    pp = ketpp(getsourcefile(func))
-
-    pp.visit(tree)
-
-    fix_missing_locations(tree)
-
-    obj =  compile(tree, '<code_ket function ' + func.__name__ + '>', 'exec', optimize=2)
-    exec(obj, func.__globals__)
-
-    return func.__globals__[func.__name__]  
+from .ket import (quant, future, dump, measure,
+                  x, y, z, h, s, sd, t, td, u1, u2, u3,
+                  X, Y, Z, H, S, SD, T, TD, U1, U2, U3,
+                  exec_quantum, plugin, run, inverse, control,
+                  ctrl, adj)                
