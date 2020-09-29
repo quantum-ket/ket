@@ -1,19 +1,13 @@
 from math import pi, gcd
 from ket import plugins
-
-def qft(q): # Quantum Fourier Transformation
-    lambd = lambda k : pi*k/2
-    for i in range(len(q)):
-        for j in range(i):
-            ctrl(q[i], u1, lambd(i-j), q[j])
-        h(q[i])
+from ket.lib import qft
 
 def period():
     reg1 = quant(4)
     h(reg1)
     reg2 = plugins.pown(7, reg1, 15)
     qft(reg1)
-    return measure(reg1.inverted()).get()
+    return measure(reg1).get()
 
 r = period()
 results = [r]

@@ -86,6 +86,9 @@ TD = td
 U1 = u1
 U2 = u2
 U3 = u3
+RX = rx
+RY = ry
+RZ = rz
 
 class __quant__iter__:
     def __init__(self, q):

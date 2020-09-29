@@ -26,17 +26,15 @@ from math import pi
 from typing import Union, List
 
 def qft(q : quant):
-    """Apply a Quantum Fourier Transformation.
+    """Apply a Quantum Fourier Transformation."""
     
-    note:
-        The operation leaves the qubits in the inverse order.
-    """
-    
-    lambd = lambda k : pi*k/2
     for i in range(len(q)):
-        for j in range(i):
-            ctrl(q[i], u1, lambd(i-j), q[j])
         h(q[i])
+        for j, m in zip(range(i+1, len(q)), [2*pi/2**m for m in range(2, len(q))]):
+            ctrl(q[j], u1, m, q[i])
+
+    for i in range(len(q)//2):
+        swap(q[i], q[len(q)-i-1])
 
 def cnot(c : quant, t : quant):
     """Quantum-bitwise Controlled-NOT."""

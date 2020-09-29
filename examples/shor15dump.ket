@@ -12,7 +12,7 @@ after_pown = dump(reg1|reg2)
 
 lib.qft(reg1)
 
-result = dump(reg1.inverted())
+result = dump(reg1)
 
 print('|x⟩|aˣ mod 15⟩:')
 print('==============')

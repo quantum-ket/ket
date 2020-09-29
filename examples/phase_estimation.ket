@@ -1,0 +1,23 @@
+from math import pi
+from ket.lib import qft, swap
+
+theta = pi/10
+n = 20
+
+measurement_qubits = quant(n)
+h(measurement_qubits)
+
+target_qubit = quant(1)
+x(target_qubit)
+
+for i in range(n):
+    exp = 2**(n-i-1)
+    ctrl(measurement_qubits[i], u1, 2*pi*theta*exp, target_qubit)
+
+q = measurement_qubits
+
+adj(qft, measurement_qubits)
+
+result = measure(measurement_qubits).get()/2**n
+
+print("Using", n, "qubits to estimate theta =", theta, ': result =', result)

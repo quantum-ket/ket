@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .. import plugin, quant
+from ..ket import plugin, quant
 
 def pown (a : int, x : quant, n : int) -> quant:
     """Apply a modular exponentiation in a superposition.
