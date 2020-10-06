@@ -88,24 +88,25 @@ def pauli_measure(basis : Union[x, y, z], q : quant):
     return measure(q)
 
 def within(around, apply):
+    """Applay around(); apply(); adj(around)."""
     around()
     apply()
-    around()
-
-def ctrl_mask(c : quant, mask : List[int], func, *args):
-    """Applay an operation if the qubits of control math the mask."""
-
-    def around():
-        for i in range(len(mask)):
-            if mask[i] == 0:
-                x(c[i])
-
-    within(around, lambda : ctrl(c, func, *args))
+    adj(around)
 
 def x_mask(q : quant, mask : List[int]):
     """Apply Pauli X gates follwing a bit mask."""
     
     for i, b in zip(mask, q):
-        if i:
+        if i == 0:
             x(b)
-            
+ 
+def ctrl_mask(c : quant, mask : List[int], func, *args):
+    """Applay a quantum operation if the qubits of control matchs the mask."""
+
+    within(lambda : x_mask(c, mask), lambda : ctrl(c, func, *args))
+
+def ctrl_int(c : quant, int_mask : int, func, *args):
+    """Applay a quantum operation if the qubits of control matchs the integer value."""
+    
+    mask = [int(i) for i in ('{0:0'+str(len(c))+'b}').format(int_mask)]
+    ctrl_mask(c, mask, func, *args)

@@ -104,6 +104,14 @@ class __quant__iter__:
 
 quant.__iter__ = lambda self : __quant__iter__(self)
 
+quant.__enter__ = lambda self : self
+
+def __quant__exit__(self, type, value, tb):
+    if not self.is_free():
+        raise RuntimeError('non-free quant at the end of scope')
+
+quant.__exit__ = __quant__exit__
+
 class run:
     """Run the quantum operations in a new process.
     

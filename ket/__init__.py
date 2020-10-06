@@ -25,4 +25,4 @@ from .ket import (quant, future, dump, measure,
                   x, y, z, h, s, sd, t, td, u1, u2, u3, rx, ry, rz,
                   X, Y, Z, H, S, SD, T, TD, U1, U2, U3, RX, RY, RZ,
                   exec_quantum, run, inverse, control,
-                  ctrl, adj)                
+                  ctrl, adj, label, jump, branch)                

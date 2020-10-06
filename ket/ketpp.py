@@ -28,7 +28,9 @@ class ketpp (ast.NodeTransformer):
     def __init__(self, workdir : str):
         self.id_count = 0
         self.in_if = False
+        self.ignore_if = False
         self.in_while = False
+        self.while_id = None
         self.workdir = workdir
 
     def label_new(self, name, label_id):
@@ -52,25 +54,38 @@ class ketpp (ast.NodeTransformer):
         return ast.Compare(left=type_call_exp, ops=[ast.Eq()], comparators=[ast.Name(id='future', ctx=ast.Load())])
 
     def visit_If(self, node):
+        if self.ignore_if:
+            self.generic_visit(node)
+            return node
+
         tmp = self.in_if
+        
         self.in_if = True
+        if_id = self.id_count
+        self.id_count += 1
+
         node_copy = copy.deepcopy(node)
+
+        self.ignore_if = True
+        self.visit(node_copy)
+        self.ignore_if = False
+
         self.generic_visit(node)
         self.in_if = tmp
  
-        test_name = 'ket_temp_if_test'+str(self.id_count)+'___' 
+        test_name = 'ket_temp_if_test'+str(if_id)+'___' 
         test_assing = ast.Assign(targets=[ast.Name(id=test_name, ctx=ast.Store())], value=node.test)
 
         ########### LABEL #############
 
-        then_name = 'ket_tmp_if_then'+str(self.id_count)+'___'
+        then_name = 'ket_tmp_if_then'+str(if_id)+'___'
         then_label = self.label_new(then_name, 'if.then')
 
-        end_name = 'ket_tmp_if_end'+str(self.id_count)+'___'
+        end_name = 'ket_tmp_if_end'+str(if_id)+'___'
         end_label = self.label_new(end_name, 'if.end')
 
         if node.orelse:
-            else_name = 'ket_tmp_if_else'+str(self.id_count)+'___' 
+            else_name = 'ket_tmp_if_else'+str(if_id)+'___' 
             else_label = self.label_new(else_name, 'if.else')
             if_body = [then_label, else_label, end_label]
 
@@ -104,8 +119,6 @@ class ketpp (ast.NodeTransformer):
 
         ##############################
 
-        self.id_count += 1
-        
         if not self.in_if:
             test_type = self.type_future(test_name)
 
@@ -121,28 +134,33 @@ class ketpp (ast.NodeTransformer):
 
     def visit_While(self, node):
         tmp = self.in_while
-        self.in_while = True
-        node_copy = copy.deepcopy(node)
-        self.generic_visit(node)
-        self.in_while = tmp
+        tmp_id = self.while_id
 
-        test_out_name = 'ket_temp_while_out_test'+str(self.id_count)+'___' 
+        self.in_while = True
+        self.while_id = self.id_count
+        self.id_count += 1
+
+        node_copy = copy.deepcopy(node)
+
+        self.generic_visit(node)
+
+        test_out_name = 'ket_temp_while_out_test'+str(self.while_id)+'___' 
         test_out_assing = ast.Assign(targets=[ast.Name(id=test_out_name, ctx=ast.Store())], value=node.test)
 
         ########### LABEL #############
 
-        test_name = 'ket_tmp_while_test'+str(self.id_count)+'___'
+        test_name = 'ket_tmp_while_test'+str(self.while_id)+'___'
         test_new = self.label_new(test_name, 'while.test')
         
-        loop_name = 'ket_tmp_while_loop'+str(self.id_count)+'___'
+        loop_name = 'ket_tmp_while_loop'+str(self.while_id)+'___'
         loop_new = self.label_new(loop_name, 'while.loop')
         
-        end_name = 'ket_tmp_while_end'+str(self.id_count)+'___'
+        end_name = 'ket_tmp_while_end'+str(self.while_id)+'___'
         end_new = self.label_new(end_name, 'while.end')
         
         if_body = [test_new, loop_new, end_new]
         if node.orelse:
-            else_name = 'ket_tmp_while_else'+str(self.id_count)+'___'
+            else_name = 'ket_tmp_while_else'+str(self.while_id)+'___'
             else_new = self.label_new(else_name, 'while.else')
             if_body.append(else_new)
 
@@ -155,7 +173,7 @@ class ketpp (ast.NodeTransformer):
 
         test_begin = self.label_begin(test_name)
         
-        test_in_name = 'ket_temp_while_in_test'+str(self.id_count)+'___' 
+        test_in_name = 'ket_temp_while_in_test'+str(self.while_id)+'___' 
         test_in_assing = ast.Assign(targets=[ast.Name(id=test_in_name, ctx=ast.Store())], value=node.test)
         
         if node.orelse: 
@@ -196,14 +214,15 @@ class ketpp (ast.NodeTransformer):
 
         if_future = ast.If(test=test_out_type, body=if_body, orelse=[node_copy])
 
-        self.id_count += 1
+        self.in_while = tmp
+        self.while_id = tmp_id
         return [test_out_assing, if_future]
 
     def visit_Break(self, node):
         if self.in_while:
-            continuing_name = 'ket_tmp_continuing'+str(self.id_count)+'___'
+            continuing_name = 'ket_tmp_continuing'+str(self.while_id)+'___'
             continue_label = self.label_new(continuing_name, 'continuing')
-            end_name = 'ket_tmp_while_end'+str(self.id_count)+'___'
+            end_name = 'ket_tmp_while_end'+str(self.while_id)+'___'
             jump = self.jump_call(end_name)
             continue_begin = self.label_begin(continuing_name)
             return [continue_label, jump, continue_begin]
@@ -212,9 +231,9 @@ class ketpp (ast.NodeTransformer):
          
     def visit_Continue(self, node):
         if self.in_while:
-            continuing_name = 'ket_tmp_continuing'+str(self.id_count)+'___'
+            continuing_name = 'ket_tmp_continuing'+str(self.while_id)+'___'
             continue_label = self.label_new(continuing_name, 'continuing')
-            test_name = 'ket_tmp_while_test'+str(self.id_count)+'___'
+            test_name = 'ket_tmp_while_test'+str(self.while_id)+'___'
             jump = self.jump_call(test_name)
             continue_begin = self.label_begin(continuing_name)
             return [continue_label, jump, continue_begin]
