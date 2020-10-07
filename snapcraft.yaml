@@ -14,13 +14,12 @@ description: |
 
       $ ket input.ket -h
       Ket program options:
-        -h [ --help ]         Show this information
-        -s [ --seed ]         Pseudo random number generator seed
-        -o [ --out ]          kqasm output file
-        -b [ --kbw ]          Path to the Ket Bitwise simulator
-        -p [ --plugin ]       Ket Bitwise plugin directory path
-        --no-execute          Do not execute the quantum code, measuments will return
-                              0
+        -h [ --help ]              Show this information
+        -o [ --out ]               KQASM output file
+        -s [ --kbw ]  (=127.0.1.1) Quantum execution (KBW) address
+        -p [ --port ]  (=4242)     Quantum execution (KBW) port address
+        --no-execute               Does not execute the quantum code, measuments 
+                                   return 0
 
   This project is part of the Ket Quantum Programming framework that also
   features:
@@ -81,6 +80,7 @@ apps:
     command: usr/bin/python3.8 -m ket
     plugs:
       - home
+      - network
     environment:
       LC_ALL: C.UTF-8
       LANG: C.UTF-8
