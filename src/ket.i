@@ -26,6 +26,8 @@
 %include <std_vector.i>
 %include <stdint.i>
 
+%template(vec_float) std::vector<double>;
+
 %module ket
 %{
     #include "libket/include/ket"

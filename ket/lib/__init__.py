@@ -22,6 +22,7 @@
 # SOFTWARE.
 
 from .. import *
+from ..code_ket import code_ket
 from math import pi
 from typing import Union, List
 
@@ -86,6 +87,17 @@ def pauli_measure(basis : Union[x, y, z], q : quant):
 
     adj(pauli_prepare, basis, q)
     return measure(q)
+
+@code_ket
+def measure_free(q : quant) -> future:
+    """Measure and free a quant."""
+    res = measure(q)
+    for i in q:
+        m = measure(i)
+        if m:
+            x(i) 
+    q.free()
+    return res
 
 def within(around, apply):
     """Applay around(); apply(); adj(around)."""
