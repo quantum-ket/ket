@@ -23,7 +23,7 @@
 
 from .. import *
 from ..code_ket import code_ket
-from math import pi
+from math import pi, sqrt
 from typing import Union, List
 
 def qft(q : quant):
@@ -105,20 +105,61 @@ def within(around, apply):
     apply()
     adj(around)
 
-def x_mask(q : quant, mask : List[int]):
-    """Apply Pauli X gates follwing a bit mask."""
+def x_not_mask(q : quant, mask : List[int]):
+    """Apply Pauli X gates follwing a bit mask (apply on 0)."""
     
     for i, b in zip(mask, q):
         if i == 0:
             x(b)
+
+def x_mask(q : quant, mask : List[int]):
+    """Apply Pauli X gates follwing a bit mask (applay on 1)."""
+    
+    for i, b in zip(mask, q):
+        if i:
+            x(b)
+
+def x_int(q : quant, int_mask : int):
+    """Apply Pauli X gates follwing a int mask."""
+    
+    mask = [int(i) for i in ('{0:0'+str(len(q))+'b}').format(int_mask)]
+    x_mask(q, mask)
  
 def ctrl_mask(c : quant, mask : List[int], func, *args):
     """Applay a quantum operation if the qubits of control matchs the mask."""
 
-    within(lambda : x_mask(c, mask), lambda : ctrl(c, func, *args))
+    within(lambda : x_not_mask(c, mask), lambda : ctrl(c, func, *args))
 
 def ctrl_int(c : quant, int_mask : int, func, *args):
     """Applay a quantum operation if the qubits of control matchs the integer value."""
     
     mask = [int(i) for i in ('{0:0'+str(len(c))+'b}').format(int_mask)]
     ctrl_mask(c, mask, func, *args)
+
+def increment(q):
+    """Add 1 to the superposition, 'q += 1'. """
+
+    if len(q) > 1:
+        ctrl(q[-1], increment, q[:-1])
+    x(q[-1])
+
+def dump_matrix(u, size : int) -> List[List[complex]]:
+    """Get the matrix of a quantum operation."""
+
+    mat = [[0 for _ in range(2**size)] for _ in range(2**size)]
+    with run():
+        i = quant(size)
+        j = quant(size)
+        h(j)
+        cnot(j, i)
+        u(i)
+        d = dump(j|i)
+        exec_quantum()
+    
+    for state in d.get_states():
+        j = state >> size
+        i = state & ((1 << size)-1)
+        mat[i][j] = d.amplitude(state)[0]/(1/sqrt(2**size))
+
+    return mat
+     
