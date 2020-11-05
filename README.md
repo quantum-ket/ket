@@ -6,6 +6,14 @@
 Ket is a Python-embedded classical-quantum programming language for dynamic
 interaction between classical and quantum computers.
 
+### Table of contents:
+
+* [Code examples](#code-examples)
+* [Usage](#usage)
+* [Installation](#installation)
+* [Run examples](#run-examples)
+
+
 ## Code examples
 
 ### Random Number Generation
@@ -26,15 +34,7 @@ print(n_bits, 'bits random number:', random(n_bits))
 ### Quantum Teleportation:
 
 ```python
-def bell(aux0, aux1):
-    q = quant(2)
-    if aux0 == 1:
-        x(q[0])
-    if aux1 == 1:
-        x(q[1])
-    h(q[0])
-    ctrl(q[0], x, q[1])
-    return q
+from ket.lib import bell
 
 def teleport(a):
     b = bell(0, 0)
@@ -49,11 +49,11 @@ def teleport(a):
         z(b[1])
     return b[1]
 
-a = quant(1)    # a = |0>
-h(a)            # a = |+> 
-z(a)            # a = |->
+a = quant(1)    # a = |0⟩
+h(a)            # a = |+⟩ 
+z(a)            # a = |-⟩
 y = teleport(a) # y <- a
-h(y)            # y = |1>
+h(y)            # y = |1⟩
 print('Expected measure 1, result =', measure(y).get())
 ```
 
@@ -64,20 +64,14 @@ print('Expected measure 1, result =', measure(y).get())
 ```python
 from math import pi, gcd
 from ket import plugins
-
-def qft(q): # Quantum Fourier Transformation
-    lambd = lambda k : pi*k/2
-    for i in range(len(q)):
-        for j in range(i):
-            ctrl(q[i], u1, lambd(i-j), q[j])
-        h(q[i])
+from ket.lib import qft
 
 def period():
     reg1 = quant(4)
     h(reg1)
     reg2 = plugins.pown(7, reg1, 15)
     qft(reg1)
-    return measure(reg1.inverted()).get()
+    return measure(reg1).get()
 
 r = period()
 results = [r]
@@ -95,68 +89,104 @@ q = gcd(int(7**(r/2))-1, 15)
 print(15, '=', p , "x", q)
 ```
 
-> measurements = [12, 0, 12, 8, 0]\
+> [8, 12, 12, 4, 8]\
+> measurements = [8, 12, 12, 4, 8]\
 > r = 4.0\
 > 15 = 5 x 3
 
 ## Usage 
 
 ```shell
+$ ket -h
 Ket program options:
-  -h [ --help ]         Show this information
-  -s [ --seed ]         Pseudo random number generator seed
-  -o [ --out ]          kqasm output file
-  -b [ --kbw ]          Path to the Ket Bitwise simulator
-  -p [ --plugin ]       Ket Bitwise plugin directory path
-  --no-execute          Do not execute the quantum code, measuments will return
-                        0
+  -h [ --help ]              Show this information
+  -o [ --out ]               KQASM output file
+  -s [ --kbw ]  (=127.0.1.1) Quantum execution (KBW) address
+  -p [ --port ]  (=4242)     Quantum execution (KBW) port address
+  --no-execute               Does not execute the quantum code, measuments 
+                             return 0
 ```
 
 ## Installation
 
-The Ket Bitwise Simulator is required for quantum execution. It is available
-in most Linux distribution through the Snap Store.
+> Ket Bitwise Simulator is required for quantum execution. See
+> https://gitlab.com/quantum-ket/kbw#installation for installation instructions.
 
-> Information on how to enable Snap on your Linux distribution is available on
-https://snapcraft.io/kbw.
+Available installation methods:
 
-```shell
-sudo snap install kbw --edge
-```
+* [Snap](#install-using-snap) (recommended)
+* [pip](#install-using-pip)
+* [Source](#install-from-source)
 
-See https://gitlab.com/quantum-ket/kbw for kbw installation from source.
+### Install using Snap
 
-### Snap
+The ket is available in most Linux distribution through the Snap Store.
 
-The Ket Quantum Programming Language is available in the Snap Store.
+>Information on how to enable Snap on your Linux distribution is available on
+>https://snapcraft.io/ket.
 
-```shell
-sudo snap install ket --edge
-```
-
-> **Usage:** `ket <source.ket>`
-
-### PyPI
-
-You can install Ket from using pip as well.
+To install using snap runs:
 
 ```shell
-pip install ket-lang
+$ sudo snap install ket --edge
 ```
+
+### Install using pip
+
+Install requirements:
+
+* C/C++ compiler
+* CMake
+* Ninja or GNU Make
+
+To install using pip runs:
+
+```shell
+$ pip install ket-lang
+```
+
 > **Usage:** `python -m ket <source.ket>`
 
 You can import Ket source code as a Python module using the `ket.import_ket.import_ket` function.
 
 ### Install from source 
 
-To install from source, follow the commands:
+> Recommended if you want to be up to date without using Snap.
+
+Install requirements:
+
+* C/C++ compiler
+* CMake
+* Ninja or GNU Make
+* SWIG
+
+To install from source runs:
 
 ```shell
-git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-cd ket
-make
-python setup.py install
+$ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
+$ cd ket
+$ make
+$ python setup.py install
 ```
+
+## Run examples
+
+Available examples:
+
+* Quantum phase estimation - [phase_estimation.ket](examples/phase_estimation.ket)
+* Quantum teleportation - [teleport.ket](examples/teleport.ket)
+* Quantum teleportation using `code_ket` - [teleport.py](examples/teleport.py)
+* Random number generation - [random.ket](examples/random.ket)
+* Shor's algorithms - [shor15.ket](examples/shor15.ket)
+* Shor's algorithms with state dumping - [shor15dump.ket](examples/shor15dump.ket)
+
+With kbw running execute:
+
+```shell
+$ ket examples/<example>
+```
+
+> Replace `<example>` one of the available examples
 
 -----------
 

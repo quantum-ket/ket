@@ -21,3 +21,4 @@ adj(qft, measurement_qubits)
 result = measure(measurement_qubits).get()/2**n
 
 print("Using", n, "qubits to estimate theta =", theta, ': result =', result)
+# Using 20 qubits to estimate theta = 0.3141592653589793 : result = 0.31415843963623047

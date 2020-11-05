@@ -31,7 +31,7 @@ def qft(q : quant):
     
     for i in range(len(q)):
         h(q[i])
-        for j, m in zip(range(i+1, len(q)), [2*pi/2**m for m in range(2, len(q))]):
+        for j, m in zip(range(i+1, len(q)), [2*pi/2**m for m in range(2, len(q)+1)]):
             ctrl(q[j], u1, m, q[i])
 
     for i in range(len(q)//2):

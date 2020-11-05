@@ -1,15 +1,6 @@
 from ket import *
+from ket.lib import bell
 from ket.code_ket import code_ket
-
-def bell(aux0, aux1):
-    q = quant(2)
-    if aux0 == 1:
-        x(q[0])
-    if aux1 == 1:
-        x(q[1])
-    h(q[0])
-    ctrl(q[0], x, q[1])
-    return q
 
 @code_ket
 def teleport(a):
@@ -31,4 +22,4 @@ z(a)            # a = |->
 y = teleport(a) # y <- a
 h(y)            # y = |1>
 print('Expected measure 1, result =', measure(y).get())
-     
+# Expected measure 1, result = 1
