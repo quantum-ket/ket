@@ -50,6 +50,7 @@ def swap(a : quant, b : quant):
     cnot(b, a)
     cnot(a, b)
 
+@code_ket
 def bell(aux0 : int, aux1 : int) -> quant:
     """Return two entangle qubits in the Bell state."""
    
@@ -62,6 +63,7 @@ def bell(aux0 : int, aux1 : int) -> quant:
     ctrl(q[0], x, q[1])
     return q
 
+@code_ket
 def pauli_prepare(basis : Union[x, y, z], q : quant, state : int = +1):
     """Prepares qubits in the +1 or -1 eigenstate of a given Pauli operator."""
 
@@ -105,6 +107,7 @@ def within(around, apply):
     apply()
     adj(around)
 
+@code_ket
 def x_not_mask(q : quant, mask : List[int]):
     """Apply Pauli X gates follwing a bit mask (apply on 0)."""
     
@@ -112,6 +115,7 @@ def x_not_mask(q : quant, mask : List[int]):
         if i == 0:
             x(b)
 
+@code_ket
 def x_mask(q : quant, mask : List[int]):
     """Apply Pauli X gates follwing a bit mask (applay on 1)."""
     
