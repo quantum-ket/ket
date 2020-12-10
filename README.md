@@ -96,7 +96,7 @@ print(15, '=', p , "x", q)
 
 ## Usage 
 
-```shell
+```console
 $ ket -h
 Ket program options:
   -h [ --help ]              Show this information
@@ -127,7 +127,7 @@ The ket is available in most Linux distribution through the Snap Store.
 
 To install using snap runs:
 
-```shell
+```console
 $ sudo snap install ket --edge
 ```
 
@@ -141,7 +141,7 @@ Install requirements:
 
 To install using pip runs:
 
-```shell
+```console
 $ pip install ket-lang
 ```
 
@@ -162,7 +162,7 @@ Install requirements:
 
 To install from source runs:
 
-```shell
+```console
 $ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
 $ cd ket
 $ make
@@ -182,7 +182,7 @@ Available examples:
 
 With kbw running execute:
 
-```shell
+```console
 $ ket examples/<example>
 ```
 
