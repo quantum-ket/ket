@@ -34,6 +34,7 @@ before_script:
 
 appimage:
   script:
+    - git submodule update --init --recursive --remote
     - sed 's/VERSION/'$(git rev-parse --short HEAD)'/' AppImageBuilder.yml.in > AppImageBuilder.yml
     - appimage-builder --skip-test
   artifacts:
