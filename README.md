@@ -1,5 +1,6 @@
 [![ket](https://snapcraft.io//ket/badge.svg)](https://snapcraft.io/ket)
 [![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
+[![AppImage](https://gitlab.com/quantum-ket/ket/badges/master/pipeline.svg)](https://gitlab.com/quantum-ket/ket/-/jobs)
 
 # Ket Quantum Programming Language
 
@@ -117,6 +118,8 @@ Available installation methods:
 * [Snap](#install-using-snap) (recommended)
 * [pip](#install-using-pip)
 * [Source](#install-from-source)
+* AppImage available in the pipeline artifacts
+    - https://gitlab.com/quantum-ket/ket/-/jobs 
 
 ### Install using Snap
 

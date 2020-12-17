@@ -9,3 +9,6 @@ dist/
 src/ket.cpp
 MANIFEST
 ket/ket.py
+AppDir
+appimage-builder-cache
+*.AppImage
