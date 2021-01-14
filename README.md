@@ -118,8 +118,7 @@ Available installation methods:
 * [Snap](#install-using-snap) (recommended)
 * [pip](#install-using-pip)
 * [Source](#install-from-source)
-* AppImage available in the pipeline artifacts
-    - https://gitlab.com/quantum-ket/ket/-/jobs 
+* AppImage [:arrow_down:](https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/download?job=appimage)
 
 ### Install using Snap
 
