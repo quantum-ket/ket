@@ -168,17 +168,17 @@ class control:
     def __exit__ (self, type, value, tb):
         ctrl_end()
 
-def ctrl(control : quant, func, *args):
+def ctrl(control : quant, func, *args, **kwargs):
     """Add qubits of controll to a operation call."""
     ctrl_begin(control)
-    ret = func(*args)
+    ret = func(*args, **kwargs)
     ctrl_end()
     return ret
 
-def adj(func, *args):
+def adj(func, *args, **kwargs):
     """Call the inverse of a quantum operation."""
     adj_begin()
-    func(*args)
+    func(*args, **kwargs)
     adj_end()
 
 %}
