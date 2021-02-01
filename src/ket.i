@@ -114,6 +114,12 @@ def __quant__exit__(self, type, value, tb):
 
 quant.__exit__ = __quant__exit__
 
+quant.__repr__ = lambda self : '<Ket quant; '+str(len(self))+' qubits; '+self.this.__repr__()+'>'
+future.__repr__ = lambda self : '<Ket future; '+self.this.__repr__()+'>'
+dump.__repr__ = lambda self : '<Ket dump; '+self.this.__repr__()+'>'
+metrics.__repr__ = lambda self : '<Ket metrics; '+self.this.__repr__()+'>'
+label.__repr__ = lambda self : '<Ket label; '+self.this.__repr__()+'>'
+
 class run:
     """Run the quantum operations in a new process.
     
