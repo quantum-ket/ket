@@ -1,0 +1,20 @@
+from ket.lib import pauli_prepare, pauli_measure
+
+def balanced_oracle(x, y):
+    """f(0) = 0; f(1) = 1"""
+
+    ctrl(x, X, y)
+    
+def constant_oracle(x, y):
+    """f(0) = 1; f(1) = 1"""
+    X(y)
+
+def deutsch(oracle):
+    x, y = quant(2)
+    pauli_prepare(X, x, +1)
+    pauli_prepare(X, y, -1)
+    oracle(x, y)
+    return pauli_measure(X, x)
+
+print("balanced", deutsch(balanced_oracle).get())
+print("constant", deutsch(constant_oracle).get())

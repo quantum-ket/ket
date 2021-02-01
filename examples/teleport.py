@@ -3,23 +3,24 @@ from ket.lib import bell
 from ket.code_ket import code_ket
 
 @code_ket
-def teleport(a):
-    b = bell(0, 0)
-    with control(a):
-        x(b[0])
-    h(a)
-    m0 = measure(a)
-    m1 = measure(b[0])
+def teleport(alice : quant) -> quant:
+    alice_b, bob_b = bell(0,0)
+    ctrl(alice, x, alice_b)
+    h(alice)
+    m0 = measure(alice)
+    m1 = measure(alice_b)
     if m1 == 1:
-        x(b[1])
+        x(bob_b)
     if m0 == 1:
-        z(b[1])
-    return b[1]
+        z(bob_b)
+    return bob_b
 
-a = quant(1)    # a = |0>
-h(a)            # a = |+> 
-z(a)            # a = |->
-y = teleport(a) # y <- a
-h(y)            # y = |1>
-print('Expected measure 1, result =', measure(y).get())
-# Expected measure 1, result = 1
+alice = quant(1)         # alice = |0⟩
+h(alice)                 # alice = |+⟩
+z(alice)                 # alice = |-⟩
+bob = teleport(alice)    # bob  <- alice
+h(bob)                   # bob   = |1⟩
+bob_m = measure(bob)
+
+print('Expected measure 1, result =', bob_m.get())
+# Expected measure 1, result = 1     

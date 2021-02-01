@@ -1,0 +1,33 @@
+from math import pi
+from ket.lib import swap
+import matplotlib.pyplot as plt # pip install matplotlib
+from progressbar import progressbar # pip install progressbar2
+
+def qft(qbits : quant, invert=True):
+    if len(qbits) == 1:
+        h(qbits)
+    else:
+        head, tail = qbits[0], qbits[1:]
+        h(head)
+        for i in range(len(tail)):
+            ctrl(tail[i], u1, 2*pi/2**(i+2), head)
+        qft(tail, invert=False)
+
+    if invert:
+        for i in range(len(qbits)//2):
+            swap(qbits[i], qbits[len(qbits)-i-1])
+
+n_gates = []
+n = 300
+for i in progressbar(range(1, n)):
+    with run():
+        qbits = quant(i)
+        adj(qft, qbits)
+
+        n_gates.append(report().get_gates_sum())
+        
+plt.plot(list(range(1, n)), n_gates)
+plt.yscale('log')
+plt.ylabel('# Gates')
+plt.xlabel('# Qubits')
+plt.show()

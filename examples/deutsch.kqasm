@@ -1,0 +1,22 @@
+LABEL @entry
+	ALLOC	q0
+	ALLOC	q1
+	H	q0
+	X	q1
+	H	q1
+	CTRL	q0 	X	q1
+	H	q0
+	MEASURE	q0
+	INT	i0	ZE	c0 
+=========================
+LABEL @entry
+	ALLOC	q0
+	ALLOC	q1
+	H	q0
+	X	q1
+	H	q1
+	X	q1
+	H	q0
+	MEASURE	q0
+	INT	i0	ZE	c0 
+=========================
