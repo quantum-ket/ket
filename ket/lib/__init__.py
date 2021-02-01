@@ -129,16 +129,16 @@ def x_int(q : quant, int_mask : int):
     mask = [int(i) for i in ('{0:0'+str(len(q))+'b}').format(int_mask)]
     x_mask(q, mask)
  
-def ctrl_mask(c : quant, mask : List[int], func, *args):
+def ctrl_mask(c : quant, mask : List[int], func, *args, **kwargs):
     """Applay a quantum operation if the qubits of control matchs the mask."""
 
-    within(lambda : x_not_mask(c, mask), lambda : ctrl(c, func, *args))
+    within(lambda : x_not_mask(c, mask), lambda : ctrl(c, func, *args, **kwargs))
 
-def ctrl_int(c : quant, int_mask : int, func, *args):
+def ctrl_int(c : quant, int_mask : int, func, *args, **kwargs):
     """Applay a quantum operation if the qubits of control matchs the integer value."""
     
     mask = [int(i) for i in ('{0:0'+str(len(c))+'b}').format(int_mask)]
-    ctrl_mask(c, mask, func, *args)
+    ctrl_mask(c, mask, func, *args, **kwargs)
 
 def increment(q):
     """Add 1 to the superposition, 'q += 1'. """
