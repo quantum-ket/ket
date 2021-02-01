@@ -2,6 +2,10 @@ from math import pi
 from ket.lib import swap
 import matplotlib.pyplot as plt # pip install matplotlib
 from progressbar import progressbar # pip install progressbar2
+# OR for Ket from Snap
+#   virtualenv -p /snap/ket/current/usr/bin/python3.8 /home/stark/snap/ket/common
+#   source /home/stark/snap/ket/common/bin/activate
+#   pip install matplotlib progressbar2
 
 def qft(qbits : quant, invert=True):
     if len(qbits) == 1:
@@ -18,7 +22,7 @@ def qft(qbits : quant, invert=True):
             swap(qbits[i], qbits[len(qbits)-i-1])
 
 n_gates = []
-n = 300
+n = 500
 for i in progressbar(range(1, n)):
     with run():
         qbits = quant(i)
@@ -30,4 +34,5 @@ plt.plot(list(range(1, n)), n_gates)
 plt.yscale('log')
 plt.ylabel('# Gates')
 plt.xlabel('# Qubits')
-plt.show()
+plt.savefig('qft.pdf')
+print('Plot saved in qft.pdf')

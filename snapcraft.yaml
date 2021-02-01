@@ -62,6 +62,7 @@ parts:
       make &&
       snapcraftctl build
     stage-packages:
+      - python3-distutils
       - python3.8-minimal
       - libpython3.8-dev
     filesets:
@@ -84,4 +85,4 @@ apps:
     environment:
       LC_ALL: C.UTF-8
       LANG: C.UTF-8
-      PYTHONPATH: $SNAP/lib/python3.8/site-packages
+      PYTHONPATH: $SNAP/lib/python3.8/site-packages:$SNAP_USER_COMMON/lib/python3.8/site-packages

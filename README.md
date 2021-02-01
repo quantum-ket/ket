@@ -132,6 +132,12 @@ To install using snap runs:
 ```console
 $ sudo snap install ket --edge
 ```
+> To install Python packages setup a [virtual environment](https://docs.python.org/3/tutorial/venv.html):
+> ```console
+> $ virtualenv -p /snap/ket/current/usr/bin/python3.8 ~/snap/ket/common
+> $ source ~/snap/ket/common/bin/activate
+> $ pip install <package>
+> ```
 
 ### Install using pip
 
