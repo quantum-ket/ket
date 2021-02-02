@@ -95,6 +95,7 @@ RY = ry
 RZ = rz
 
 def __quant__at__(self, index):
+    index = list(index)
     if len(index) == 0:
         return None
     else:
