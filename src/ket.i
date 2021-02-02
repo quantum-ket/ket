@@ -94,6 +94,17 @@ RX = rx
 RY = ry
 RZ = rz
 
+def __quant__at__(self, index):
+    if len(index) == 0:
+        return None
+    else:
+        q = self[index[0]]
+        for i in index[1:]:
+            q |= self[i]
+        return q 
+
+quant.at = __quant__at__
+
 class __quant__iter__:
     def __init__(self, q):
         self.q = q
