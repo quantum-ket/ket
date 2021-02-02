@@ -77,15 +77,17 @@
 %pythoncode 
 %{
 
-X = x
-Y = y
-Z = z
-H = h
-S = s
+X  = x
+Y  = y
+Z  = z
+H  = h
+S  = s
 SD = sd
-T = t
+T  = t
 TD = td    
 U1 = u1
+p  = u1
+P  = p
 U2 = u2
 U3 = u3
 RX = rx
