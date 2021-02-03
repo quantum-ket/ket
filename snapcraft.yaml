@@ -40,7 +40,19 @@ base: core20
 confinement: strict
 
 parts:
-  python:
+  snapcraft-preload:
+    source: https://github.com/sergiusens/snapcraft-preload.git
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/
+    build-packages:
+      - on amd64:
+        - gcc-multilib
+        - g++-multilib
+    stage-packages:
+      - lib32stdc++6
+
+  ket:
     plugin: python
     source: .
     python-packages: 
@@ -75,10 +87,12 @@ parts:
     prime:
       - $ket-files
       - $python-files
+    after: 
+      - snapcraft-preload
  
 apps:
   ket:
-    command: usr/bin/python3.8 -m ket
+    command: bin/snapcraft-preload $SNAP/usr/bin/python3.8 -m ket
     plugs:
       - home
       - network
