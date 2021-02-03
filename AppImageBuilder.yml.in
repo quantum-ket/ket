@@ -37,8 +37,11 @@ AppDir:
 
   runtime:
     env:
-      PYTHONPATH: '${APPDIR}/usr/lib/python3.8/site-packages'
-
+      PYTHONPATH: '$APPDIR/usr/lib/python3.8/site-packages'
+      LD_PRELOAD: '$APPDIR/usr/lib/python3.8/site-packages/ket/libapprun_hooks.so'
+      APPDIR_LIBRARY_PATH: '$APPDIR/usr/lib/python3.8/site-packages/ket:$APPDIR/usr/lib/python3.8/lib-dynload:$APPDIR/usr/lib/python3.8/config-3.8-x86_64-linux-gnu:$APPDIR/usr/lib/x86_64-linux-gnu/engines-1.1:$APPDIR/lib/x86_64-linux-gnu:$APPDIR/usr/lib/x86_64-linux-gnu'
+      LIBC_LIBRARY_PATH: '$APPDIR/opt/libc/usr/lib/x86_64-linux-gnu/gconv:$APPDIR/opt/libc/usr/lib/x86_64-linux-gnu:$APPDIR/opt/libc/lib/x86_64-linux-gnu:$APPDIR/opt/libc/usr/lib/x86_64-linux-gnu/audit'
+     
   test:
     fedora:
       image: appimagecrafters/tests-env:fedora-33
