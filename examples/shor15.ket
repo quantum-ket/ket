@@ -1,4 +1,4 @@
-from math import pi, gcd
+from math import gcd
 from ket import plugins
 from ket.lib import qft
 

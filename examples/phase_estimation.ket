@@ -1,5 +1,5 @@
 from math import pi
-from ket.lib import qft, swap
+from ket.lib import qft
 
 theta = pi/10
 n = 20
