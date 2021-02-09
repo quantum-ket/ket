@@ -12,3 +12,4 @@ ket/ket.py
 AppDir
 appimage-builder-cache
 *.AppImage
+**.kqasm
