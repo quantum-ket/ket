@@ -1,0 +1,33 @@
+from math import gcd
+from ket.lib import qft
+from ket.plugins import make_quantum
+
+@make_quantum 
+def pow7mod15(reg1, reg2):
+    reg2 = pow(7, reg1, 15)
+    return reg1, reg2
+
+def period():
+    reg1 = quant(4)
+    reg2 = quant(4)
+    h(reg1)
+    pow7mod15(reg1, reg2)
+    qft(reg1)
+    return measure(reg1).get()
+
+r = period()
+results = [r]
+for _ in range(4):
+    results.append(period())
+    r = gcd(r, results[-1])
+
+r = 2**4/r
+
+print('measurements =', results)
+print('r =', r)
+p = gcd(int(7**(r/2))+1, 15)
+q = gcd(int(7**(r/2))-1, 15)
+print(15, '=', p , "x", q)
+#measurements = [8, 8, 8, 12, 8]
+#r = 4.0
+#15 = 5 x 3
