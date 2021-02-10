@@ -26,11 +26,17 @@ from inspect import getsource
 from base64 import b64encode
 from textwrap import dedent
 
-def make_quantum(func):
+def make_quantum(*args, **kwargs):
     """Make a Python function operate with quant variables."""
-    func_str = '\n'.join(getsource(func).split('\n')[1:])
+    
+    if len(args) != 0 and callable(args[0]):
+        func_str = '\n'.join(getsource(args[0]).split('\n')[1:])
+        func_name = args[0].__name__
+    else:
+        func_str = kwargs['func']
+        func_name = kwargs['name']
+
     func_b64 = b64encode(dedent(func_str).encode()).decode()
-    func_name = func.__name__
     def inner(*args):
         plugin_args = str(len(args)) + ' '
         for q in args:
@@ -43,3 +49,4 @@ def make_quantum(func):
         plugin('ket_pycall', qubits, plugin_args)
     
     return inner
+
