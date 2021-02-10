@@ -27,7 +27,32 @@ from base64 import b64encode
 from textwrap import dedent
 
 def make_quantum(*args, **kwargs):
-    """Make a Python function operate with quant variables."""
+    """Make a Python function operate with quant variables.
+
+    Usage:
+
+    .. code-block:: ket
+
+        @make_quantum 
+        def pow7mod15(reg1, reg2):
+            reg2 = pow(7, reg1, 15)
+            return reg1, reg2
+
+        reg1, reg2 = quant(4), quant(4)
+        pow7mod15(reg1, reg2)
+    
+    .. code-block:: ket
+
+        balanced_oracle = make_quantum(func=\"""
+            def oracle(a, b):
+                def f(a):
+                    return a
+                return a, f(a)^b
+        \""", name='oracle')
+        a, b = quant(2)
+        balanced_oracle(a, b)
+    
+    """
     
     if len(args) != 0 and callable(args[0]):
         func_str = '\n'.join(getsource(args[0]).split('\n')[1:])
