@@ -1,6 +1,6 @@
 from ket.lib import pauli_prepare, within
-from ket.plugins import make_quantum, diagonal
-from math import sqrt, pi
+from ket.plugins import make_quantum
+from math import sqrt
 
 size = 4
 
@@ -10,8 +10,6 @@ def oracle(x, y):
         return 1 if x == 3 else 0
     return x, f(x)^y
 
-diag = [0 if i == 0 else pi for i in range(size**2)]
-
 s = quant(size)
 h(s)
 
@@ -20,7 +18,7 @@ pauli_prepare(x, aux, -1)
 
 for _ in range(int(sqrt(size))):
     oracle(s, aux)
-    within(lambda : h(s), 
-           lambda : diagonal(diag, s) )
+    within(lambda : [h(s), x(s)],
+           lambda : ctrl(s[1:], z, s[0]))
     
 print(measure(s).get())
