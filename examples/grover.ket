@@ -1,14 +1,13 @@
-from ket.lib import pauli_prepare, within
-from ket.plugins import make_quantum
+from ket.lib import pauli_prepare, within, ctrl_int
 from math import sqrt
 
 size = 4
 
-@make_quantum
 def oracle(x, y):
-    def f(x):
-        return 1 if x == 3 else 0
-    return x, f(x)^y
+    """f(x) = 1 if x == 3 else 0
+    U = |x⟩|f(x) ⨁ y⟩
+    """
+    ctrl_int(x, 3, X, y) 
 
 s = quant(size)
 h(s)
