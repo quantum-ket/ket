@@ -6,7 +6,7 @@ c = 1/sqrt(2) if size % 2 else 0.75
 
 def oracle(x, y):
     """f(x) = 1 if x == 3 else 0
-    U = |x⟩|f(x) ⨁ y⟩
+    U|x⟩|y⟩ = |x⟩|f(x) ⨁ y⟩
     """
     ctrl_int(x, 3, X, y) 
 
