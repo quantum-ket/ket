@@ -1,11 +1,11 @@
 from ket.lib import pauli_prepare, within, ctrl_int
-from math import sqrt
+from math import sqrt, pi
 
-size = 6
-c = 1/sqrt(2) if size % 2 else 0.75
+size = 7
 
 def oracle(x, y):
     """f(x) = 1 if x == 3 else 0
+
     U|x⟩|y⟩ = |x⟩|f(x) ⨁ y⟩
     """
     ctrl_int(x, 3, X, y) 
@@ -16,9 +16,10 @@ h(s)
 aux = quant(1)
 pauli_prepare(x, aux, -1)
 
-for _ in range(int(sqrt(pow(2,size))*c)):
+steps = int((pi/4)*sqrt(2**size))
+for _ in range(steps):
     oracle(s, aux)
     within(lambda : [h(s), x(s)],
            lambda : ctrl(s[1:], z, s[0]))
     
-print(measure(s).get())
+print('Exprexted result = 3, measured:', measure(s).get())
