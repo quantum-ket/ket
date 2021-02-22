@@ -273,7 +273,7 @@ class ketpp (ast.NodeTransformer):
 
     def visit_FunctionDef(self, node):
         for dec in node.decorator_list:
-            if dec.id == 'code_ket':
+            if type(dec) == ast.Name and dec.id == 'code_ket':
                 node.decorator_list = []
                 break
         
