@@ -1,8 +1,6 @@
 from ket.lib import pauli_prepare, within, ctrl_int
 from math import sqrt, pi
 
-size = 7
-
 def oracle(x, y):
     """f(x) = 1 if x == 3 else 0
 
@@ -10,16 +8,26 @@ def oracle(x, y):
     """
     ctrl_int(x, 3, X, y) 
 
-s = quant(size)
-h(s)
+def grover(size, oracle):
+    """Grover's search algorithm"""
 
-aux = quant(1)
-pauli_prepare(x, aux, -1)
+    s = quant(size)
+    h(s)
 
-steps = int((pi/4)*sqrt(2**size))
-for _ in range(steps):
-    oracle(s, aux)
-    within(lambda : [h(s), x(s)],
-           lambda : ctrl(s[1:], z, s[0]))
+    aux = quant(1)
+    pauli_prepare(x, aux, -1)
+
+    steps = int((pi/4)*sqrt(2**size))
+    for _ in range(steps):
+        oracle(s, aux)
+        within(lambda : [h(s), x(s)],
+               lambda : ctrl(s[1:], z, s[0]))
+
+    return measure(s).get()
     
-print('Exprexted result = 3, measured:', measure(s).get())
+if __name__ == '__main__':
+    size = 12
+    print(size+1, 'Qubits used')
+
+    result = grover(size, oracle)
+    print('Exprexted result = 3, measured:', result)
