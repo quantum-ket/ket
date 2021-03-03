@@ -77,6 +77,8 @@
 %pythoncode 
 %{
 
+i = lambda q : None
+I = i
 X  = x
 Y  = y
 Z  = z
