@@ -1,5 +1,5 @@
 from ket.lib import qft
-from ket.plugins import make_quantum
+from ket.plugins import pown
 from math import log2, gcd
 from random import randint
 
@@ -28,26 +28,20 @@ def pow_ab_of(N):
 def order_find(x, N):
     """Return r for x**r % N = 1"""
 
+    L = N.bit_length()
+    t = 2*L+1
+
     def __order_find(x, N):
-        pow_xj_mod_N = make_quantum(func="""
-        def pow_xj_mod_N(j, y):
-            return j, y*pow({}, j, {})
-        """.format(x, N), name='pow_xj_mod_N')
 
         reg1 = quant(t)
         h(reg1)
 
-        reg2 = quant(L)
-        X(reg2[-1])
-
-        pow_xj_mod_N(reg1, reg2)
+        pown(x, reg1, N)
         
         adj(qft, reg1)
-        
+
         return measure(reg1).get()
 
-    L = N.bit_length()
-    t = 2*L+1
 
     rs = __order_find(x, N)
     for _ in range(2):
@@ -75,7 +69,7 @@ def factors(N):
 
     # 3. Randomly choose x in the range 1 to N −1. 
     # If gcd(x, N ) > 1 then return the factor gcd(x, N).
-    x = randint(1, N-1)
+    x = randint(2, N-1)
 
     gcd_x_N = gcd(x, N)
     if gcd_x_N > 1:
@@ -101,11 +95,15 @@ def factors(N):
         raise RuntimeError('Algorithm fails')
 
 if __name__ == '__main__':
-    N = 55 # 19 qubits
+    #N = 15  # 13 qubits
+    #N = 21  # 16 qubits
+    N = 55  # 19 qubits
+    #N = 119 # 22 qubits
     #N = 247 # 25 qubits
     
     try:
-        print('N =', N, ': bit length =', N.bit_length(), 'Bits,', N.bit_length()*3+1, 'Qubits needed')
+        print('N =', N, ': bit length =', N.bit_length(), 'Bits,',
+               N.bit_length()*3+1, 'Qubits needed')
         p, q, method = factors(N)
         print('Method =', method)
         print(p, 'x', q, '=', p*q)
