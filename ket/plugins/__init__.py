@@ -38,7 +38,7 @@ def pown(a : int, x : quant, n : int) -> quant:
     """
     
     ret = quant(n.bit_length())
-    arg = str(len(x)) + ' ' + str(a) + ' ' + str(n)
+    arg = str(len(ret)) + ' ' + str(a) + ' ' + str(n)
 
     plugin('ket_pown', x|ret, arg)
 
