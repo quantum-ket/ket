@@ -1,19 +1,10 @@
 from ket.lib import pauli_prepare, pauli_measure
-from ket.plugins import make_quantum
 
-balanced_oracle = make_quantum(func="""
-    def oracle(x, y):
-        def f(x):
-            return x
-        return x, f(x)^y
-""", name='oracle')
+def balanced_oracle(x, y):
+    ctrl(x, X, y)
 
-constant_oracle  = make_quantum(func="""
-    def oracle(x, y):
-        def f(x):
-            return 1
-        return x, f(x)^y
-""", name='oracle')
+def constant_oracle(x, y):
+    X(y)
 
 def deutsch(oracle):
     x, y = quant(2)
@@ -22,5 +13,6 @@ def deutsch(oracle):
     oracle(x, y)
     return pauli_measure(X, x)
 
-print("balanced", deutsch(balanced_oracle).get())
-print("constant", deutsch(constant_oracle).get())
+if __name__ == '__main__':
+    print("Balanced", deutsch(balanced_oracle).get())
+    print("Constant", deutsch(constant_oracle).get())
