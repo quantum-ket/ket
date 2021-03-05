@@ -21,10 +21,47 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from ..ket import (plugin, pown, diagonal)
+from ..ket import plugin, quant
+from typing import List
 from inspect import getsource
 from base64 import b64encode
 from textwrap import dedent
+
+def pown(a : int, x : quant, n : int) -> quant: 
+    """Apply a modular exponentiation in a superposition.
+
+    .. math::
+
+        \left| x \right> \left| 0 \right> \rightarrow  \left| x \right> \left| a^x\; \text{mod} \, n \right>
+
+    :return: Quant with the result of the operation.
+    """
+    
+    ret = quant(n.bit_length())
+    arg = str(len(x)) + ' ' + str(a) + ' ' + str(n)
+
+    plugin('ket_pown', x|ret, arg)
+
+    return ret
+
+def diagonal(diag : List[float], q : quant):
+    """Apply a diagonal matrix.
+
+    .. math::
+
+        \begin{bmatrix}
+                 e^{i\lambda_0} & 0              & \cdots & 0 \\
+                 0              & e^{i\lambda_1} & \cdots & 0 \\
+                 \vdots         & \vdots         & \ddots & \vdots \\
+                 0              & 0              & \cdots & e^{i\lambda_{2^n-1}} 
+             \end{bmatrix}
+
+    :param diag: :math:`\left[ \lambda_0, \lambda_1, \dots, \lambda_{2^n-1} \right]`
+    """
+    
+    arg = ' '.join(str(i) for i in diag)
+    plugin('ket_diag', q, arg)
+    
 
 def make_quantum(*args, **kwargs):
     """Make a Python function operate with quant variables.
