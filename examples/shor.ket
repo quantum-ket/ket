@@ -84,12 +84,12 @@ def factors(N):
     if r % 2 == 0 and pow(x, r//2) != -1 % N:
         p = gcd(x**(r//2)-1, N)
         Np = N//p
-        if p*Np == N:
+        if p != 1 and Np != 1 and p*Np == N:
             return p, Np, 'QUANTUM'
 
         q = gcd(x**(r//2)+1, N)
         Nq = N//q
-        if q*Nq == N:
+        if q != 1 and Nq != 1 and q*Nq == N:
             return q, Nq, 'QUANTUM'
 
         raise RuntimeError('Algorithm fails')
@@ -97,9 +97,9 @@ def factors(N):
 if __name__ == '__main__':
     #N = 15  # 13 qubits
     #N = 21  # 16 qubits
-    N = 55  # 19 qubits
+    #N = 55  # 19 qubits
     #N = 119 # 22 qubits
-    #N = 247 # 25 qubits
+    N = 247 # 25 qubits
     
     try:
         print('N =', N, ': bit length =', N.bit_length(), 'Bits,',
