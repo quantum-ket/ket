@@ -26,16 +26,16 @@ from ..code_ket import code_ket
 from math import pi, sqrt
 from typing import Union, List
 
-def qft(q : quant):
+def qft(q : quant, invert=True):
     """Apply a Quantum Fourier Transformation."""
     
     for i in range(len(q)):
         h(q[i])
         for j, m in zip(range(i+1, len(q)), [2*pi/2**m for m in range(2, len(q)+1)]):
             ctrl(q[j], u1, m, q[i])
-
-    for i in range(len(q)//2):
-        swap(q[i], q[len(q)-i-1])
+    if invert:
+        for i in range(len(q)//2):
+            swap(q[i], q[len(q)-i-1])
 
 def cnot(c : quant, t : quant):
     """Quantum-bitwise Controlled-NOT."""
