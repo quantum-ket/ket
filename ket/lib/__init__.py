@@ -156,7 +156,7 @@ def dump_matrix(u, size : int) -> List[List[complex]]:
         j = quant(size)
         h(j)
         cnot(j, i)
-        u(i)
+        ret = u(i)
         d = dump(j|i)
         exec_quantum()
     
@@ -165,5 +165,8 @@ def dump_matrix(u, size : int) -> List[List[complex]]:
         i = state & ((1 << size)-1)
         mat[i][j] = d.amplitude(state)[0]/(1/sqrt(2**size))
 
-    return mat
+    if ret != None:
+        return mat, ret
+    else:
+        return mat
      
