@@ -27,8 +27,10 @@ from inspect import getsource
 from base64 import b64encode
 from textwrap import dedent
 
+__all__ = ['plugin', 'pown', 'diagonal', 'make_quantum']
+
 def pown(a : int, x : quant, n : int) -> quant: 
-    """Apply a modular exponentiation in a superposition.
+    r"""Apply a modular exponentiation in a superposition.
 
     .. math::
 
@@ -45,7 +47,7 @@ def pown(a : int, x : quant, n : int) -> quant:
     return ret
 
 def diagonal(diag : List[float], q : quant):
-    """Apply a diagonal matrix.
+    r"""Apply a diagonal matrix.
 
     .. math::
 
@@ -64,7 +66,7 @@ def diagonal(diag : List[float], q : quant):
     
 
 def make_quantum(*args, **kwargs):
-    """Make a Python function operate with quant variables.
+    r'''Make a Python function operate with quant variables.
 
     Usage:
 
@@ -80,16 +82,16 @@ def make_quantum(*args, **kwargs):
     
     .. code-block:: ket
 
-        balanced_oracle = make_quantum(func=\"""
+        balanced_oracle = make_quantum(func="""
             def oracle(a, b):
                 def f(a):
                     return a
                 return a, f(a)^b
-        \""", name='oracle')
+        """, name='oracle')
         a, b = quant(2)
         balanced_oracle(a, b)
     
-    """
+    '''
     
     if len(args) != 0 and callable(args[0]):
         func_str = '\n'.join(getsource(args[0]).split('\n')[1:])

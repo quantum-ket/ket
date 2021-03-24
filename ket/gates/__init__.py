@@ -21,11 +21,40 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .gates import *
-from .standard import *
-from .types import *
-from .gates import __all__ as all_gate
-from .standard import __all__ as all_standard
-from .types import __all__ as all_types
+from ..ket import x, y, z, h, s, sd, t, td, u1, u2, u3, rx, ry, rz, quant
 
-__all__ = all_gate+all_standard+all_types
+__all__ = ['i', 'x', 'y', 'z', 'h', 's', 'sd', 't', 'td', 'u1', 'u2', 'u3', 'rx', 'ry', 'rz']
+
+def i(q : quant):
+    r"""
+     Identity gate 
+
+    Apply an identity gate on every qubit of q.
+
+    Note:
+        This quantum gate does nothing! 
+
+    **Matrix representation:**
+
+    .. math::
+
+        I = \begin{bmatrix} 
+                     1 & 0 \\
+                     0 & 1 
+                 \end{bmatrix}
+
+    **Effect:**
+
+    .. math::
+
+        \begin{matrix} 
+                 X\left|0\right> = & \left|0\right> \\
+                 X\left|1\right> = & \left|1\right>
+             \end{matrix}
+
+    :type q: :py:class:`quant`
+    :param q: input qubits
+    """
+    return
+ 
+    

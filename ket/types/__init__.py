@@ -21,11 +21,46 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .gates import *
-from .standard import *
-from .types import *
-from .gates import __all__ as all_gate
-from .standard import __all__ as all_standard
-from .types import __all__ as all_types
+from ..ket import quant, future, dump, metrics
 
-__all__ = all_gate+all_standard+all_types
+__all__ = ['quant', 'future', 'dump', 'metrics']
+
+def __quant__at__(self, index):
+    index = list(index)
+    if len(index) == 0:
+        return None
+    else:
+        q = self[index[0]]
+        for i in index[1:]:
+            q |= self[i]
+        return q 
+
+quant.at = __quant__at__
+
+class __quant__iter__:
+    def __init__(self, q):
+        self.q = q
+        self.idx = -1
+        self.size = len(q)
+
+    def __next__(self): 
+        self.idx += 1
+        if self.idx < self.size:
+            return self.q[self.idx]
+        raise StopIteration
+
+quant.__iter__ = lambda self : __quant__iter__(self)
+
+quant.__enter__ = lambda self : self
+
+def __quant__exit__(self, type, value, tb):
+    if not self.is_free():
+        raise RuntimeError('non-free quant at the end of scope')
+
+quant.__exit__ = __quant__exit__
+
+quant.__repr__ = lambda self : '<Ket quant; '+str(len(self))+' qubits; '+self.this.__repr__()+'>'
+future.__repr__ = lambda self : '<Ket future; '+self.this.__repr__()+'>'
+dump.__repr__ = lambda self : '<Ket dump; '+self.this.__repr__()+'>'
+metrics.__repr__ = lambda self : '<Ket metrics; '+self.this.__repr__()+'>'
+
