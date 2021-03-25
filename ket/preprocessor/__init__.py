@@ -25,13 +25,12 @@ import ast, copy
 
 class ketpp (ast.NodeTransformer):
 
-    def __init__(self, workdir : str):
+    def __init__(self):
         self.id_count = 0
         self.in_if = False
         self.ignore_if = False
         self.in_while = False
         self.while_id = None
-        self.workdir = workdir
 
     def label_new(self, name, label_id):
         label_call = ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
@@ -237,37 +236,6 @@ class ketpp (ast.NodeTransformer):
             jump = self.jump_call(test_name)
             continue_begin = self.label_begin(continuing_name)
             return [continue_label, jump, continue_begin]
-        else:
-            return node
-
-    def visit_Import(self, node):
-        import_list = []
-        ket_import_list = []
-        for name in node.names:
-            if name.name[-4:] == '.ket':
-                if name.asname:
-                    module_name = name.asname
-                else:
-                    module_name = name.name[:-4]
-                import_call = ast.Call(func=ast.Name(id='__import_module_ket__', ctx=ast.Load()), args=[ast.Constant(value=name.name, kind=None), ast.Constant(value=self.workdir, kind=None) ], keywords=[])
-                ket_import_list.append(ast.Assign(targets=[ast.Name(id=module_name, ctx=ast.Store())], value=import_call))
-            else:
-                import_list.append(name)
-        if import_list:
-            ket_import_list.append(ast.Import(import_list))
-        return ket_import_list
-    
-    def visit_ImportFrom(self, node):
-        if node.module[-4:] == '.ket':
-            if node.names[0].name == "*":
-                globals_call = ast.Call(func=ast.Name(id="globals", ctx=ast.Load()), args=[], keywords=[])
-                return ast.Expr(ast.Call(func=ast.Name(id='__import_globals_ket__', ctx=ast.Load()), args=[ast.Constant(value=node.module, kind=None), ast.Constant(value=self.workdir, kind=None), globals_call], keywords=[]))
-            else:
-                call_args = [ast.Constant(value=node.module, kind=None), ast.Constant(value=self.workdir, kind=None)]
-                call_args.extend([ast.Constant(value=name.name, kind=None) for name in node.names])
-                import_call = ast.Call(func=ast.Name(id='__import_from_ket__', ctx=ast.Load()), args=call_args, keywords=[])
-                asname_list = [name.asname if name.asname else name.name for name in node.names]
-                return ast.Assign(targets=[ast.Tuple(elts=[ast.Name(id=name, ctx=ast.Store()) for name in asname_list], ctx=ast.Store())], value=import_call)
         else:
             return node
 

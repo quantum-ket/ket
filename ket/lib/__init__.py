@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 from .. import *
-from ..code_ket import code_ket
+from .. import code_ket
 from math import pi, sqrt
 from typing import Union, List
 

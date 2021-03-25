@@ -21,20 +21,51 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from inspect import getsource, getsourcefile
-from .ketpp import ketpp
-from ast import parse, fix_missing_locations
+from ..preprocessor import ketpp
+from ast import fix_missing_locations, parse
+from os import path, PathLike
 from types import ModuleType
+from typing import Tuple
 
-def code_ket(func):
-    tree = parse(getsource(func), '<function ' + func.__name__ + '>')
-    pp = ketpp(getsourcefile(func))
+__all__ = ['import_ket', 'from_import_ket']
+
+def __import_ket__(source : PathLike):
+    with open(source, 'r') as file:
+        tree = parse(file.read(), source)
+    
+    pp = ketpp()
 
     pp.visit(tree)
-
     fix_missing_locations(tree)
 
-    obj =  compile(tree, '<code_ket function ' + func.__name__ + '>', 'exec', optimize=2)
-    exec(obj, func.__globals__)
+    return compile(tree, source, 'exec', optimize=2)
+    
+def __import_globals_ket__(source : PathLike, globals):
+    exec(__import_ket__(source), globals)    
 
-    return func.__globals__[func.__name__]  
+def import_ket(source : PathLike) -> ModuleType:
+    """Import Ket file.
+
+    Import a Ket source file as a Python module.
+
+    :param source: Ket source file.  
+    """
+
+    _, file_name = path.split(source)
+    module = ModuleType(file_name[:-4])
+
+    src = 'from ket import *\nfrom ket.ket import label, branch, jump\n'
+    obj = compile(src, '<ket build-in functions>', 'exec', optimize=2)
+    exec(obj, module.__dict__)
+
+    __import_globals_ket__(source, module.__dict__)
+    return module
+
+def from_import_ket(source : PathLike, *names) -> Tuple:
+    """Import names from Ket file.
+     
+    :param source: Ket source file.  
+    """
+    
+    module = import_ket(source)
+    return tuple(module.__dict__[name] for name in names)

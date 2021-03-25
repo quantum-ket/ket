@@ -21,8 +21,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from .import_ket import __import_ket__, __import_module_ket__, __import_from_ket__, __import_globals_ket__
-from ket import *
+from .import_ket import __import_globals_ket__
+from . import *
+from .ket import label, branch, jump
+from os import path, getcwd
 
 def __ket__():
     import argparse
@@ -35,10 +37,10 @@ def __ket__():
 
     if len(args.input) == 0:
         print("No input")
-        exit()
+        exit(1)
         
-    workdir = path.dirname(path.join(getcwd(), args.input[0]))
-    __import_globals_ket__(path.basename(args.input[0]), workdir, globals())
+    source = path.join(getcwd(), args.input[0])
+    __import_globals_ket__(source, globals())
 
 if __name__ == '__main__':
     __ket__()

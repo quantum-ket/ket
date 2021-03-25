@@ -1,6 +1,5 @@
-from ket import *
+from ket import quant, x, z, h, measure, ctrl, code_ket
 from ket.lib import bell
-from ket.code_ket import code_ket
 
 @code_ket
 def teleport(alice : quant) -> quant:

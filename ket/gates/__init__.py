@@ -23,7 +23,8 @@
 
 from ..ket import x, y, z, h, s, sd, t, td, u1, u2, u3, rx, ry, rz, quant
 
-__all__ = ['i', 'x', 'y', 'z', 'h', 's', 'sd', 't', 'td', 'u1', 'u2', 'u3', 'rx', 'ry', 'rz']
+__all__ = ['i', 'x', 'y', 'z', 'h', 's', 'sd', 't', 'td', 'p', 'u1', 'u2', 'u3', 'rx', 'ry', 'rz',
+           'I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'P', 'U1', 'U2', 'U','U3', 'RX', 'RY', 'RZ']
 
 def i(q : quant):
     r"""
@@ -57,4 +58,21 @@ def i(q : quant):
     """
     return
  
-    
+I  = i            
+X  = x 
+Y  = y
+Z  = z
+H  = h
+S  = s
+SD = sd
+T  = t
+TD = td
+p = u1
+P = u1
+U1 = u1
+U2 = u2
+U = u3
+U3 = u3
+RX = rx
+RY = ry
+RZ = rz
