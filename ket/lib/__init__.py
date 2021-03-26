@@ -37,19 +37,6 @@ def qft(q : quant, invert=True):
         for i in range(len(q)//2):
             swap(q[i], q[len(q)-i-1])
 
-def cnot(c : quant, t : quant):
-    """Quantum-bitwise Controlled-NOT."""
-    
-    for i, j in zip(c, t):
-        ctrl(i, x, j)
-
-def swap(a : quant, b : quant):
-    """Quantum-bitwise swap."""
-   
-    cnot(a, b)
-    cnot(b, a)
-    cnot(a, b)
-
 @code_ket
 def bell(aux0 : int, aux1 : int) -> quant:
     """Return two entangle qubits in the Bell state."""
