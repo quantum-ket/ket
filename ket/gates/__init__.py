@@ -21,7 +21,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from ..ket import x, y, z, h, s, sd, t, td, u1, u2, u3, rx, ry, rz, quant, ctrl
+from ..ket import x, y, z, h, s, sd, t, td, u1, u2, u3, rx, ry, rz, quant
+from ..standard import ctrl
 
 __all__ = ['i', 'x', 'y', 'z', 'h', 's', 'sd', 't', 'td', 'p', 'u1', 'u2', 'u3', 'rx', 'ry', 'rz',
            'I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'P', 'U1', 'U2', 'U','U3', 'RX', 'RY', 'RZ',
