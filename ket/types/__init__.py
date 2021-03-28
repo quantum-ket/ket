@@ -22,10 +22,15 @@
 # SOFTWARE.
 
 from ..ket import quant, future, dump, metrics
+from ..gates import cnot, x
+from ..standard import adj
+from typing import Iterable
 
 __all__ = ['quant', 'future', 'dump', 'metrics']
 
-def __quant__at__(self, index):
+def __quant__at__(self, index : Iterable[int]):
+    """Return a quant with the qubits from index."""
+
     index = list(index)
     if len(index) == 0:
         return None
@@ -36,6 +41,22 @@ def __quant__at__(self, index):
         return q 
 
 quant.at = __quant__at__
+
+class __quant_invert__(quant):
+    def __init__(self, q : quant):
+        super().__init__(len(q))
+        self.base_quant = q
+        self.prepare()
+    
+    def __del__(self):
+        adj(self.prepare)
+        self.free()
+
+    def prepare(self):
+        cnot(self.base_quant, self)
+        x(self)
+
+quant.__invert__ = lambda self : __quant_invert__(self)
 
 class __quant__iter__:
     def __init__(self, q):

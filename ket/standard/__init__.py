@@ -23,13 +23,16 @@
 
 from ..ket import (quant, measure, report, exec_quantum, ctrl_begin, ctrl_end,
         adj_begin, adj_end, process_begin, process_end)
+from typing import Iterable, Callable
 
 __all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'report', 'measure', 'exec_quantum']
 
 class run:
-    """Run the quantum operations in a new process.
+    """Execute in a new process
     
-    Usage:
+    Run the quantum operations in a new separated process.
+    
+    **Usage:**
 
     .. code-block:: ket
 
@@ -44,9 +47,11 @@ class run:
         process_end()
 
 class inverse:
-    """Apply the quantum operations backwards.
+    """Execute inverse
+
+    Apply the quantum operations backwards.
     
-    Usage:
+    **Usage:**
 
     .. code-block:: ket
 
@@ -61,33 +66,42 @@ class inverse:
         adj_end()     
 
 class control:
-    """Apply controlled quantum operations.
+    r"""Controlled execution
     
-    Usage:
+    Apply controlled quantum operations.
+
+    **Usage:**
 
     .. code-block:: ket
     
-        with control(cont):
+        with control(ctr[, ...]):
             ...
-            
+
+    Note:
+        Use ``~ctrl`` to control on :math:`\left|0\right>`.
+
+    :param ctr: control :class:`~ket.type.quant` variables
     """
-    def __init__(self, c : quant):
-        self.c = c
+
+    def __init__(self, *ctr : Iterable[quant]):
+        self.ctr = ctr
 
     def __enter__ (self):
-        ctrl_begin(self.c)
+        for c in self.ctr:
+            ctrl_begin(c)
      
     def __exit__ (self, type, value, tb):
-        ctrl_end()
+        for _ in self.ctr:
+            ctrl_end()
 
-def ctrl(control : quant, func, *args, **kwargs):
+def ctrl(control : quant, func : Callable , *args, **kwargs):
     """Add qubits of controll to a operation call."""
     ctrl_begin(control)
     ret = func(*args, **kwargs)
     ctrl_end()
     return ret
 
-def adj(func, *args, **kwargs):
+def adj(func : Callable, *args, **kwargs):
     """Call the inverse of a quantum operation."""
     adj_begin()
     func(*args, **kwargs)
