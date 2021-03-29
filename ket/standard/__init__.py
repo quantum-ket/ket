@@ -104,6 +104,7 @@ def ctrl(control : quant, func : Callable , *args, **kwargs):
 def adj(func : Callable, *args, **kwargs):
     """Call the inverse of a quantum operation."""
     adj_begin()
-    func(*args, **kwargs)
+    ret = func(*args, **kwargs)
     adj_end()
+    return ret
 
