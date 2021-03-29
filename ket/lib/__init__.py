@@ -26,16 +26,34 @@ from .. import code_ket
 from math import pi, sqrt
 from typing import Union, List
 
-def qft(q : quant, invert=True):
-    """Apply a Quantum Fourier Transformation."""
+def qft(q : quant, invert : bool = True) -> quant:
+    """Quantum Fourier Transformation
     
-    for i in range(len(q)):
-        h(q[i])
-        for j, m in zip(range(i+1, len(q)), [2*pi/2**m for m in range(2, len(q)+1)]):
-            ctrl(q[j], u1, m, q[i])
+    Apply a QFT_ on the qubits of q.
+
+    Note:
+        Implace operation.
+
+    .. _QFT: https://en.wikipedia.org/wiki/Quantum_Fourier_transform
+
+    :param q: input qubits
+    :param invert: if ``True``, invert qubits with swap gates
+    :return: qubits in the reserved order 
+    """
+
+    if len(q) == 1:
+        h(q)
+    else:
+        head, tail = q[0], q[1:]
+        h(head)
+        for i in range(len(tail)):
+            ctrl(tail[i], u1, 2*pi/2**(i+2), head)
+        qft(tail, invert=False)
+
     if invert:
         for i in range(len(q)//2):
             swap(q[i], q[len(q)-i-1])
+    return q.inverted()
 
 @code_ket
 def bell(aux0 : int, aux1 : int) -> quant:
