@@ -1,6 +1,7 @@
 from ket.lib import qft
 from ket.plugins import pown
 from math import log2, gcd
+from functools import reduce
 from random import randint
 
 def pow_ab_of(N):
@@ -31,22 +32,16 @@ def order_find(x, N):
     L = N.bit_length()
     t = 2*L+1
 
-    def __order_find(x, N):
-
+    def find():
         reg1 = quant(t)
         h(reg1)
 
         pown(x, reg1, N)
         
         adj(qft, reg1)
-
         return measure(reg1).get()
 
-
-    rs = __order_find(x, N)
-    for _ in range(2):
-        rs = gcd(rs, __order_find(x, N))
-
+    rs = reduce(gcd, [find() for _ in range(3)])
     try:
         r = 2**t//rs
     except ZeroDivisionError:
@@ -92,14 +87,14 @@ def factors(N):
         if q != 1 and Nq != 1 and q*Nq == N:
             return q, Nq, 'QUANTUM'
 
-        raise RuntimeError('Algorithm fails')
+    raise RuntimeError('Algorithm fails')
 
 if __name__ == '__main__':
     #N = 15  # 13 qubits
     #N = 21  # 16 qubits
     #N = 55  # 19 qubits
-    #N = 119 # 22 qubits
-    N = 247 # 25 qubits
+    N = 119 # 22 qubits
+    #N = 247 # 25 qubits
     
     try:
         print('N =', N, ': bit length =', N.bit_length(), 'Bits,',

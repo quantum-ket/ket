@@ -1,24 +1,30 @@
-from math import pi
+from typing import Callable
 from ket.lib import qft
+from math import pi
 
-theta = pi/10
-n = 20
+def phase_estimator(oracle : Callable, eigenstate : quant, precision : int) -> future:
+    t = quant(precision)
+    h(t)
+    for i, j in zip(range(precision), reversed(range(precision))):
+        oracle(t[i], eigenstate, j)
+    adj(qft, t)
 
-measurement_qubits = quant(n)
-h(measurement_qubits)
+    return measure(t)
 
-target_qubit = quant(1)
-x(target_qubit)
+def oracle(phase : float, t : quant, u : quant, j : int):
+    exp = 2**j
+    ctrl(t, u1, 2*pi*phase*exp, u)
 
-for i in range(n):
-    exp = 2**(n-i-1)
-    ctrl(measurement_qubits[i], u1, 2*pi*theta*exp, target_qubit)
+if __name__ == '__main__':
+    theta = pi/10
+    theta_oracle = lambda t, u, j : oracle(theta, t, u, j)
 
-q = measurement_qubits
+    precision = 15
 
-adj(qft, measurement_qubits)
+    measurement = phase_estimator(theta_oracle, ~quant(1), precision).get()
+    
+    result = measurement/2**precision
 
-result = measure(measurement_qubits).get()/2**n
-
-print("Using", n, "qubits to estimate theta =", theta, ': result =', result)
-# Using 20 qubits to estimate theta = 0.3141592653589793 : result = 0.31415843963623047
+    print('theta  =', theta)
+    print('result =', result)
+    print('precision =', precision, 'qubits')

@@ -1,14 +1,15 @@
 from ket.lib import pauli_prepare, within, ctrl_int
 from math import sqrt, pi
+from typing import Callable
 
-def oracle(x, y):
+def oracle(x : quant , y : quant):
     """f(x) = 1 if x == 3 else 0
 
     U|x⟩|y⟩ = |x⟩|f(x) ⨁ y⟩
     """
     ctrl_int(x, 3, X, y) 
 
-def grover(size, oracle):
+def grover(size : int, oracle : Callable, outcome : int = 1) -> int:
     """Grover's search algorithm"""
 
     s = quant(size)
@@ -17,7 +18,7 @@ def grover(size, oracle):
     aux = quant(1)
     pauli_prepare(x, aux, -1)
 
-    steps = int((pi/4)*sqrt(2**size))
+    steps = int((pi/4)*sqrt(2**size/outcome))
     for _ in range(steps):
         oracle(s, aux)
         within(lambda : [h(s), x(s)],
