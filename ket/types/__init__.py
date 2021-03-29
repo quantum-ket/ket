@@ -42,7 +42,7 @@ def __quant__at__(self, index : Iterable[int]):
 
 quant.at = __quant__at__
 
-class __quant_invert__(quant):
+class quant_invert(quant):
     def __init__(self, q : quant):
         super().__init__(len(q))
         self.base_quant = q
@@ -51,12 +51,15 @@ class __quant_invert__(quant):
     def __del__(self):
         adj(self.prepare)
         self.free()
+        
+    def __or__(self, other):
+        raise RuntimeError("cannot concatenate 'quant_invert'")
 
     def prepare(self):
         cnot(self.base_quant, self)
         x(self)
 
-quant.__invert__ = lambda self : __quant_invert__(self)
+quant.__invert__ = lambda self : quant_invert(self)
 
 class __quant__iter__:
     def __init__(self, q):
