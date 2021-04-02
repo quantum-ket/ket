@@ -40,5 +40,5 @@ setup (name = 'ket-lang',
                     'Topic :: Scientific/Engineering',
                     'License :: OSI Approved :: MIT License',
                    ],
-        entry_points={'console_scripts': ['ket = ket.__main__:main']},
+        entry_points={'console_scripts': ['ket = ket.__main__:__ket__']},
        )

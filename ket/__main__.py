@@ -38,7 +38,8 @@ def __ket__():
     if len(args.input) == 0:
         print("No input")
         exit(1)
-        
+
+    globals()['__name__'] = '__main__'
     source = path.join(getcwd(), args.input[0])
     __import_globals_ket__(source, globals())
 
