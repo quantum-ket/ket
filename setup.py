@@ -39,5 +39,6 @@ setup (name = 'ket-lang',
                     'Intended Audience :: Science/Research',
                     'Topic :: Scientific/Engineering',
                     'License :: OSI Approved :: MIT License',
-                   ]
+                   ],
+        entry_points={'console_scripts': ['ket = ket.__main__:main']},
        )
