@@ -153,8 +153,6 @@ To install using pip runs:
 $ pip install ket-lang
 ```
 
-> **Usage:** `python -m ket <source.ket>`
-
 You can import Ket source code as a Python module using the `ket.import_ket.import_ket` function.
 
 ### Install from source 
