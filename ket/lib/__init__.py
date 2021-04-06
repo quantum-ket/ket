@@ -56,17 +56,34 @@ def qft(q : quant, invert : bool = True) -> quant:
     return q.inverted()
 
 @code_ket
-def bell(aux0 : int, aux1 : int) -> quant:
-    """Return two entangle qubits in the Bell state."""
-   
-    q = quant(2)
-    if aux0 == 1:
-        x(q[0])
-    if aux1 == 1:
-        x(q[1])
-    h(q[0])
-    ctrl(q[0], x, q[1])
-    return q
+def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
+    """Bell state preparation
+    
+    Return two entangle qubits in the Bell state:
+    
+    .. math::
+
+        \left|\beta_{x,y}\right> = \frac{\left|0,y\right> + (-1)^x\left|1,¬y\right>}{\sqrt{2}}
+        
+    :param x: aux 0
+    :param y: aux 1
+    :param qubits: if provided, prepare state in qubits; else, create a new quant
+    :return: 2 qubits in the Bell state
+    """
+
+    if qubits is not None and (len(qubits) != 2 or type(qubits) != quant):
+        raise AttributeError("if param 'qubits' is provided, it must be a quant of length 2")
+
+    if qubits is None:
+        qubits = quant(2)
+
+    if x == 1:
+        X(qubits[0])
+    if y == 1:
+        X(qubits[1])
+    h(qubits[0])
+    ctrl(qubits[0], X, qubits[1])
+    return qubits
 
 @code_ket
 def pauli_prepare(basis : Union[x, y, z], q : quant, state : int = +1):
