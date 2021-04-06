@@ -17,5 +17,5 @@ def qft(qubits : quant, invert=True) -> quant:
 
 if __name__ == '__main__':
     q = quant(4)
-    q_inv = qft(q)
+    q_inv = qft(q, invert=False)
     print(measure(q_inv).get())

@@ -1,16 +1,24 @@
 from ket.lib import pauli_prepare, pauli_measure
 
 def balanced_oracle(x, y):
+    """f(x) = x
+
+    U|x⟩|y⟩ = |x⟩|f(x) ⊕ y⟩
+    """
     ctrl(x, X, y)
 
 def constant_oracle(x, y):
+    """f(x) = 1
+
+    U|x⟩|y⟩ = |x⟩|f(x) ⊕ y⟩
+    """
     X(y)
 
 def deutsch(oracle):
-    x, y = quant(2)
-    pauli_prepare(X, x, +1)
-    pauli_prepare(X, y, -1)
-    oracle(x, y)
+    x, y = quant(2) # xy = |00⟩
+    pauli_prepare(X, x, +1) # x = |+⟩
+    pauli_prepare(X, y, -1) # y = |–⟩
+    oracle(x, y) # |–⟩|–⟩ if balanced else –|+⟩|–⟩
     return pauli_measure(X, x)
 
 if __name__ == '__main__':

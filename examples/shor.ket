@@ -5,7 +5,7 @@ from functools import reduce
 from random import randint
 
 def pow_ab_of(N):
-    """Return a, b for N = a**b"""
+    """Return a, b for N == a**b"""
     if N == 1:
         return 1, 2
     
@@ -27,7 +27,7 @@ def pow_ab_of(N):
     return N, 1
 
 def order_find(x, N):
-    """Return r for x**r % N = 1"""
+    """Return r > 0 for x**r % N == 1"""
 
     L = N.bit_length()
     t = 2*L+1
@@ -37,7 +37,7 @@ def order_find(x, N):
         h(reg1)
 
         pown(x, reg1, N)
-        
+
         adj(qft, reg1)
         return measure(reg1).get()
 
@@ -56,7 +56,7 @@ def factors(N):
     if N % 2 == 0:
         return 2, N//2, 'EVEN'
     
-    # 2. Determine whether N = a**b for integers a ≥ 1 and b ≥ 2, 
+    # 2. Determine whether N = a**b for integers a >= 1 and b >= 2, 
     # and if so return the factor a.
     a, _ = pow_ab_of(N)
     if a != N:

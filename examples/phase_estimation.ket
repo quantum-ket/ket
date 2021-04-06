@@ -3,6 +3,7 @@ from ket.lib import qft
 from math import pi
 
 def phase_estimator(oracle : Callable, eigenstate : quant, precision : int) -> future:
+    """Find θ for U|Ψ⟩ = e^{2*π*θ}|Ψ⟩"""
     t = quant(precision)
     h(t)
     for i, j in zip(range(precision), reversed(range(precision))):
@@ -11,9 +12,10 @@ def phase_estimator(oracle : Callable, eigenstate : quant, precision : int) -> f
 
     return measure(t)
 
-def oracle(phase : float, t : quant, u : quant, j : int):
+def oracle(phase : float, ctr : quant, trg : quant, j : int):
+    """U^{⊗2^j}|Ψ⟩"""
     exp = 2**j
-    ctrl(t, u1, 2*pi*phase*exp, u)
+    ctrl(ctr, u1, 2*pi*phase*exp, trg)
 
 if __name__ == '__main__':
     theta = pi/10
