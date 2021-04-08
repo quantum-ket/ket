@@ -30,9 +30,10 @@ AppDir:
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3B4FE6ACC0B21F32'
       
     include:
-      - python3.8-minimal
+      - libgmp10
       - libpython3.8-dev
       - libstdc++6
+      - python3.8-minimal
     exclude: []
 
   runtime:

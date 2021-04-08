@@ -16,7 +16,7 @@ description: |
       Ket program options:
         -h [ --help ]              Show this information
         -o [ --out ]               KQASM output file
-        -s [ --kbw ]  (=127.0.1.1) Quantum execution (KBW) address
+        -s [ --kbw ]  (=::1)       Quantum execution (KBW) address
         -p [ --port ]  (=4242)     Quantum execution (KBW) port address
         --no-execute               Does not execute the quantum code, measuments 
                                    return 0
@@ -74,9 +74,10 @@ parts:
       make &&
       snapcraftctl build
     stage-packages:
+      - libgmp10
+      - libpython3.8-dev
       - python3-distutils
       - python3.8-minimal
-      - libpython3.8-dev
     filesets:
       ket-files:
         - lib/python3.8/site-packages/ket*

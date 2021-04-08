@@ -13,6 +13,7 @@ before_script:
       git
       gtk-update-icon-cache
       libgdk-pixbuf2.0-dev 
+      libgmp10
       libssl-dev 
       make 
       ninja-build 
