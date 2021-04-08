@@ -20,6 +20,10 @@ conan_cmake_run(REQUIRES boost/1.71.0
                 BASIC_SETUP CMAKE_TARGETS
                 BUILD missing)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libket/cmake;${CMAKE_MODULE_PATH}")
+
+find_package(GMP REQUIRED)
+            
 FIND_PACKAGE(PythonLibs)
 INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
 
@@ -35,6 +39,6 @@ SET_TARGET_PROPERTIES(ket PROPERTIES
                       POSITION_INDEPENDENT_CODE ON
                      )
                       
-TARGET_LINK_LIBRARIES(ket ${PYTHON_LIBRARIES} CONAN_PKG::boost)
+TARGET_LINK_LIBRARIES(ket ${PYTHON_LIBRARIES} CONAN_PKG::boost gmp)
 
 install(TARGETS ket DESTINATION ket)

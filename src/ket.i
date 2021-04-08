@@ -56,21 +56,39 @@
     }
 }
 
-%typemap(out) std::vector<unsigned long long> ket::dump::get_states
+%typemap(out) std::vector<std::vector<unsigned long>> ket::dump::get_states
 %{
-  $result = PyList_New($1.size());
-  for (size_t i = 0; i < $1.size(); i++) {
-    PyList_SetItem($result, i, PyLong_FromUnsignedLongLong($1.at(i)));
-  }
+    $result = PyList_New($1.size());
+    for (size_t i = 0; i < $1.size(); i++) {
+        auto& state = $1.at(i);
+        auto* py_int = PyLong_FromUnsignedLong(state.back());
+        for (auto it = state.rbegin()+1; it != state.rend(); ++it) {
+            py_int = PyNumber_Lshift(py_int, PyLong_FromLong(64));
+            py_int = PyNumber_Or(py_int, PyLong_FromUnsignedLong(*it));
+        }
+        std::cout << std::endl;
+        PyList_SetItem($result, i, py_int);
+    }
 %}
 
 %typemap(out) std::vector<std::complex<double>> ket::dump::amplitude
 %{
-  $result = PyList_New($1.size());
-  for (size_t i = 0; i < $1.size(); i++) {
-    PyList_SetItem($result, i, PyComplex_FromDoubles($1.at(i).real(), $1.at(i).imag()));
-  }
+    $result = PyList_New($1.size());
+    for (size_t i = 0; i < $1.size(); i++) {
+        PyList_SetItem($result, i, PyComplex_FromDoubles($1.at(i).real(), $1.at(i).imag()));
+    }
 %}
+
+%typemap(in) (std::vector<unsigned long> idx) 
+%{  
+    $1 = std::vector<unsigned long>();
+    $1.push_back(PyLong_AsUnsignedLongMask($input));
+    for (int i = 0; i < arg1->nbits/64; i++) {
+        $input = PyNumber_Rshift($input, PyLong_FromLong(64));
+        $1.push_back(PyLong_AsUnsignedLongMask($input));
+    } 
+%}
+
 
 %include "libket/include/ket"
 
