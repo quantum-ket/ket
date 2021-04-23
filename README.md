@@ -4,8 +4,7 @@
 
 # Ket Quantum Programming Language
 
-Ket is a Python-embedded classical-quantum programming language for dynamic
-interaction between classical and quantum computers.
+Ket is a Python-embedded  language for hybridity classical-quantum  programming.
 
 ### Table of contents:
 
@@ -100,12 +99,11 @@ print(15, '=', p , "x", q)
 ```console
 $ ket -h
 Ket program options:
-  -h [ --help ]              Show this information
-  -o [ --out ]               KQASM output file
-  -s [ --kbw ]  (=127.0.1.1) Quantum execution (KBW) address
-  -p [ --port ]  (=4242)     Quantum execution (KBW) port address
-  --no-execute               Does not execute the quantum code, measuments 
-                             return 0
+  -h [ --help ]          Show this information
+  -o [ --out ]           KQASM output file
+  -s [ --kbw ]  (-::1)   Quantum execution (KBW) address
+  -p [ --port ]  (=4242) Quantum execution (KBW) port address
+  --no-execute           Does not execute quantum code, measurements return 0
 ```
 
 ## Installation
