@@ -173,25 +173,6 @@ $ make
 $ python setup.py install
 ```
 
-## Run examples
-
-Available examples:
-
-* Quantum phase estimation - [phase_estimation.ket](examples/phase_estimation.ket)
-* Quantum teleportation - [teleport.ket](examples/teleport.ket)
-* Quantum teleportation using `code_ket` - [teleport.py](examples/teleport.py)
-* Random number generation - [random.ket](examples/random.ket)
-* Shor's algorithms - [shor15.ket](examples/shor15.ket)
-* Shor's algorithms with state dumping - [shor15dump.ket](examples/shor15dump.ket)
-
-With kbw running execute:
-
-```console
-$ ket examples/<example>
-```
-
-> Replace `<example>` one of the available examples
-
 -----------
 
 This project is part of the Ket Quantum Programming, see the documentation for

@@ -2,7 +2,7 @@ name: ket
 title: Ket quantum programming
 summary: Quantum programming language
 description: |
-  Ket is a Python-embedded  language for hybridity classical-quantum  programming.
+  Ket is a Python-embedded language for hybridity classical-quantum programming.
 
   The Ket Bitwise simulator is necessary to simulate quantum execution. Before
   installing ket, you need to install kbw:
@@ -26,7 +26,7 @@ description: |
   * The Ket Bitwise Simulator for quantum computation.
 
   See the documentation for more information http://quantum-ket.gitlab.io.
-
+  
 icon: icon/ket.svg
 
 license: Apache-2.0
