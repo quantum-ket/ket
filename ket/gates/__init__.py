@@ -13,10 +13,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import x, y, z, h, s, sd, t, td, u1, u2, u3, rx, ry, rz, quant
+from ..ket import x, y, z, h, s, sd, t, td, p, rx, ry, rz, quant
 from ..standard import ctrl
+from math import pi
 
-__all__ = ['i', 'x', 'y', 'z', 'h', 's', 'sd', 't', 'td', 'p', 'u1', 'u2', 'u3', 'rx', 'ry', 'rz',
+__all__ = ['i', 'x', 'y', 'z', 'h', 's', 'sd', 't', 'td', 'p', 'phase', 'u1', 'u2', 'u3', 'rx', 'ry', 'rz',
            'I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'P', 'U1', 'U2', 'U','U3', 'RX', 'RY', 'RZ',
            'cnot', 'swap']
 
@@ -112,6 +113,71 @@ def swap(a : quant, b : quant):
     cnot(a, b)
     cnot(b, a)
     cnot(a, b)
+    
+def u2(phi : float, _lambda : float, q : quant):
+    r"""Generic rotation gate with 2 Euler angles
+
+    Apply a rotation about the X+Z axis on every qubit of q.
+
+    **Matrix representation:**
+
+     .. math::
+
+         U2(\phi, \lambda) =
+                  \frac{1}{\sqrt{2}}\begin{bmatrix} 1 & -e^{i\lambda} \\
+                                            e^{i\phi} & e^{i(\lambda+\phi)} \end{bmatrix}
+
+    **Effect:**
+
+    .. math::
+
+        \begin{matrix} 
+                 U2\left|0\right> = & \frac{1}{\sqrt{2}}\left(\left|0\right> - e^{i\lambda}\left|1\right>\right) \\
+                 U2\left|1\right> = & \frac{1}{\sqrt{2}}\left(e^{i\phi}\left|0\right> + e^{i(\lambda+\phi)}\left|1\right>\right) 
+             \end{matrix}
+
+    :param q: input qubits
+    :param phi: :math:`\phi`
+    :param _lambda: :math:`\lambda`
+    """     
+    rz(_lambda, q)    
+    ry(pi/2, q)
+    rz(phi, q)
+
+def u3(theta : float, phi : float, _lambda : float, q : quant):
+    r"""Generic rotation gate with 3 Euler angles
+
+    Apply a generic rotation on every qubit of q.
+
+    **Matrix representation:**
+
+     .. math::
+
+         U3(\theta, \phi, \lambda) = \begin{bmatrix}
+                       \cos{\frac{\theta}{2}} & -e^{i\lambda}\sin{\frac{\theta}{2}} \\
+              e^{i\phi}\sin{\frac{\theta}{2}} & e^{i(\lambda+\phi)}\cos{\frac{\theta}{2}}  
+                                          \end{bmatrix}
+
+    **Effect:**
+
+    .. math::
+
+        \begin{matrix} 
+                 U3\left|0\right> = & \cos{\theta\over2}\left|0\right> -e^{i\lambda}\sin{\theta\over2}\left|1\right> \\
+                 U3\left|1\right> = & e^{i\phi}\sin{\theta\over2}\left|0\right> + e^{i(\lambda+\phi)}\cos{\theta\over2}\left|1\right> 
+             \end{matrix}
+
+    :param q: input qubits
+    :param theta: :math:`\theta`
+    :param phi: :math:`\phi`
+    :param lambda: :math:`\lambda`
+    """
+
+    rz(_lambda, q)
+    rx(pi/2, q)
+    rz(theta, q)
+    rx(-pi/2, q)
+    rz(phi, q)
 
 I  = i            
 X  = x 
@@ -122,9 +188,10 @@ S  = s
 SD = sd
 T  = t
 TD = td
-p = u1
-P = u1
-U1 = u1
+P = p
+phase = p
+u1 = p
+U1 = p
 U2 = u2
 U = u3
 U3 = u3
