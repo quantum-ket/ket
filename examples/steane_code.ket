@@ -11,7 +11,7 @@ class steane_code (quant):
 
     def __init__(self):
         super().__init__(7)
-        self.correct(z)
+        self.correct(Z)
 
     def project(self, g):
         def inner(aux):
@@ -20,15 +20,15 @@ class steane_code (quant):
                     gi(q)
                     
         with quant(1) as aux:
-            within(lambda : h(aux),
+            within(lambda : H(aux),
                    lambda : inner(aux))
             return measure_free(aux)
        
     def correct(self, error):
-        if error != x and error != z:
-            raise ValueError("arg 'error' must be 'x' or 'z'")
+        if error != X and error != Z:
+            raise ValueError("arg 'error' must be 'X' or 'Z'")
         
-        if error == z:
+        if error == Z:
             g = [self.g1, self.g2, self.g3]
         else:
             g = [self.g4, self.g5, self.g6]
@@ -54,9 +54,9 @@ class steane_code (quant):
 
 if __name__ == '__main__': 
     code = steane_code()   
-    y(code[3])
-    code.correct(x)
-    code.correct(z)
+    Y(code[3])
+    code.correct(X)
+    code.correct(Z)
     print(dump(code).show('i7'))
 
 

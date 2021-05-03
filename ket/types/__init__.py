@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 from ..ket import quant, future, dump, metrics
-from ..gates import cnot, x
+from ..gates import cnot, X
 from ..standard import adj
 from typing import Iterable
 
@@ -49,7 +49,7 @@ class quant_invert(quant):
 
     def prepare(self):
         cnot(self.base_quant, self)
-        x(self)
+        X(self)
 
 quant.__invert__ = lambda self : quant_invert(self)
 

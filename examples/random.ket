@@ -1,7 +1,7 @@
 def random(n_bits : int) -> int:
     with run():
         q = quant(n_bits)
-        h(q)
+        H(q)
         return measure(q).get()
 
 if __name__ == '__main__':

@@ -34,7 +34,7 @@ def order_find(x, N):
 
     def find():
         reg1 = quant(t)
-        h(reg1)
+        H(reg1)
 
         pown(x, reg1, N)
 

@@ -13,16 +13,16 @@ def grover(size : int, oracle : Callable, outcome : int = 1) -> int:
     """Grover's search algorithm"""
 
     s = quant(size)
-    h(s)
+    H(s)
 
     aux = quant(1)
-    pauli_prepare(x, aux, -1)
+    pauli_prepare(X, aux, -1)
 
     steps = int((pi/4)*sqrt(2**size/outcome))
     for _ in range(steps):
         oracle(s, aux)
-        within(lambda : [h(s), x(s)],
-               lambda : ctrl(s[1:], z, s[0]))
+        within(lambda : [H(s), X(s)],
+               lambda : ctrl(s[1:], Z, s[0]))
 
     return measure(s).get()
     

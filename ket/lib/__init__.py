@@ -34,12 +34,12 @@ def qft(q : quant, invert : bool = True) -> quant:
     """
 
     if len(q) == 1:
-        h(q)
+        H(q)
     else:
         head, tail = q[0], q[1:]
-        h(head)
+        H(head)
         for i in range(len(tail)):
-            ctrl(tail[i], u1, 2*pi/2**(i+2), head)
+            ctrl(tail[i], phase, 2*pi/2**(i+2), head)
         qft(tail, invert=False)
 
     if invert:
@@ -73,32 +73,32 @@ def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
         X(qubits[0])
     if y == 1:
         X(qubits[1])
-    h(qubits[0])
+    H(qubits[0])
     ctrl(qubits[0], X, qubits[1])
     return qubits
 
 @code_ket
-def pauli_prepare(basis : Union[x, y, z], q : quant, state : int = +1):
+def pauli_prepare(basis : Union[X, Y, Z], q : quant, state : int = +1):
     """Prepares qubits in the +1 or -1 eigenstate of a given Pauli operator."""
 
     if state == -1:
-        x(q)
+        X(q)
     elif state == 1:
         pass
     else:
         raise ValueError('param state must be +1 or -1.')
 
-    if basis == x:
-        h(q)
-    elif basis == y:
-        h(q)
-        s(q)
-    elif basis == z:
+    if basis == X:
+        H(q)
+    elif basis == Y:
+        H(q)
+        S(q)
+    elif basis == Z:
         pass
     else:
         raise ValueError('param basis must be x, y, or z.')
 
-def pauli_measure(basis : Union[x, y, z], q : quant):
+def pauli_measure(basis : Union[X, Y, Z], q : quant):
     """Pauli measurement."""
 
     adj(pauli_prepare, basis, q)
@@ -111,7 +111,7 @@ def measure_free(q : quant) -> future:
     for i in q:
         m = measure(i)
         if m:
-            x(i) 
+            X(i) 
     q.free()
     return res
 
@@ -127,7 +127,7 @@ def x_not_mask(q : quant, mask : List[int]):
     
     for i, b in zip(mask, q):
         if i == 0:
-            x(b)
+            X(b)
 
 @code_ket
 def x_mask(q : quant, mask : List[int]):
@@ -135,7 +135,7 @@ def x_mask(q : quant, mask : List[int]):
     
     for i, b in zip(mask, q):
         if i:
-            x(b)
+            X(b)
 
 def x_int(q : quant, int_mask : int):
     """Apply Pauli X gates follwing a int mask."""
@@ -159,7 +159,7 @@ def increment(q):
 
     if len(q) > 1:
         ctrl(q[-1], increment, q[:-1])
-    x(q[-1])
+    X(q[-1])
 
 def dump_matrix(u, size : int) -> List[List[complex]]:
     """Get the matrix of a quantum operation."""
@@ -168,7 +168,7 @@ def dump_matrix(u, size : int) -> List[List[complex]]:
     with run():
         i = quant(size)
         j = quant(size)
-        h(j)
+        H(j)
         cnot(j, i)
         ret = u(i)
         d = dump(j|i)
