@@ -77,6 +77,14 @@ quant.__exit__ = __quant__exit__
 
 quant.__int__ = lambda self : measure(self).get()
 
+def __future__setattr__(self, name, value):
+    if name == 'set':
+        self.set(value)
+    else:
+        self.__dict__[name] = value
+
+future.__setattr__ = __future__setattr__
+
 future.__int__ = lambda self : self.get()
 
 quant.__repr__ = lambda self : '<Ket quant; '+str(len(self))+' qubits; '+self.this.__repr__()+'>'

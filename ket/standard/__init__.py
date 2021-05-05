@@ -15,7 +15,7 @@
 
 from ..ket import (quant, measure, report, exec_quantum, ctrl_begin, ctrl_end,
         adj_begin, adj_end, process_begin, process_end)
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Union
 
 __all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'report', 'measure', 'exec_quantum']
 
@@ -86,26 +86,53 @@ class control:
         for _ in self.ctr:
             ctrl_end()
 
-def ctrl(control : quant, func : Callable , *args, **kwargs):
+def ctrl(control : Union[Iterable[quant], quant], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
     """Add qubits of controll to a operation call."""
-    ctrl_begin(control)
-    ret = func(*args, **kwargs)
-    ctrl_end()
+    ret = []
+    if hasattr(control, '__iter__'):
+        for c in control:
+            ctrl_begin(c)
+    else:
+        ctrl_begin(control)
+
+    if hasattr(func, '__iter__'):
+        for f in func:
+            ret.append(f(*args, **kwargs))
+    else:
+        ret = func(*args, **kwargs)
+
+    if hasattr(control, '__iter__'):
+        for _ in control:
+            ctrl_end()
+    else:
+        ctrl_end()
+    
     return ret
 
-def adj(func : Callable, *args, **kwargs):
+def adj(func : Union[Callable, Iterable[Callable]], *args, **kwargs):
     """Call the inverse of a quantum operation."""
+    ret = []
     adj_begin()
-    ret = func(*args, **kwargs)
+    if hasattr(func, '__iter__'):
+        for f in func:
+            ret.append(f(*args, **kwargs))
+    else:
+        ret = func(*args, **kwargs)
     adj_end()
     return ret
 
 class around:
-    def __init__(self, outter_func : Callable):
+    def __init__(self, outter_func : Union[Callable, Iterable[Callable]], *args, **kwargs):
         self.outter_func = outter_func
+        self.args = args
+        self.kwargs = kwargs
 
     def __enter__(self):
-        self.outter_func()
+        if hasattr(self.outter_func, '__iter__'):
+            for func in self.outter_func:
+                func(*self.args, **self.kwargs)
+        else:
+            self.outter_func(*self.args, **self.kwargs)
 
     def __exit__ (self, type, value, tb):
-        adj(self.outter_func)
+        adj(self.__enter__)

@@ -1,4 +1,4 @@
-from ket.lib import within, measure_free
+from ket.lib import measure_free
 
 class steane_code (quant):
     g1 = [I, I, I, X, X, X, X]
@@ -14,14 +14,11 @@ class steane_code (quant):
         self.correct(Z)
 
     def project(self, g):
-        def inner(aux):
-            with control(aux):
-                for gi, q in zip(g, self):
-                    gi(q)
-                    
         with quant(1) as aux:
-            within(lambda : H(aux),
-                   lambda : inner(aux))
+            with around(H, aux):
+                with control(aux):
+                    for gi, q in zip(g, self):
+                        gi(q)
             return measure_free(aux)
        
     def correct(self, error):
@@ -35,7 +32,7 @@ class steane_code (quant):
 
         index = future(-1)
         for g, c in zip(g, [1, 2, 4]):
-            index.set(index + self.project(g)*c)
+            index.set = index+self.project(g)*c
 
         if index == 0:
             error(self[3])

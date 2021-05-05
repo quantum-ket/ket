@@ -3,7 +3,8 @@ from ket.lib import bell
 def teleport(alice : quant) -> quant:
     alice_b, bob_b = bell()
 
-    adj(bell, qubits=alice|alice_b)
+    ctrl(alice, X, alice_b)
+    H(alice)
 
     m0 = measure(alice)
     m1 = measure(alice_b)
