@@ -1,4 +1,4 @@
-from ket.lib import within, ctrl_int
+from ket.lib import ctrl_int
 from math import sqrt, pi
 from typing import Callable
 
@@ -18,8 +18,8 @@ def grover(size : int, oracle : Callable, outcome : int = 1) -> int:
     steps = int((pi/4)*sqrt(2**size/outcome))
     for _ in range(steps):
         oracle(s, aux)
-        within(lambda : X(H(s)),
-               lambda : ctrl(s[1:], Z, s[0]))
+        with around(lambda : X(H(s))):
+            ctrl(s[1:], Z, s[0])
 
     return measure(s).get()
     

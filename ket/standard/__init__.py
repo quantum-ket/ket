@@ -17,7 +17,7 @@ from ..ket import (quant, measure, report, exec_quantum, ctrl_begin, ctrl_end,
         adj_begin, adj_end, process_begin, process_end)
 from typing import Iterable, Callable
 
-__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'report', 'measure', 'exec_quantum']
+__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'report', 'measure', 'exec_quantum']
 
 class run:
     """Execute in a new process
@@ -100,3 +100,12 @@ def adj(func : Callable, *args, **kwargs):
     adj_end()
     return ret
 
+class around:
+    def __init__(self, outter_func : Callable):
+        self.outter_func = outter_func
+
+    def __enter__(self):
+        self.outter_func()
+
+    def __exit__ (self, type, value, tb):
+        adj(self.outter_func)
