@@ -1,5 +1,3 @@
-from ket.lib import pauli_prepare, pauli_measure
-
 def balanced_oracle(x, y):
     """f(x) = x
 
@@ -16,10 +14,10 @@ def constant_oracle(x, y):
 
 def deutsch(oracle):
     x, y = quant(2) # xy = |00⟩
-    pauli_prepare(X, x, +1) # x = |+⟩
-    pauli_prepare(X, y, -1) # y = |–⟩
-    oracle(x, y) # |–⟩|–⟩ if balanced else –|+⟩|–⟩
-    return pauli_measure(X, x)
+    H(x)            # x = |+⟩
+    H(X(y))         # y = |–⟩
+    oracle(x, y)    # |–⟩|–⟩ if balanced else –|+⟩|–⟩
+    return measure(H(x))
 
 if __name__ == '__main__':
     print("Balanced", deutsch(balanced_oracle).get())

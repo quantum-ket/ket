@@ -16,7 +16,7 @@
 from .. import *
 from .. import code_ket
 from math import pi, sqrt
-from typing import Union, List
+from typing import Callable, Union, List
 
 def qft(q : quant, invert : bool = True) -> quant:
     """Quantum Fourier Transformation
@@ -78,7 +78,7 @@ def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
     return qubits
 
 @code_ket
-def pauli_prepare(basis : Union[X, Y, Z], q : quant, state : int = +1):
+def pauli_prepare(basis : Union[X, Y, Z], q : quant, state : int = +1) -> quant:
     """Prepares qubits in the +1 or -1 eigenstate of a given Pauli operator."""
 
     if state == -1:
@@ -89,20 +89,18 @@ def pauli_prepare(basis : Union[X, Y, Z], q : quant, state : int = +1):
         raise ValueError('param state must be +1 or -1.')
 
     if basis == X:
-        H(q)
+        return H(q)
     elif basis == Y:
-        H(q)
-        S(q)
+        return S(H(q))
     elif basis == Z:
-        pass
+        return q
     else:
-        raise ValueError('param basis must be x, y, or z.')
+        raise ValueError('param basis must be X, Y, or Z.')
 
-def pauli_measure(basis : Union[X, Y, Z], q : quant):
+def pauli_measure(basis : Union[X, Y, Z], q : quant) -> future:
     """Pauli measurement."""
 
-    adj(pauli_prepare, basis, q)
-    return measure(q)
+    return measure(adj(pauli_prepare, basis, q))
 
 @code_ket
 def measure_free(q : quant) -> future:
@@ -146,7 +144,8 @@ def x_int(q : quant, int_mask : int):
 def ctrl_mask(c : quant, mask : List[int], func, *args, **kwargs):
     """Applay a quantum operation if the qubits of control matchs the mask."""
 
-    within(lambda : x_not_mask(c, mask), lambda : ctrl(c, func, *args, **kwargs))
+    with around(x_not_mask, c, mask):
+        ctrl(c, func, *args, **kwargs)
 
 def ctrl_int(c : quant, int_mask : int, func, *args, **kwargs):
     """Applay a quantum operation if the qubits of control matchs the integer value."""
@@ -161,23 +160,23 @@ def increment(q):
         ctrl(q[-1], increment, q[:-1])
     X(q[-1])
 
-def dump_matrix(u, size : int) -> List[List[complex]]:
+def dump_matrix(u : Callable, size : int) -> List[List[complex]]:
     """Get the matrix of a quantum operation."""
 
     mat = [[0 for _ in range(2**size)] for _ in range(2**size)]
     with run():
-        i = quant(size)
-        j = quant(size)
-        H(j)
-        cnot(j, i)
-        ret = u(i)
-        d = dump(j|i)
+        row = quant(size)
+        column = quant(size)
+        H(column)
+        cnot(column, row)
+        ret = u(row)
+        d = dump(column|row)
         exec_quantum()
     
     for state in d.get_states():
-        j = state >> size
-        i = state & ((1 << size)-1)
-        mat[i][j] = d.amplitude(state)[0]/(1/sqrt(2**size))
+        column = state >> size
+        row = state & ((1 << size)-1)
+        mat[row][column] = d.amplitude(state)[0]/(1/sqrt(2**size))
 
     if ret != None:
         return mat, ret
