@@ -17,7 +17,7 @@ from . import *
 from ..ket import quant
 from math import pi
 
-def u2(phi : float, _lambda : float, q : quant):
+def u2(phi : float, _lambda : float, q : quant) -> quant:
     r"""Generic rotation gate with 2 Euler angles
 
     Apply a rotation about the X+Z axis on every qubit of q.
@@ -47,7 +47,9 @@ def u2(phi : float, _lambda : float, q : quant):
     RY(pi/2, q)
     RZ(phi, q)
 
-def u3(theta : float, phi : float, _lambda : float, q : quant):
+    return q
+
+def u3(theta : float, phi : float, _lambda : float, q : quant) -> quant:
     r"""Generic rotation gate with 3 Euler angles
 
     Apply a generic rotation on every qubit of q.
@@ -81,6 +83,8 @@ def u3(theta : float, phi : float, _lambda : float, q : quant):
     RZ(theta, q)
     RX(-pi/2, q)
     RZ(phi, q)
+    
+    return q
 
 i  = I            
 x  = X 

@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import quant, future, dump, metrics
+from ..ket import quant, future, dump, metrics, measure
 from ..gates import cnot, X
 from ..standard import adj
 from typing import Iterable
@@ -74,6 +74,10 @@ def __quant__exit__(self, type, value, tb):
         raise RuntimeError('non-free quant at the end of scope')
 
 quant.__exit__ = __quant__exit__
+
+quant.__int__ = lambda self : measure(self).get()
+
+future.__int__ = lambda self : self.get()
 
 quant.__repr__ = lambda self : '<Ket quant; '+str(len(self))+' qubits; '+self.this.__repr__()+'>'
 future.__repr__ = lambda self : '<Ket future; '+self.this.__repr__()+'>'

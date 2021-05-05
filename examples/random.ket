@@ -1,8 +1,6 @@
 def random(n_bits : int) -> int:
     with run():
-        q = quant(n_bits)
-        H(q)
-        return measure(q).get()
+        return int(H(quant(n_bits)))
 
 if __name__ == '__main__':
     n_bits = 60

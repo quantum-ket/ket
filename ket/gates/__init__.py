@@ -15,10 +15,11 @@
 
 from ..ket import X, Y, Z, H, S, SD, T, TD, phase, RX, RY, RZ, quant
 from ..standard import ctrl
+from typing import Tuple
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap']
 
-def I(q : quant):
+def I(q : quant) -> quant:
     r"""Identity gate 
 
     Apply an identity gate on every qubit of q.
@@ -47,9 +48,9 @@ def I(q : quant):
     :type q: :py:class:`quant`
     :param q: input qubits
     """
-    return
+    return q
  
-def cnot(c : quant, t : quant):
+def cnot(c : quant, t : quant) -> Tuple[quant, quant]:
     r"""Controlled-NOT
     
     Apply a CNOT gate between the qubits of c and t.
@@ -79,8 +80,10 @@ def cnot(c : quant, t : quant):
     
     for i, j in zip(c, t):
         ctrl(i, X, j)
+    
+    return c, t
 
-def swap(a : quant, b : quant):
+def swap(a : quant, b : quant) -> Tuple[quant, quant]:
     r"""SWAP gate
     
     Swap the qubits of a and b.
@@ -110,3 +113,5 @@ def swap(a : quant, b : quant):
     cnot(a, b)
     cnot(b, a)
     cnot(a, b)
+
+    return a, b

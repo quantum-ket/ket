@@ -1,4 +1,4 @@
-from ket.lib import pauli_prepare, within, ctrl_int
+from ket.lib import within, ctrl_int
 from math import sqrt, pi
 from typing import Callable
 
@@ -12,16 +12,13 @@ def oracle(x : quant , y : quant):
 def grover(size : int, oracle : Callable, outcome : int = 1) -> int:
     """Grover's search algorithm"""
 
-    s = quant(size)
-    H(s)
-
-    aux = quant(1)
-    pauli_prepare(X, aux, -1)
+    s = H(quant(size))
+    aux = H(X(quant(1)))
 
     steps = int((pi/4)*sqrt(2**size/outcome))
     for _ in range(steps):
         oracle(s, aux)
-        within(lambda : [H(s), X(s)],
+        within(lambda : X(H(s)),
                lambda : ctrl(s[1:], Z, s[0]))
 
     return measure(s).get()
