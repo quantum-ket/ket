@@ -13,11 +13,41 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import X, Y, Z, H, S, SD, T, TD, phase, RX, RY, RZ, quant
+from ..ket import X, Y, Z, H, S, SD, T, TD, quant
+from ..ket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ 
 from ..standard import ctrl
-from typing import Tuple
+from typing import Callable, Tuple, Union, Optional
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap']
+
+def RX(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+    if q is not None:
+        return _RX(theta, q)
+    else:
+        return lambda q : _RX(theta, q)
+
+def RY(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+    if q is not None:
+        return _RY(theta, q)
+    else:
+        return lambda q : _RY(theta, q)
+
+def RZ(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+    if q is not None:
+        return _RZ(theta, q)
+    else:
+        return lambda q : _RZ(theta, q)
+
+def phase(_lambda : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+    if q is not None:
+        return _phase(_lambda, q)
+    else:
+        return lambda q : _phase(_lambda, q)
+
+RX.__doc__ = _RX.__doc__
+RY.__doc__ = _RY.__doc__
+RZ.__doc__ = _RZ.__doc__
+phase.__doc__ = _phase.__doc__
 
 def I(q : quant) -> quant:
     r"""Identity gate 

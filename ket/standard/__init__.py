@@ -86,8 +86,14 @@ class control:
         for _ in self.ctr:
             ctrl_end()
 
-def ctrl(control : Union[Iterable[quant], quant], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
+def ctrl(control : Union[Iterable[quant], quant, slice, int], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
     """Add qubits of controll to a operation call."""
+
+    if type(control) == slice or type(control) == int:
+        if 'target' not in kwargs:
+            raise ValueError("Keyword argument 'target' no provided")
+        return lambda q : ctrl(q[control], func, q[kwargs['target']])
+
     ret = []
     if hasattr(control, '__iter__'):
         for c in control:
