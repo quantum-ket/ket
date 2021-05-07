@@ -16,6 +16,7 @@
 from ..ket import (quant, measure, report, exec_quantum, ctrl_begin, ctrl_end,
         adj_begin, adj_end, process_begin, process_end)
 from typing import Iterable, Callable, Union
+from inspect import signature
 
 __all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'report', 'measure', 'exec_quantum']
 
@@ -117,6 +118,12 @@ def ctrl(control : Union[Iterable[quant], quant, slice, int], func : Union[Calla
 
 def adj(func : Union[Callable, Iterable[Callable]], *args, **kwargs):
     """Call the inverse of a quantum operation."""
+    
+    if len(signature(func).parameters) != 0 and len(args) == 0 and len(kwargs) == 0:
+        def __adj__(*args, **kwargs):
+            adj(func, *args, **kwargs)
+        return __adj__
+
     ret = []
     adj_begin()
     if hasattr(func, '__iter__'):
