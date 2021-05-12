@@ -58,7 +58,6 @@
             py_int = PyNumber_Lshift(py_int, PyLong_FromLong(64));
             py_int = PyNumber_Or(py_int, PyLong_FromUnsignedLong(*it));
         }
-        std::cout << std::endl;
         PyList_SetItem($result, i, py_int);
     }
 %}
