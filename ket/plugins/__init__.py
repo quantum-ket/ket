@@ -18,6 +18,7 @@ from typing import List
 from inspect import getsource
 from base64 import b64encode
 from textwrap import dedent
+from typing import Optional
 
 __all__ = ['plugin', 'pown', 'diagonal', 'make_quantum']
 
@@ -56,6 +57,13 @@ def diagonal(diag : List[float], q : quant):
     arg = ' '.join(str(i) for i in diag)
     plugin('ket_diag', q, arg)
     
+def matrix(u00 : complex, u01 : complex, u10 : complex, u11 :complex, q : Optional[quant] = None):
+    mat = [u00, u01, u10, u11]
+    arg = ' '.join(str(i.real) for i in mat) +' '+' '.join(str(i.imag) for i in mat)
+    if q is None:
+        return lambda q : plugin('ket_mat', q, arg)
+    else:
+        plugin('ket_mat', q, arg)
 
 def make_quantum(*args, **kwargs):
     r'''Make a Python function operate with quant variables.
