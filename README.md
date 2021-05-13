@@ -99,11 +99,13 @@ print(15, '=', p , "x", q)
 ```console
 $ ket -h
 Ket program options:
-  -h [ --help ]          Show this information
-  -o [ --out ]           KQASM output file
-  -s [ --kbw ]  (-::1)   Quantum execution (KBW) address
-  -p [ --port ]  (=4242) Quantum execution (KBW) port address
-  --no-execute           Does not execute quantum code, measurements return 0
+  -h [ --help ]              Show this information.
+  -o [ --out ]               KQASM output file.
+  -s [ --kbw ]  (=127.0.0.1) Quantum execution (KBW) address.
+  -p [ --port ]  (=4242)     Quantum execution (KBW) port.
+  --seed                     Set RNG seed for quantum execution.
+  --no-execute               Does not execute KQASM, measurements return 0.
+  --dump-to-fs               Use the filesystem to transfer dump data.
 ```
 
 ## Installation
@@ -144,6 +146,7 @@ Install requirements:
 * C/C++ compiler
 * CMake
 * Ninja or GNU Make
+* GMP
 
 To install using pip runs:
 

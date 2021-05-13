@@ -13,11 +13,14 @@ description: |
 
       $ ket input.ket -h
       Ket program options:
-        -h [ --help ]          Show this information
-        -o [ --out ]           KQASM output file
-        -s [ --kbw ]  (=::1)   Quantum execution (KBW) address
-        -p [ --port ]  (=4242) Quantum execution (KBW) port address
-        --no-execute           Does not execute quantum code, measurements return 0
+        -h [ --help ]              Show this information.
+        -o [ --out ]               KQASM output file.
+        -s [ --kbw ]  (=127.0.0.1) Quantum execution (KBW) address.
+        -p [ --port ]  (=4242)     Quantum execution (KBW) port.
+        --seed                     Set RNG seed for quantum execution.
+        --no-execute               Does not execute KQASM, measurements return 0.
+        --dump-to-fs               Use the filesystem to transfer dump data.
+
 
   This project is part of the Ket Quantum Programming framework that also
   features:
