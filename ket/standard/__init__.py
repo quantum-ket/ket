@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import measure, report, exec_quantum
+from ..ket import measure, report, exec_quantum, process_begin, process_end
 from .ctrl import *
 from .adj import *
 
