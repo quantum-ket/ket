@@ -51,7 +51,14 @@ def code_ket(func : Callable) -> Callable:
                 z(c)
     """
 
-    buildins = 'from ket import *\nfrom ket.ket import label, branch, jump\n'
+    if '__in_ket__' in globals() and globals()['__in_ket__']:
+        return func
+
+    in_ket = "__in_ket__{}__".format(func.__name__)
+    if in_ket in func.__globals__ and func.__globals__[in_ket]:
+        return func
+
+    buildins = 'from ket import *\nfrom ket.ket import label, branch, jump\n'+in_ket+' = True\n'
     buildins_obj = compile(buildins, '<ket build-in functions>', 'exec', optimize=2)
     exec(buildins_obj, func.__globals__)
     
