@@ -16,7 +16,6 @@
 from .import_ket import __import_globals_ket__
 from . import *
 from .ket import label, branch, jump
-from os import path, getcwd
 
 def __ket__():
     import argparse
@@ -32,6 +31,7 @@ def __ket__():
         exit(1)
 
     globals()['__name__'] = '__main__'
+    globals()['__in_ket__'] = True
     source = path.join(getcwd(), args.input[0])
     __import_globals_ket__(source, globals())
 

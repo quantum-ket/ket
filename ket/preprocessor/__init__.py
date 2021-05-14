@@ -230,12 +230,3 @@ class ketpp (ast.NodeTransformer):
             return [continue_label, jump, continue_begin]
         else:
             return node
-
-    def visit_FunctionDef(self, node):
-        for dec in node.decorator_list:
-            if type(dec) == ast.Name and dec.id == 'code_ket':
-                node.decorator_list = []
-                break
-        
-        self.generic_visit(node)
-        return node
