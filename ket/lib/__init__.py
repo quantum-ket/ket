@@ -16,7 +16,7 @@
 from .. import *
 from .. import code_ket
 from math import pi, sqrt
-from typing import Callable, Union, List
+from typing import Callable, Iterable, Union, List
 
 def qft(q : quant, invert : bool = True) -> quant:
     """Quantum Fourier Transformation
@@ -160,7 +160,7 @@ def increment(q):
         ctrl(q[-1], increment, q[:-1])
     X(q[-1])
 
-def dump_matrix(u : Callable, size : int) -> List[List[complex]]:
+def dump_matrix(u : Union[Callable, Iterable[Callable]], size : int) -> List[List[complex]]:
     """Get the matrix of a quantum operation."""
 
     mat = [[0 for _ in range(2**size)] for _ in range(2**size)]
@@ -169,7 +169,12 @@ def dump_matrix(u : Callable, size : int) -> List[List[complex]]:
         column = quant(size)
         H(column)
         cnot(column, row)
-        ret = u(row)
+        if hasattr(u, '__iter__'):
+            ret = []
+            for ui in u:
+               ret.append(ui(row)) 
+        else:
+            ret = u(row)
         d = dump(column|row)
         exec_quantum()
     
