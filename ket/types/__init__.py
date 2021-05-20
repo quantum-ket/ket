@@ -50,6 +50,11 @@ class quant(_quant):
         r"""Allocate `size` qubits"""
         super().__init__(size)
 
+    def __or__(self, other):
+        ret = super().__or__(other)
+        ret.__class__ = quant
+        return ret
+
     def at(self, index : Iterable[int]):
         r"""Return qubits at `index`
         
@@ -67,6 +72,11 @@ class quant(_quant):
         """
 
         return reduce(lambda a, b : a | b, [self[i] for i in index])   
+
+    def __getitem__(self, param):
+        ret = super().__getitem__(param)
+        ret.__class__ = quant
+        return ret
 
     class quant_iter:
         def __init__(self, q):
