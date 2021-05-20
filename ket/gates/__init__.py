@@ -275,7 +275,7 @@ def phase(_lambda : float, q : Optional[quant] = None) -> Union[Callable, quant]
        _phase(_lambda, q)
        return q
     else:
-        def __phase(_lambda, q):
+        def __phase(q):
             _phase(_lambda, q)
             return q
         return __phase
@@ -311,7 +311,7 @@ def RX(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
        _RX(theta, q)
        return q
     else:
-        def __RX(theta, q):
+        def __RX(q):
             _RX(theta, q)
             return q
         return __RX
@@ -346,7 +346,7 @@ def RY(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
        _RY(theta, q)
        return q
     else:
-        def __RY(theta, q):
+        def __RY(q):
             _RY(theta, q)
             return q
         return __RY
@@ -381,7 +381,7 @@ def RZ(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
        _RZ(theta, q)
        return q
     else:
-        def __RZ(theta, q):
+        def __RZ(q):
             _RZ(theta, q)
             return q
         return __RZ
