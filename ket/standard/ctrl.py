@@ -13,8 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import quant, ctrl_begin, ctrl_end
-from typing import Iterable, Union, Callable
+from ..ket import ctrl_begin, ctrl_end, X
+from ..types import quant
+from typing import Iterable, Union, Callable, Optional
+from functools import reduce
 
 class control:
     r"""Controlled execution
@@ -34,16 +36,26 @@ class control:
     :param ctr: control :class:`~ket.type.quant` variables
     """
 
-    def __init__(self, *ctr : Iterable[quant]):
-        self.ctr = ctr
+    def __init__(self, *ctr : Iterable[quant], on_state : Optional[int] = None):
+        self.ctr = reduce(lambda a, b : a | b, ctr)
+        self.on_state = on_state
+        if on_state is not None:
+            self.mask = [int(i) for i in ('{0:0'+str(len(self.ctr))+'b}').format(on_state)]
+
+    def _apply_mask(self):
+        for i, q in zip(self.mask, self.ctr):
+            if i == 0:
+                X(q)
 
     def __enter__ (self):
-        for c in self.ctr:
-            ctrl_begin(c)
+        if self.on_state is not None:
+            self._apply_mask()
+        ctrl_begin(self.ctr)
      
     def __exit__ (self, type, value, tb):
-        for _ in self.ctr:
-            ctrl_end()
+        ctrl_end()
+        if self.on_state is not None:
+            self._apply_mask()
 
 def ctrl(control : Union[Iterable[quant], quant, slice, int], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
     """Add qubits of controll to a operation call."""

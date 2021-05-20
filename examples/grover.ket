@@ -1,4 +1,3 @@
-from ket.lib import ctrl_int
 from math import sqrt, pi
 from typing import Callable
 
@@ -7,19 +6,24 @@ def oracle(x : quant , y : quant):
 
     U|x⟩|y⟩ = |x⟩|f(x) ⊕ y⟩
     """
-    ctrl_int(x, 3, X, y) 
+    with control(x, on_state=3):
+        X(y)
 
-def grover(size : int, oracle : Callable, outcome : int = 1) -> int:
+def grover(size : int, oracle : Callable, outcomes : int = 1) -> int:
     """Grover's search algorithm"""
 
-    s = H(quant(size))
-    aux = H(X(quant(1)))
+    s = quant(size)
+    aux = X(quant())
 
-    steps = int((pi/4)*sqrt(2**size/outcome))
+    H(s)
+    H(aux)
+
+    steps = int((pi/4)*sqrt(2**size/outcomes))
     for _ in range(steps):
         oracle(s, aux)
         with around([H, X], s):
-            ctrl(s[1:], Z, s[0])
+            with control(s[1:]):
+                Z(s[0])
 
     return measure(s).get()
     
