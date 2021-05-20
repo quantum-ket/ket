@@ -14,13 +14,60 @@
 #  limitations under the License.
 
 from ..ket import quant as _quant, future, dump, metrics, context, measure
-from ..gates import cnot, X
-from ..standard import adj
 from typing import Iterable
+from functools import reduce
 
 __all__ = ['quant', 'future', 'dump', 'metrics', 'context']
 
 class quant(_quant):
+    r"""Qubit list
+
+    Allocate ``size`` qubits in the state :math:`\left|0\right>` and return
+    its reference in a new :class:`~ket.types.quant`.
+
+    Qubits allocated using a with statement must be released at the end of the
+    scope.
+    
+    **Example:**
+    
+    .. code-block:: ket
+
+        a = H(quant()) 
+        b = X(quant())
+        with quant() as aux: 
+            with around(H, aux):
+                with control(aux):
+                    swap(a, b)
+            result = measure(aux)
+            if result == 1:
+                X(aux) 
+            aux.free() 
+    
+    :param size: The number of qubits to allocate.
+    """
+
+    def __init__(self, size : int = 1):
+        r"""Allocate `size` qubits"""
+        super().__init__(size)
+
+    def at(self, index : Iterable[int]):
+        r"""Return qubits at `index`
+        
+        Create a new :class:`~ket.types.quant` with the qubit references at the
+        position defined by the ``index`` list.
+
+        **Example:**
+
+        .. code-block:: ket
+
+            q = quant()        
+            odd = q.at(range(1, len(q), 2)) # = q[1::2]
+
+        :param index: List of indexes.
+        """
+
+        return reduce(lambda a, b : a | b, [self[i] for i in index])   
+
     class quant_iter:
         def __init__(self, q):
             self.q = q
@@ -33,19 +80,7 @@ class quant(_quant):
                 return self.q[self.idx]
             raise StopIteration
 
-
-    def at(self, index : Iterable[int]):
-        """Return a quant with the qubits from index."""
-
-        index = list(index)
-        if len(index) == 0:
-            return None
-        else:
-            q = self[index[0]]
-            for i in index[1:]:
-                q |= self[i]
-            return q 
-    
+ 
     def __iter__(self):
         return self.quant_iter(self)
 
@@ -77,3 +112,26 @@ future.__repr__ = lambda self : '<Ket future; '+self.this.__repr__()+'>'
 dump.__repr__ = lambda self : '<Ket dump; '+self.this.__repr__()+'>'
 metrics.__repr__ = lambda self : '<Ket metrics; '+self.this.__repr__()+'>'
 
+dump.__doc__ = """Dump qubits
+
+Create a dump with the state current state of the :class:`~ket.types.quant`
+``q``.
+
+Creating a dump does not trigger quantum execution, but gathering any
+information from it does.
+
+**Example:**
+
+.. code-block:: ket
+
+    a = H(quant())
+    b = ctrl(a, X, quant())
+    d1 = dump(a|b)
+    Y(a)
+    d2 = dump(a|b)
+
+    print(d1.show())
+    print(d2.show())
+
+:param q: Qubits to dump.
+"""
