@@ -15,7 +15,7 @@
 
 from ..ket import ctrl_begin, ctrl_end, X
 from ..types import quant
-from typing import Iterable, Union, Callable, Optional
+from typing import Iterable, List, Union, Callable, Optional
 from functools import reduce
 
 class control:
@@ -36,11 +36,14 @@ class control:
     :param ctr: control :class:`~ket.type.quant` variables
     """
 
-    def __init__(self, *ctr : Iterable[quant], on_state : Optional[int] = None):
+    def __init__(self, *ctr : Iterable[quant], on_state : Union[int, List[int], None] = None):
         self.ctr = reduce(lambda a, b : a | b, ctr)
         self.on_state = on_state
         if on_state is not None:
-            self.mask = [int(i) for i in ('{0:0'+str(len(self.ctr))+'b}').format(on_state)]
+            if hasattr(on_state, '__iter__'):
+                self.mask = on_state
+            else:
+                self.mask = [int(i) for i in ('{0:0'+str(len(self.ctr))+'b}').format(on_state)]
 
     def _apply_mask(self):
         for i, q in zip(self.mask, self.ctr):
@@ -56,21 +59,34 @@ class control:
         ctrl_end()
         if self.on_state is not None:
             self._apply_mask()
+            
+def _get_qubits_at(control):
+    if type(control) == slice or type(control) == int:
+        return lambda q : q[control]
+    elif hasattr(control, '__iter__') and all(type(i) == int for i in control):
+        return lambda q : q.at(control)
+    else:
+        return None
 
-def ctrl(control : Union[Iterable[quant], quant, slice, int], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
+def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
     """Add qubits of controll to a operation call."""
 
-    if type(control) == slice or type(control) == int:
+    q_ctrl = _get_qubits_at(control)
+    if q_ctrl is not None:
         if 'target' not in kwargs:
             raise ValueError("Keyword argument 'target' no provided")
-        return lambda q : ctrl(q[control], func, q[kwargs['target']])
+        q_trgt = _get_qubits_at(kwargs['target'])
+
+        def _ctrl_gate(q : quant) -> quant:
+            ctrl(q_ctrl(q), func, q_trgt(q))
+            return q
+        return _ctrl_gate
 
     ret = []
     if hasattr(control, '__iter__'):
-        for c in control:
-            ctrl_begin(c)
-    else:
-        ctrl_begin(control)
+        control = reduce(lambda a, b : a | b, control)
+
+    ctrl_begin(control)
 
     if hasattr(func, '__iter__'):
         for f in func:
@@ -78,10 +94,6 @@ def ctrl(control : Union[Iterable[quant], quant, slice, int], func : Union[Calla
     else:
         ret = func(*args, **kwargs)
 
-    if hasattr(control, '__iter__'):
-        for _ in control:
-            ctrl_end()
-    else:
-        ctrl_end()
+    ctrl_end()
     
     return ret
