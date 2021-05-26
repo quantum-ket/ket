@@ -13,9 +13,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import types
 from ..ket import adj_begin, adj_end
-from typing import Union, Callable, Iterable
+from typing import Union, Callable, Iterable, Generator
 from inspect import signature
+from types import GeneratorType
 
 class inverse:
     """Execute inverse
@@ -55,8 +57,11 @@ def adj(func : Union[Callable, Iterable[Callable]], *args, **kwargs):
     return ret
 
 class around:
-    def __init__(self, outter_func : Union[Callable, Iterable[Callable]], *args, **kwargs):
-        self.outter_func = outter_func
+    def __init__(self, outter_func : Union[Callable, Iterable[Callable], Generator[Callable, None, None]], *args, **kwargs):
+        if type(outter_func) == GeneratorType:
+            self.outter_func = list(outter_func)
+        else:
+            self.outter_func = outter_func
         self.args = args
         self.kwargs = kwargs
 

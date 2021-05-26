@@ -60,28 +60,7 @@ class control:
         if self.on_state is not None:
             self._apply_mask()
             
-def _get_qubits_at(control):
-    if type(control) == slice or type(control) == int:
-        return lambda q : q[control]
-    elif hasattr(control, '__iter__') and all(type(i) == int for i in control):
-        return lambda q : q.at(control)
-    else:
-        return None
-
-def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
-    """Add qubits of controll to a operation call."""
-
-    q_ctrl = _get_qubits_at(control)
-    if q_ctrl is not None:
-        if 'target' not in kwargs:
-            raise ValueError("Keyword argument 'target' no provided")
-        q_trgt = _get_qubits_at(kwargs['target'])
-
-        def _ctrl_gate(q : quant) -> quant:
-            ctrl(q_ctrl(q), func, q_trgt(q))
-            return q
-        return _ctrl_gate
-
+def _ctrl(control : Union[Iterable[quant], quant ], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
     ret = []
     if hasattr(control, '__iter__'):
         control = reduce(lambda a, b : a | b, control)
@@ -97,3 +76,49 @@ def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], fun
     ctrl_end()
     
     return ret
+
+def _get_qubits_at(control):
+    if type(control) == slice or type(control) == int:
+        return lambda q : q[control]
+    elif hasattr(control, '__iter__') and all(type(i) == int for i in control):
+        return lambda q : q.at(control)
+    else:
+        return None
+
+def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
+    """Add qubits of controll to a operation call."""
+
+    q_ctrl = _get_qubits_at(control)
+    if q_ctrl is not None:
+        if 'target' not in kwargs and not len(args):
+            raise ValueError("Argument 'target' no provided")
+        
+        if 'target' in kwargs:
+            if len(kwargs) > 1:
+                raise TypeError("Invalid keyword arguments for 'ctrl'")
+            elif len(args) == 1:
+                raise ValueError("Argument 'target' provided twice")
+            elif len(args):
+                raise TypeError("Invalid arguments for 'ctrl'")
+            target = kwargs['target'] 
+        else:
+            if len(args) > 1:
+                raise TypeError("Invalid arguments for 'ctrl'")
+            elif 'target' in kwargs:
+                raise ValueError("Argument 'target' provided twice")
+            elif len(kwargs):
+                raise TypeError("Invalid keyword arguments for 'ctrl'")
+            target = args[0]
+            
+        q_trgt = _get_qubits_at(target)
+
+        def _ctrl_gate(q : quant) -> quant:
+            _ctrl(q_ctrl(q), func, q_trgt(q))
+            return q
+        return _ctrl_gate
+
+    if 'later_call' in kwargs and kwargs['later_call']:
+        del kwargs['later_call']
+        return lambda : _ctrl(control, func, *args, **kwargs)
+    else:
+        return _ctrl(control, func, *args, **kwargs)
