@@ -14,10 +14,11 @@
 #  limitations under the License.
 
 from ..ket import quant as _quant, future, dump, metrics, context, measure
-from typing import Iterable
+from typing import Iterable, Optional
 from functools import reduce
+from random import choices
 
-__all__ = ['quant', 'future', 'dump', 'metrics', 'context']
+__all__ = ['quant', 'future', 'dump', 'dump_measure', 'metrics', 'context']
 
 class quant(_quant):
     r"""Qubit list
@@ -145,3 +146,31 @@ information from it does.
 
 :param q: Qubits to dump.
 """
+
+class dump_measure():
+
+    def __init__(self, q : quant):
+        self.dump = dump(q)
+        self.states = None
+        self.probabilities = None
+        self.sorted = False
+
+    def get(self, n : Optional[int] = None, no_repeat : bool = False):
+
+        if self.states is None:
+            self.states = self.dump.get_states()
+            self.probabilities = [self.dump.probability(i) for i in self.states]
+        
+        if n is None:
+            return choices(self.states, weights=self.probabilities)[0]
+        elif no_repeat:
+            if not self.sorted:
+                self.sorted = True
+                sorted_states = [(s, p) for s, p in sorted(zip(self.states, self.probabilities), key = lambda x : x[1], reverse=True)]
+                self.states = [s for s, _ in sorted_states]    
+                self.probabilities = [p for _, p in sorted_states]
+            
+            return self.states[:n if n <= len(self.states) else None]
+        else:
+            return choices(self.states, weights=self.probabilities, k=n)
+            
