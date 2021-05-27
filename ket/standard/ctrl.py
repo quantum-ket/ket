@@ -15,34 +15,71 @@
 
 from ..ket import ctrl_begin, ctrl_end, X
 from ..types import quant
-from typing import Iterable, List, Union, Callable
+from typing import Iterable, List, Union, Callable, Optional
 from functools import reduce
 
 class control:
-    r"""Controlled execution
+    r"""Create a controlled-scope
     
-    Apply controlled quantum operations.
+    Inside a ``with control`` scope, the qubits of ``ctr`` control every
+    quantum operation, only execution if all qubits are in the estate
+    :math:`\left|1\right>`.
 
+    Optionally, you can change the state when applying the quantum operation
+    with the Keyword Argument ``on_state``.  If ``on_state`` is an ``int``, the
+    number of qubits needs to be equal to or greater than the bit length of
+    ``on_state``.  Else if ``on_sate`` is a ``List[int]``, its length needs to
+    be equal to the number of qubits.
+
+    For example, execute when the qubits are in the state
+    :math:`\left|\left[\dots0\right]11\right>`, use ``with control(ctr, on_state=3):``
+    or ``with control(ctr, on_state=[0, 1, 1]):`` if ``ctr`` has exactly 3 qubits.
+    
     **Usage:**
 
     .. code-block:: ket
     
-        with control(ctr[, ...]):
+        with control(*ctr[, on_state]):
             ...
 
-    Note:
-        Use ``~ctrl`` to control on :math:`\left|0\right>`.
+    **Example:**
 
-    :param ctr: control :class:`~ket.type.quant` variables
+    .. code-block:: ket
+
+        c = quant(2)
+        a, b = quant(2)
+
+        # CNOT c[0] a
+        with control(c[0]):
+            X(a)
+        
+        # Toffoli c[0] c[1] a
+        with control(c):
+            X(a)
+
+        # CSWAP c[0] a b
+        with control(c[0]):
+            swap(a, b)
+
+    Args:
+        ctr: Control qubits.
+        on_state: Change the control state. 
+
+    Raises:
+        ValueError: If ``on_state`` is not consistent with the number of qubits in ``ctr``.
     """
 
-    def __init__(self, *ctr : Iterable[quant], on_state : Union[int, List[int], None] = None):
+    def __init__(self, *ctr : quant, on_state : Optional[Union[int, List[int]]] = None):
         self.ctr = reduce(lambda a, b : a | b, ctr)
         self.on_state = on_state
         if on_state is not None:
             if hasattr(on_state, '__iter__'):
+                if len(self.ctr) != len(on_state):
+                    raise ValueError(f"'on_state' received a list of length {len(on_state)} to use on {len(self.ctr)} qubits")
                 self.mask = on_state
             else:
+                if len(self.ctr) < on_state.bit_length():
+                    raise ValueError(f"To control 'on_state' {on_state} you need at least {on_state.bit_length()} qubits")
                 self.mask = [int(i) for i in ('{0:0'+str(len(self.ctr))+'b}').format(on_state)]
 
     def _apply_mask(self):
