@@ -19,7 +19,7 @@ from typing import Union, Callable, Iterable, Generator
 from inspect import signature
 from types import GeneratorType
 
-class inverse:
+class _inverse:
     """Execute inverse
 
     Apply the quantum operations backwards.
@@ -28,7 +28,7 @@ class inverse:
 
     .. code-block:: ket
 
-        with inverse():
+        with inverse:
             ...
             
     """
@@ -36,7 +36,12 @@ class inverse:
         adj_begin()     
 
     def __exit__ (self, type, value, tb):
-        adj_end()     
+        adj_end()  
+
+    def __call__(self):
+        raise SyntaxError("unexpected '()' after 'inverse', use 'with inverse:'")
+
+inverse = _inverse()
 
 def adj(func : Union[Callable, Iterable[Callable]], *args, **kwargs):
     """Call the inverse of a quantum operation."""
