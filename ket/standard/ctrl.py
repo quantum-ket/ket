@@ -15,11 +15,33 @@
 
 from ..ket import ctrl_begin, ctrl_end, X
 from ..types import quant
-from typing import Iterable, List, Union, Callable, Optional
+from typing import Iterable, List, Union, Callable, Optional, Tuple, Any
 from functools import reduce
 
+def _create_mask(on_state : Union[int, Iterable[int], None], length : int) -> List[int]:
+    """Create a mask for ctrl and control"""
+
+    if on_state is None:
+        return None
+    elif hasattr(on_state, '__iter__'):
+        if len(on_state) != length:
+            raise ValueError(f"'on_state' received a list of length {len(on_state)} to use on {length} qubits")
+        return on_state
+    else:
+        if length < on_state.bit_length():
+            raise ValueError(f"To control 'on_state' {on_state} you need at least {on_state.bit_length()} qubits")
+        return [int(i) for i in f"{{:0{length}b}}".format(on_state)]
+
+def _apply_mask(mask : Iterable[int], q : quant):
+    """Flip qubit q[i] if mask[i] == 0"""
+    
+    if mask is not None:
+        for i, q in zip(mask, q):
+            if i == 0:
+                X(q)
+
 class control:
-    r"""Create a controlled-scope
+    r"""Open a controlled-scope
     
     Inside a ``with control`` scope, the qubits of ``ctr`` control every
     quantum operation, only execution if all qubits are in the estate
@@ -64,65 +86,63 @@ class control:
     Args:
         ctr: Control qubits.
         on_state: Change the control state. 
-
-    Raises:
-        ValueError: If ``on_state`` is not consistent with the number of qubits in ``ctr``.
     """
 
     def __init__(self, *ctr : quant, on_state : Optional[Union[int, List[int]]] = None):
         self.ctr = reduce(lambda a, b : a | b, ctr)
-        self.on_state = on_state
-        if on_state is not None:
-            if hasattr(on_state, '__iter__'):
-                if len(self.ctr) != len(on_state):
-                    raise ValueError(f"'on_state' received a list of length {len(on_state)} to use on {len(self.ctr)} qubits")
-                self.mask = on_state
-            else:
-                if len(self.ctr) < on_state.bit_length():
-                    raise ValueError(f"To control 'on_state' {on_state} you need at least {on_state.bit_length()} qubits")
-                self.mask = [int(i) for i in ('{0:0'+str(len(self.ctr))+'b}').format(on_state)]
-
-    def _apply_mask(self):
-        for i, q in zip(self.mask, self.ctr):
-            if i == 0:
-                X(q)
+        self.mask = _create_mask(on_state, len(self.ctr))
 
     def __enter__ (self):
-        if self.on_state is not None:
-            self._apply_mask()
+        _apply_mask(self.mask, self.ctr)
         ctrl_begin(self.ctr)
      
     def __exit__ (self, type, value, tb):
         ctrl_end()
-        if self.on_state is not None:
-            self._apply_mask()
+        _apply_mask(self.mask, self.ctr)
             
-def _ctrl(control : Union[Iterable[quant], quant ], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
+def _ctrl(control  : Union[Iterable[quant], quant ], 
+          func     : Union[Callable, Iterable[Callable]],
+          *args, 
+          on_state : Optional[Union[int, List[int]]] = None,
+          **kwargs) -> Any:
+    """Call Callable with controll-qubits"""
+
     ret = []
-    if hasattr(control, '__iter__'):
-        control = reduce(lambda a, b : a | b, control)
+    mask = _create_mask(on_state, len(control))
 
+    _apply_mask(mask, control)
     ctrl_begin(control)
-
-    if hasattr(func, '__iter__'):
+    
+    if hasattr(func, '__iter__'): 
         for f in func:
             ret.append(f(*args, **kwargs))
     else:
         ret = func(*args, **kwargs)
 
     ctrl_end()
+    _apply_mask(mask, control)
     
     return ret
 
-def _get_qubits_at(control):
-    if type(control) == slice or type(control) == int:
-        return lambda q : q[control]
-    elif hasattr(control, '__iter__') and all(type(i) == int for i in control):
-        return lambda q : q.at(control)
-    else:
-        return None
+def _qubit_for_ctrl(qubits : Union[Iterable[quant], quant, slice, int, Iterable[int]]) -> Tuple[Union[Callable[[quant], quant], quant], bool]:
+    """Get qubits for ctrl"""
 
-def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], func : Union[Callable, Iterable[Callable]] , *args, **kwargs):
+    if type(qubits) == slice or type(qubits) == int:
+        return lambda q : q[qubits], True
+    elif hasattr(qubits, '__iter__') and all(type(i) == int for i in qubits):
+        return lambda q : q.at(qubits), True
+    elif hasattr(qubits, '__iter__') and all(type(i) == quant for i in qubits):
+        return reduce(lambda a, b : a | b, qubits), False
+    else:
+        return qubits, False
+
+def ctrl(control    : Union[Iterable[quant], quant, slice, int, Iterable[int]], 
+         func       : Union[Callable, Iterable[Callable]] , 
+         *args,    
+         on_state   : Optional[Union[int, List[int]]] = None,
+         target     : Optional[Union[slice, int, Iterable[int]]] = None,
+         later_call : bool = False,
+         **kwargs) -> Union[Callable, Any] :
     r"""Add controll-qubits to a Callable
 
     **Call with control qubits**
@@ -147,7 +167,7 @@ def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], fun
         # ret3 = []
         # with control(control_qubits):
         #     for f in func:
-        #     ret3.append(f(*args, **kwargs))
+        #         ret3.append(f(*args, **kwargs))
  
     **Create controlled-operation**
 
@@ -197,45 +217,19 @@ def ctrl(control : Union[Iterable[quant], quant, slice, int, Iterable[int]], fun
     Args:
         control: Control qubits, use :class:`~ket.types.quant` for call with control qubits and index to create controlled-operations.
         func: Function or list of functions to add control.
-
-    Other Parameters:
-        target (``Union[slice, int, Iterable[int]]``): Target qubits to create controlled-operations.
-
-    Keyword Args:
-        later_call (``bool``): If ``True``, do not execute and return a ``Callable[[], Any]``.
+        target: Target qubits to create controlled-operations.
+        later_call: If ``True``, do not execute and return a ``Callable[[], Any]``.
+        on_state: Change the control state. 
     """
 
-    q_ctrl = _get_qubits_at(control)
-    if q_ctrl is not None:
-        if 'target' not in kwargs and not len(args):
-            raise ValueError("Argument 'target' no provided")
-        
-        if 'target' in kwargs:
-            if len(kwargs) > 1:
-                raise TypeError("Invalid keyword arguments for 'ctrl'")
-            elif len(args) == 1:
-                raise ValueError("Argument 'target' provided twice")
-            elif len(args):
-                raise TypeError("Invalid arguments for 'ctrl'")
-            target = kwargs['target'] 
-        else:
-            if len(args) > 1:
-                raise TypeError("Invalid arguments for 'ctrl'")
-            elif 'target' in kwargs:
-                raise ValueError("Argument 'target' provided twice")
-            elif len(kwargs):
-                raise TypeError("Invalid keyword arguments for 'ctrl'")
-            target = args[0]
-            
-        q_trgt = _get_qubits_at(target)
-
+    control, create_gate = _qubit_for_ctrl(control)
+    if create_gate:
+        target, _ = _qubit_for_ctrl(*args if target is None else target)
         def _ctrl_gate(q : quant) -> quant:
-            _ctrl(q_ctrl(q), func, q_trgt(q))
+            _ctrl(control(q), func, target(q), on_state=on_state)
             return q
         return _ctrl_gate
-
-    if 'later_call' in kwargs and kwargs['later_call']:
-        del kwargs['later_call']
-        return lambda : _ctrl(control, func, *args, **kwargs)
+    elif later_call:
+        return lambda : _ctrl(control, func, *args, on_state=on_state, **kwargs)
     else:
-        return _ctrl(control, func, *args, **kwargs)
+        return _ctrl(control, func, *args, on_state=on_state, **kwargs)

@@ -13,22 +13,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import types
 from ..ket import adj_begin, adj_end
-from typing import Union, Callable, Iterable, Generator
+from typing import Union, Callable, Iterable, Generator, Any
 from inspect import signature
 from types import GeneratorType
 
-class _inverse:
-    """Execute inverse
+class inverse:
+    r"""Open a inverse scope
 
-    Apply the quantum operations backwards.
+    Inside a ``with inverse`` scope, the the quantum operations backwards.
     
     **Usage:**
 
     .. code-block:: ket
 
-        with inverse:
+        with inverse():
             ...
             
     """
@@ -38,18 +37,81 @@ class _inverse:
     def __exit__ (self, type, value, tb):
         adj_end()  
 
-    def __call__(self):
-        raise SyntaxError("unexpected '()' after 'inverse', use 'with inverse:'")
-
-inverse = _inverse()
-
-def adj(func : Union[Callable, Iterable[Callable]], *args, **kwargs):
-    """Call the inverse of a quantum operation."""
+def _adj(func : Union[Callable, Iterable[Callable]], 
+        *args, 
+        **kwargs) -> Any:
+    """Call inverse operation"""
     
-    if len(signature(func).parameters) != 0 and len(args) == 0 and len(kwargs) == 0:
-        def __adj__(*args, **kwargs):
-            adj(func, *args, **kwargs)
-        return __adj__
+    ret = []
+    adj_begin()
+    if hasattr(func, '__iter__'):
+        for f in func:
+            ret.append(f(*args, **kwargs))
+    else:
+        ret = func(*args, **kwargs)
+    adj_end()
+    return ret
+
+def adj(func       : Union[Callable, Iterable[Callable]], 
+        *args, 
+        later_call : bool = False,
+        **kwargs) -> Union[Callable, Any]:
+    """Inverse of a Callable
+    
+    **Call inverse**
+    
+    .. code-block:: ket
+
+        ret1 = adj(func, *args, **kwargs)
+        # Equivalent to:
+        # with inverse():
+        #     ret1 = func(*args, **kwargs)
+        
+        ret2 = adj([f0, f1, f2, ...], *args, **kwargs)
+        # Equivalent to:
+        # ret2 = []
+        # with inverse():
+        #     for f in func:
+        #         ret2.append(f(*args, **kwargs))
+
+
+    **Create inverse operation**
+
+    1. If the keyword argument ``later_call`` is ``True``, return a
+    ``Callable[[], Any]``:
+
+    .. code-block:: ket
+
+        adj_func = adj(func, *args, **kwargs, later_call=True)
+        # Equivalent to:
+        # adj_func = lambda : adj(func, *args, **kwargs)
+
+    2. If any argument for ``func`` is provided, return the ``func`` inverse:
+
+    .. code-block:: ket
+
+        # def func(*args, *kwargs): ...
+        adj_func = adj(func)
+        # Equivalent to:
+        # adj_func = lambda *args, **kwargs : adj(func, *args, **kwargs)
+
+    **Example:**
+
+    .. code-block:: ket
+
+        rx_pi_inv = adj(RX(pi))
+
+    Args:
+        func: Function or list of functions to add control.
+        later_call: If ``True``, do not execute and return a ``Callable[[], Any]``.
+    """
+    
+    if len(signature(func).parameters) != 0 and len(args) == len(kwargs) == 0:
+        return lambda *args, **kwargs: _adj(func, *args, **kwargs)
+    elif later_call:
+        return lambda : _adj(func, *args, **kwargs)
+    else:
+        return _adj(func, *args, **kwargs)
 
     ret = []
     adj_begin()
@@ -62,11 +124,33 @@ def adj(func : Union[Callable, Iterable[Callable]], *args, **kwargs):
     return ret
 
 class around:
-    def __init__(self, outter_func : Union[Callable, Iterable[Callable], Generator[Callable, None, None]], *args, **kwargs):
-        if type(outter_func) == GeneratorType:
-            self.outter_func = list(outter_func)
-        else:
-            self.outter_func = outter_func
+    r"""Apply operation U around V and V inverse
+
+    With the quantum operations U and V, execute VUV :math:`\!^\dagger`, where V
+    is defined as by ``func, *args, **kwargs`` and U is the open scope. 
+    
+    * ``func`` must be a ``Callable`` or ``Callable`` iterable. 
+
+    .. code-block:: ket
+
+        with around(V):
+            U
+    
+    **Example:**
+
+    .. code-block:: ket
+
+        # Grover diffusion operator
+        with around([H, X], s):
+            with control(s[1:]):
+                Z(s[0])
+    """
+
+    def __init__(self, 
+                 func : Union[Callable, Iterable[Callable], Generator[Callable, None, None]], 
+                 *args,
+                 **kwargs):
+        self.outter_func = list(func) if type(func) == GeneratorType else func
         self.args = args
         self.kwargs = kwargs
 

@@ -14,25 +14,22 @@
 #  limitations under the License.
 
 from .preprocessor import ketpp
-from .ket import config
 from inspect import getsource
 from ast import parse, fix_missing_locations
 from typing import Callable
 
+from .util import *
 from .gates import *
-from .standard import *
 from .types import *
+from .standard import *
 from .import_ket import *
+from .util import __all__ as all_util
 from .gates import __all__ as all_gate
-from .standard import __all__ as all_standard
 from .types import __all__ as all_types
 from .import_ket import __all__ as all_import
+from .standard import __all__ as all_standard
 
-__all__ = ["ket_config"]+all_gate+all_standard+all_types+all_import
-
-def ket_config(**params):
-    for param in params:
-        config(param, params[param])
+__all__ = all_util+all_gate+all_types+all_import+all_standard
 
 def code_ket(func : Callable) -> Callable:
     """Parse as Ket function.

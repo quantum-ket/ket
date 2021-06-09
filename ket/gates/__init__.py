@@ -31,18 +31,18 @@ def X(q : quant) -> quant:
     .. math::
 
         X = \begin{bmatrix} 
-                     0 & 1 \\
-                     1 & 0 
-                 \end{bmatrix}
+                0 & 1 \\
+                1 & 0 
+            \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 X\left|0\right> = & \left|1\right> \\
-                 X\left|1\right> = & \left|0\right>
-             \end{matrix}
+            X\left|0\right> = & \left|1\right> \\
+            X\left|1\right> = & \left|0\right>
+        \end{matrix}
 
     :param q: Input qubits.
     """
@@ -56,21 +56,21 @@ def Y(q : quant) -> quant:
 
     **Matrix representation:**
 
-     .. math::
+    .. math::
 
-         Y = \begin{bmatrix} 
-                      0 & -i \\
-                      i & 0 
-                  \end{bmatrix}
+        Y = \begin{bmatrix} 
+                   0 & -i \\
+                   i & 0 
+            \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 Y\left|0\right> = & -i\left|1\right> \\
-                 Y\left|1\right> =& i\left|1\right>
-             \end{matrix}
+            Y\left|0\right> = & -i\left|1\right> \\
+            Y\left|1\right> =& i\left|1\right>
+        \end{matrix}
 
     :param q: Input qubits.
     """
@@ -87,18 +87,18 @@ def Z(q : quant) -> quant:
     .. math::
 
         Z = \begin{bmatrix} 
-                     1 & 0 \\
-                     0 & -1 
-                 \end{bmatrix}
+                1 & 0 \\
+                0 & -1 
+            \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 Z\left|0\right> = & \left|0\right> \\ 
-                 Z\left|1\right> = & -\left|1\right>
-             \end{matrix}
+            Z\left|0\right> = & \left|0\right> \\ 
+            Z\left|1\right> = & -\left|1\right>
+        \end{matrix}
 
     :param q: Input qubits.
     """
@@ -115,20 +115,20 @@ def H(q : quant) -> quant:
     .. math::
 
         H = \frac{1}{\sqrt{2}}\begin{bmatrix} 
-                     1 & 1 \\
-                     1 & -1 
-                 \end{bmatrix}
+                                    1 & 1 \\
+                                    1 & -1 
+                              \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 H\left|0\right> = & \frac{\left|0\right>+\left|1\right>}{\sqrt{2}} = & \left|+\right> \\
-                 H\left|1\right> = & \frac{\left|0\right>-\left|1\right>}{\sqrt{2}} = & \left|-\right> \\
-                 H\left|+\right> = & \left|0\right> \\
-                 H\left|-\right> = & \left|1\right> \\
-             \end{matrix}
+            H\left|0\right> = & \frac{\left|0\right>+\left|1\right>}{\sqrt{2}} = & \left|+\right> \\
+            H\left|1\right> = & \frac{\left|0\right>-\left|1\right>}{\sqrt{2}} = & \left|-\right> \\
+            H\left|+\right> = & \left|0\right> \\
+            H\left|-\right> = & \left|1\right> \\
+        \end{matrix}
 
     :param q: Input qubits.
     """
@@ -145,18 +145,18 @@ def S(q : quant):
     .. math::
 
         S = \begin{bmatrix} 
-                     1 & 0 \\
-                     0 & i 
-                 \end{bmatrix}
+                1 & 0 \\
+                0 & i 
+            \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 S\left|0\right> = & \left|0\right> \\
-                 S\left|1\right> = & i\left|1\right> 
-             \end{matrix}
+            S\left|0\right> = & \left|0\right> \\
+            S\left|1\right> = & i\left|1\right> 
+        \end{matrix}
 
     :param q: Input qubits.
     """
@@ -173,9 +173,9 @@ def SD(q : quant):
     .. math::
 
         S^\dagger = \begin{bmatrix} 
-                     1 & 0 \\
-                     0 & -i 
-                 \end{bmatrix}
+                        1 & 0 \\
+                        0 & -i 
+                    \end{bmatrix}
 
     **Effect:**
 
@@ -198,20 +198,20 @@ def T(q : quant):
 
     **Matrix representation:**
 
-     .. math::
+    .. math::
 
          T = \begin{bmatrix} 
-                      1 & 0 \\
-                      0 & e^{i\pi/4} 
-                  \end{bmatrix}
+                    1 & 0 \\
+                    0 & e^{i\pi/4} 
+             \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 T\left|0\right> = & \left|0\right> \\
-                 T\left|1\right> = & \frac{1+i}{\sqrt{2}}\left|1\right> \end{matrix}
+            T\left|0\right> = & \left|0\right> \\
+            T\left|1\right> = & \frac{1+i}{\sqrt{2}}\left|1\right> \end{matrix}
 
     :param q: Input qubits.
     """
@@ -225,27 +225,27 @@ def TD(q : quant):
 
     **Matrix representation:**
 
-     .. math::
+    .. math::
 
          T^\dagger = \begin{bmatrix} 
-                              1 & 0 \\
-                              0 & e^{-i\pi/4}
-                          \end{bmatrix}
+                        1 & 0 \\
+                        0 & e^{-i\pi/4}
+                     \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 T^\dagger\left|0\right> = & \left|0\right> \\
-                 T^\dagger\left|1\right> = & \frac{1-i}{\sqrt{2}}\left|1\right> \end{matrix}
+                T^\dagger\left|0\right> = & \left|0\right> \\
+                T^\dagger\left|1\right> = & \frac{1-i}{\sqrt{2}}\left|1\right> \end{matrix}
 
     :param q: Input qubits.
     """
     _TD(q)
     return q
 
-def phase(_lambda : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+def phase(lamb : float, q : Optional[quant] = None) -> Union[Callable, quant]:
     r"""Phase gate
 
     Apply a relative phase of :math:`\lambda` on every qubit of q.
@@ -255,28 +255,28 @@ def phase(_lambda : float, q : Optional[quant] = None) -> Union[Callable, quant]
     .. math::
 
         P(\lambda) = \begin{bmatrix}
-                             1 & 0 \\
-                             0 & e^{i\lambda}
-                           \end{bmatrix}
+                        1 & 0 \\
+                        0 & e^{i\lambda}
+                     \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix}
-                 P\left|0\right> = & \left|0\right> \\
-                 P\left|1\right> =& e^{i\lambda}\left|1\right> 
-             \end{matrix}
+                P\left|0\right> = & \left|0\right> \\
+                P\left|1\right> =& e^{i\lambda}\left|1\right> 
+        \end{matrix}
 
     :param q: Input qubits.
-    :param lambda: Relative phase :math:`\lambda`.
+    :param lamb: Relative phase :math:`\lambda`.
     """
     if q is not None:
-       _phase(_lambda, q)
+       _phase(lamb, q)
        return q
     else:
         def __phase(q):
-            _phase(_lambda, q)
+            _phase(lamb, q)
             return q
         return __phase
 
@@ -288,21 +288,21 @@ def RX(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
 
     **Matrix representation:**
 
-     .. math::
+    .. math::
 
          RX(\theta) = \begin{bmatrix} 
-                      \cos{\frac{\theta}{2}} & -i\sin{\frac{\theta}{2}} \\
-                    -i\sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} 
-                             \end{bmatrix}
+                        \cos{\frac{\theta}{2}} & -i\sin{\frac{\theta}{2}} \\
+                        -i\sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} 
+                      \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix}
-                 RX\left|0\right> = & \cos\frac{\theta}{2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\
-                 RX\left|1\right> =& -i\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right>
-             \end{matrix}
+                RX\left|0\right> = & \cos\frac{\theta}{2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\
+                RX\left|1\right> =& -i\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right>
+        \end{matrix}
 
     :param q: Input qubits.
     :param theta: Rotation angle :math:`\theta`.
@@ -323,21 +323,21 @@ def RY(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
 
     **Matrix representation:**
 
-     .. math::
+    .. math::
 
          RY(\theta) = \begin{bmatrix} 
-                  \cos{\frac{\theta}{2}} & -\sin{\frac{\theta}{2}} \\
-                  \sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} 
-                            \end{bmatrix}
+                        \cos{\frac{\theta}{2}} & -\sin{\frac{\theta}{2}} \\
+                        \sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} 
+                      \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix}
-                 RY\left|0\right> = & \cos{\theta\over2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\
-                 RY\left|1\right> =& -\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> 
-             \end{matrix}
+            RY\left|0\right> = & \cos{\theta\over2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\
+            RY\left|1\right> =& -\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> 
+        \end{matrix}
 
     :param q: Input qubits.
     :param theta: Rotation angle :math:`\theta`.
@@ -358,21 +358,21 @@ def RZ(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
 
     **Matrix representation:**
 
-     .. math::
+    .. math::
 
          RZ(\theta) =  \begin{bmatrix} 
-                              e^{-i\theta/2} & 0 \\
-                                           0 & e^{i\theta/2} 
-                            \end{bmatrix}
+                            e^{-i\theta/2} & 0 \\
+                            0 & e^{i\theta/2} 
+                       \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix}
-                 RZ\left|0\right> = & e^{-i\theta/2}\left|0\right> \\ 
-                 RZ\left|1\right> =& e^{i\theta/2}\left|1\right> 
-             \end{matrix}
+            RZ\left|0\right> = & e^{-i\theta/2}\left|0\right> \\ 
+            RZ\left|1\right> =& e^{i\theta/2}\left|1\right> 
+        \end{matrix}
 
     :param q: Input qubits.
     :param theta: Rotation angle :math:`\theta`.
@@ -400,18 +400,18 @@ def I(q : quant) -> quant:
     .. math::
 
         I = \begin{bmatrix} 
-                     1 & 0 \\
-                     0 & 1 
-                 \end{bmatrix}
+                1 & 0 \\
+                0 & 1 
+            \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 X\left|0\right> = & \left|0\right> \\
-                 X\left|1\right> = & \left|1\right>
-             \end{matrix}
+            X\left|0\right> = & \left|0\right> \\
+            X\left|1\right> = & \left|1\right>
+        \end{matrix}
 
     :param q: Input qubits.
     """
@@ -427,18 +427,18 @@ def cnot(c : quant, t : quant) -> Tuple[quant, quant]:
     .. math::
 
         CNOT = \begin{bmatrix} 
-                     1 & 0 & 0 & 0\\
-                     0 & 1 & 0 & 0\\
-                     0 & 0 & 0 & 1\\
-                     0 & 0 & 1 & 0
-                 \end{bmatrix}
+                    1 & 0 & 0 & 0\\
+                    0 & 1 & 0 & 0\\
+                    0 & 0 & 0 & 1\\
+                    0 & 0 & 1 & 0
+                \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 CNOT\left|c t\right> = & \left|c (c\oplus t)\right> 
+            CNOT\left|c t\right> = & \left|c (c\oplus t)\right> 
         \end{matrix}
 
     :param c: Control qubits.
@@ -460,22 +460,22 @@ def swap(a : quant, b : quant) -> Tuple[quant, quant]:
     .. math::
 
         CNOT = \begin{bmatrix} 
-                     1 & 0 & 0 & 0\\
-                     0 & 0 & 1 & 0\\
-                     0 & 1 & 0 & 0\\
-                     0 & 0 & 0 & 1
-                 \end{bmatrix}
+                    1 & 0 & 0 & 0\\
+                    0 & 0 & 1 & 0\\
+                    0 & 1 & 0 & 0\\
+                    0 & 0 & 0 & 1
+                \end{bmatrix}
 
     **Effect:**
 
     .. math::
 
         \begin{matrix} 
-                 CNOT\left|a b\right> = & \left|b a\right> 
+            CNOT\left|a b\right> = & \left|b a\right> 
         \end{matrix}
 
     :param a: Input qubits.
-    :param a: Input qubits.
+    :param b: Input qubits.
     """
     cnot(a, b)
     cnot(b, a)

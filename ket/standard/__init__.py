@@ -13,12 +13,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import measure, report, exec_quantum, process_begin, process_end
+from ..ket import measure, exec_quantum, process_begin, process_end
 from .ctrl import *
 from .adj import *
 
-__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'report', 'measure', 'exec_quantum']
+__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure', 'exec_quantum']
 
+exec_quantum.__doc__ = \
+    """Trigger the quantum execution
+
+    Execute the top process and fullfil the :class:`~ket.types.future` and
+    :class:`~ket.types.dump` variables.
+    """
+
+measure.__doc__ = \
+    """Quantum measurement
+
+    Measure the qubits of a :class:`~ket.types.quant` and return a
+    :class:`~ket.types.future`.
+
+    Args:
+        q: Qubits to measure.
+    """
+    
 class run:
     """Execute in a new process
     

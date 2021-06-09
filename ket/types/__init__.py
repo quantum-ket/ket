@@ -13,12 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import quant as _quant, future, dump, metrics, context, measure
+from ..ket import quant as _quant, future, dump, measure
 from typing import Iterable, Optional
 from functools import reduce
 from random import choices
 
-__all__ = ['quant', 'future', 'dump', 'dump_measure', 'metrics', 'context']
+__all__ = ['quant', 'future', 'dump', 'dump_measure']
 
 class quant(_quant):
     r"""Qubit list
@@ -121,31 +121,31 @@ future.__int__ = lambda self : self.get()
 
 future.__repr__ = lambda self : '<Ket future; '+self.this.__repr__()+'>'
 dump.__repr__ = lambda self : '<Ket dump; '+self.this.__repr__()+'>'
-metrics.__repr__ = lambda self : '<Ket metrics; '+self.this.__repr__()+'>'
 
-dump.__doc__ = """Dump qubits
+dump.__doc__ = \
+    """Dump qubits
 
-Create a dump with the state current state of the :class:`~ket.types.quant`
-``q``.
+    Create a dump with the state current state of the :class:`~ket.types.quant`
+    ``q``.
 
-Creating a dump does not trigger quantum execution, but gathering any
-information from it does.
+    Creating a dump does not trigger quantum execution, but gathering any
+    information from it does.
 
-**Example:**
+    **Example:**
 
-.. code-block:: ket
+    .. code-block:: ket
 
-    a = H(quant())
-    b = ctrl(a, X, quant())
-    d1 = dump(a|b)
-    Y(a)
-    d2 = dump(a|b)
+        a = H(quant())
+        b = ctrl(a, X, quant())
+        d1 = dump(a|b)
+        Y(a)
+        d2 = dump(a|b)
 
-    print(d1.show())
-    print(d2.show())
+        print(d1.show())
+        print(d2.show())
 
-:param q: Qubits to dump.
-"""
+    :param q: Qubits to dump.
+    """
 
 class dump_measure():
 

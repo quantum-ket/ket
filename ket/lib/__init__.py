@@ -48,61 +48,6 @@ def qft(q : quant, invert : bool = True) -> quant:
     return q.inverted()
 
 @code_ket
-def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
-    """Bell state preparation
-    
-    Return two entangle qubits in the Bell state:
-    
-    .. math::
-
-        \left|\beta_{x,y}\right> = \frac{\left|0,y\right> + (-1)^x\left|1,¬y\right>}{\sqrt{2}}
-        
-    :param x: aux 0
-    :param y: aux 1
-    :param qubits: if provided, prepare state in qubits; else, create a new quant
-    :return: 2 qubits in the Bell state
-    """
-
-    if qubits is not None and (len(qubits) != 2 or type(qubits) != quant):
-        raise AttributeError("if param 'qubits' is provided, it must be a quant of length 2")
-
-    if qubits is None:
-        qubits = quant(2)
-
-    if x == 1:
-        X(qubits[0])
-    if y == 1:
-        X(qubits[1])
-    H(qubits[0])
-    ctrl(qubits[0], X, qubits[1])
-    return qubits
-
-@code_ket
-def pauli_prepare(basis : Union[X, Y, Z], q : quant, state : int = +1) -> quant:
-    """Prepares qubits in the +1 or -1 eigenstate of a given Pauli operator."""
-
-    if state == -1:
-        X(q)
-    elif state == 1:
-        pass
-    else:
-        raise ValueError('param state must be +1 or -1.')
-
-    if basis == X:
-        return H(q)
-    elif basis == Y:
-        return S(H(q))
-    elif basis == Z:
-        return q
-    else:
-        raise ValueError('param basis must be X, Y, or Z.')
-
-def pauli_measure(basis : Union[X, Y, Z], q : quant) -> future:
-    """Pauli measurement."""
-
-    return measure(adj(pauli_prepare, basis, q))
-
-@code_ket
 def measure_free(q : quant) -> future:
     """Measure and free a quant."""
     res = measure(q)
@@ -112,53 +57,6 @@ def measure_free(q : quant) -> future:
             X(i) 
     q.free()
     return res
-
-def within(around, apply):
-    """Applay around(); apply(); adj(around)."""
-    around()
-    apply()
-    adj(around)
-
-@code_ket
-def x_not_mask(q : quant, mask : List[int]):
-    """Apply Pauli X gates follwing a bit mask (apply on 0)."""
-    
-    for i, b in zip(mask, q):
-        if i == 0:
-            X(b)
-
-@code_ket
-def x_mask(q : quant, mask : List[int]):
-    """Apply Pauli X gates follwing a bit mask (applay on 1)."""
-    
-    for i, b in zip(mask, q):
-        if i:
-            X(b)
-
-def x_int(q : quant, int_mask : int):
-    """Apply Pauli X gates follwing a int mask."""
-    
-    mask = [int(i) for i in ('{0:0'+str(len(q))+'b}').format(int_mask)]
-    x_mask(q, mask)
- 
-def ctrl_mask(c : quant, mask : List[int], func, *args, **kwargs):
-    """Applay a quantum operation if the qubits of control matchs the mask."""
-
-    with around(x_not_mask, c, mask):
-        ctrl(c, func, *args, **kwargs)
-
-def ctrl_int(c : quant, int_mask : int, func, *args, **kwargs):
-    """Applay a quantum operation if the qubits of control matchs the integer value."""
-    
-    mask = [int(i) for i in ('{0:0'+str(len(c))+'b}').format(int_mask)]
-    ctrl_mask(c, mask, func, *args, **kwargs)
-
-def increment(q):
-    """Add 1 to the superposition, 'q += 1'. """
-
-    if len(q) > 1:
-        ctrl(q[-1], increment, q[:-1])
-    X(q[-1])
 
 def dump_matrix(u : Union[Callable, Iterable[Callable]], size : int) -> List[List[complex]]:
     """Get the matrix of a quantum operation."""
