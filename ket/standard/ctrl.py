@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -15,10 +16,10 @@
 
 from ..ket import ctrl_begin, ctrl_end, X
 from ..types import quant
-from typing import Iterable, List, Union, Callable, Optional, Tuple, Any
+from typing import Iterable, Callable, Optional, Any
 from functools import reduce
 
-def _create_mask(on_state : Union[int, Iterable[int], None], length : int) -> List[int]:
+def _create_mask(on_state : Optional[int | Iterable[int]], length : int) -> list[int]:
     """Create a mask for ctrl and control"""
 
     if on_state is None:
@@ -88,7 +89,7 @@ class control:
         on_state: Change the control state. 
     """
 
-    def __init__(self, *ctr : quant, on_state : Optional[Union[int, List[int]]] = None):
+    def __init__(self, *ctr : quant, on_state : Optional[int | Iterable[int]] = None):
         self.ctr = reduce(lambda a, b : a | b, ctr)
         self.mask = _create_mask(on_state, len(self.ctr))
 
@@ -100,10 +101,10 @@ class control:
         ctrl_end()
         _apply_mask(self.mask, self.ctr)
             
-def _ctrl(control  : Union[Iterable[quant], quant ], 
-          func     : Union[Callable, Iterable[Callable]],
+def _ctrl(control  : quant | Iterable[quant], 
+          func     : Callable | Iterable[Callable],
           *args, 
-          on_state : Optional[Union[int, List[int]]] = None,
+          on_state : Optional[int | list[int]] = None,
           **kwargs) -> Any:
     """Call Callable with controll-qubits"""
 
@@ -124,7 +125,7 @@ def _ctrl(control  : Union[Iterable[quant], quant ],
     
     return ret
 
-def _qubit_for_ctrl(qubits : Union[Iterable[quant], quant, slice, int, Iterable[int]]) -> Tuple[Union[Callable[[quant], quant], quant], bool]:
+def _qubit_for_ctrl(qubits : quant | Iterable[quant] | slice | int | Iterable[int]) -> tuple[Callable[[quant], quant] | quant, bool]:
     """Get qubits for ctrl"""
 
     if type(qubits) == slice or type(qubits) == int:
@@ -136,19 +137,19 @@ def _qubit_for_ctrl(qubits : Union[Iterable[quant], quant, slice, int, Iterable[
     else:
         return qubits, False
 
-def ctrl(control    : Union[Iterable[quant], quant, slice, int, Iterable[int]], 
-         func       : Union[Callable, Iterable[Callable]] , 
+def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int], 
+         func       : Callable | Iterable[Callable] , 
          *args,    
-         on_state   : Optional[Union[int, List[int]]] = None,
-         target     : Optional[Union[slice, int, Iterable[int]]] = None,
+         on_state   : Optional[int | Iterable[int]] = None,
+         target     : Optional[slice | int | Iterable[int]] = None,
          later_call : bool = False,
-         **kwargs) -> Union[Callable, Any] :
+         **kwargs) -> Callable | Any :
     r"""Add controll-qubits to a Callable
 
     **Call with control qubits**
 
-    * ``control`` must be :class:`~ket.types.quant` or :class:`~ket.types.quant` iterable.
-    * ``func`` must be ``Callable`` or ``Callable`` iterable.
+    * ``control`` type must be :class:`~ket.types.quant` or ``Iterable[quant]``
+    * ``func`` type must be ``Callable`` or ``Iterable[Callable]``
 
     .. code-block:: ket
 
@@ -197,7 +198,7 @@ def ctrl(control    : Union[Iterable[quant], quant, slice, int, Iterable[int]],
                     X(output)
             inc.free()
 
-    2. If ``control`` and ``target`` qubits are ``int``, ``slice``, or
+    2. If ``control`` and ``target`` type is ``int``, ``slice``, or
     ``Iterable[int]``,  return a ``Callable[[quant], Any]``:
 
     .. code-block:: ket
@@ -215,11 +216,11 @@ def ctrl(control    : Union[Iterable[quant], quant, slice, int, Iterable[int]],
                                                     # ctrl(q[0], X, q[1:])
  
     Args:
-        control: Control qubits, use :class:`~ket.types.quant` for call with control qubits and index to create controlled-operations.
-        func: Function or list of functions to add control.
+        control: Control qubits.
+        func: Functions to add control.
+        on_state: Change the control state, same as for :class:`~ket.standard.control`. 
         target: Target qubits to create controlled-operations.
         later_call: If ``True``, do not execute and return a ``Callable[[], Any]``.
-        on_state: Change the control state. 
     """
 
     control, create_gate = _qubit_for_ctrl(control)

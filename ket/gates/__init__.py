@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -17,14 +18,14 @@ from ..ket import X as _X, Y as _Y, Z as _Z, H as _H, S as _S, SD as _SD, T as _
 from ..ket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ 
 from ..types import quant
 from ..standard import ctrl
-from typing import Callable, Tuple, Union, Optional
+from typing import Callable, Optional
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap']
 
 def X(q : quant) -> quant:
     r""" Pauli-X gate (:math:`\sigma_x`)
 
-    Apply a single-qubit Pauli-X gate on every qubit of q.
+    Apply a single-qubit Pauli-X gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -52,7 +53,7 @@ def X(q : quant) -> quant:
 def Y(q : quant) -> quant:
     r"""Pauli-Y gate (:math:`\sigma_y`)
 
-    Apply a single-qubit Pauli-Y gate on every qubit of q.
+    Apply a single-qubit Pauli-Y gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -80,7 +81,7 @@ def Y(q : quant) -> quant:
 def Z(q : quant) -> quant:
     r"""Pauli-Z gate (:math:`\sigma_z`)
 
-    Apply a single-qubit Pauli-Y gate on every qubit of q.
+    Apply a single-qubit Pauli-Y gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -108,7 +109,7 @@ def Z(q : quant) -> quant:
 def H(q : quant) -> quant:
     r"""Hadamard gate
 
-    Apply a single-qubit Hadamard gate on every qubit of q.
+    Apply a single-qubit Hadamard gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -135,10 +136,10 @@ def H(q : quant) -> quant:
     _H(q)
     return q
 
-def S(q : quant):
+def S(q : quant) -> quant:
     r"""S gate 
 
-    Apply a single-qubit S gate on every qubit of q.
+    Apply a single-qubit S gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -163,10 +164,10 @@ def S(q : quant):
     _S(q)
     return q
 
-def SD(q : quant):
+def SD(q : quant) -> quant:
     r"""S-dagger gate (:math:`S^\dagger`)
 
-    Apply a single-qubit S-dagger gate on every qubit of q.
+    Apply a single-qubit S-dagger gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -191,10 +192,10 @@ def SD(q : quant):
     _SD(q)
     return q
 
-def T(q : quant):
+def T(q : quant) -> quant:
     r"""T gate
 
-    Apply a single-qubit T gate on every qubit of q.
+    Apply a single-qubit T gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -218,10 +219,10 @@ def T(q : quant):
     _T(q)
     return q
 
-def TD(q : quant):
+def TD(q : quant) -> quant:
     r"""T-dagger gate (:math:`T^\dagger`)
 
-    Apply a single-qubit T-dagger gate on every qubit of q.
+    Apply a single-qubit T-dagger gate on every qubit of ``q``.
 
     **Matrix representation:**
 
@@ -245,10 +246,14 @@ def TD(q : quant):
     _TD(q)
     return q
 
-def phase(lamb : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+def phase(lamb : float, q : Optional[quant] = None) -> Callable[[quant], quant] | quant:
     r"""Phase gate
 
-    Apply a relative phase of :math:`\lambda` on every qubit of q.
+    Apply a relative phase of :math:`e^{i\lambda}` on every qubit of ``q``.
+
+    If ``q`` is not provided, return a new gate: ``phase(lamb)(q)``
+    :math:`\equiv` ``phase(lamb, q)``. 
+
 
     **Matrix representation:**
 
@@ -281,10 +286,13 @@ def phase(lamb : float, q : Optional[quant] = None) -> Union[Callable, quant]:
         return __phase
 
 
-def RX(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+def RX(theta : float, q : Optional[quant] = None) -> Callable[[quant], quant] | quant:
     r"""X-axis rotation gate
 
-    Apply a rotation of :math:`\theta` about the X-axis on every qubit of q.
+    Apply a rotation of :math:`\theta` about the X-axis on every qubit of ``q``.
+
+    If ``q`` is not provided, return a new gate: ``RX(theta)(q)``
+    :math:`\equiv` ``RX(theta, q)``. 
 
     **Matrix representation:**
 
@@ -316,10 +324,13 @@ def RX(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
             return q
         return __RX
 
-def RY(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+def RY(theta : float, q : Optional[quant] = None) -> Callable[[quant], quant] | quant:
     r"""Y-axis rotation gate
 
-    Apply a rotation of :math:`\theta` about the Y-axis on every qubit of q.
+    Apply a rotation of :math:`\theta` about the Y-axis on every qubit of ``q``.
+
+    If ``q`` is not provided, return a new gate: ``RY(theta)(q)``
+    :math:`\equiv` ``RY(theta, q)``. 
 
     **Matrix representation:**
 
@@ -351,10 +362,13 @@ def RY(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
             return q
         return __RY
 
-def RZ(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
+def RZ(theta : float, q : Optional[quant] = None) -> Callable[[quant], quant] | quant:
     r"""Z-axis rotation gate
 
-    Apply a rotation of :math:`\theta` about the Z-axis on every qubit of q.
+    Apply a rotation of :math:`\theta` about the Z-axis on every qubit of ``q``.
+
+    If ``q`` is not provided, return a new gate: ``RZ(theta)(q)``
+    :math:`\equiv` ``RZ(theta, q)``. 
 
     **Matrix representation:**
 
@@ -390,7 +404,7 @@ def RZ(theta : float, q : Optional[quant] = None) -> Union[Callable, quant]:
 def I(q : quant) -> quant:
     r"""Identity gate 
 
-    Apply an identity gate on every qubit of q.
+    Apply an identity gate on every qubit of ``q``.
 
     Note:
         This quantum gate does nothing! 
@@ -417,7 +431,7 @@ def I(q : quant) -> quant:
     """
     return q
  
-def cnot(c : quant, t : quant) -> Tuple[quant, quant]:
+def cnot(c : quant, t : quant) -> tuple[quant, quant]:
     r"""Controlled-NOT
     
     Apply a CNOT gate between the qubits of c and t.
@@ -450,7 +464,7 @@ def cnot(c : quant, t : quant) -> Tuple[quant, quant]:
     
     return c, t
 
-def swap(a : quant, b : quant) -> Tuple[quant, quant]:
+def swap(a : quant, b : quant) -> tuple[quant, quant]:
     r"""SWAP gate
     
     Swap the qubits of a and b.

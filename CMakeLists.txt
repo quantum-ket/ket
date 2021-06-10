@@ -24,8 +24,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libket/cmake;${CMAKE_MODULE_PATH}")
 
 find_package(GMP REQUIRED)
             
-FIND_PACKAGE(PythonLibs)
-INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
+FIND_PACKAGE(Python COMPONENTS Development.Embed)
+INCLUDE_DIRECTORIES(${Python_INCLUDE_DIRS})
 
 file(GLOB_RECURSE LIBKET_SRC libket/src/*.cpp)
 
@@ -39,6 +39,6 @@ SET_TARGET_PROPERTIES(ket PROPERTIES
                       POSITION_INDEPENDENT_CODE ON
                      )
                       
-TARGET_LINK_LIBRARIES(ket ${PYTHON_LIBRARIES} CONAN_PKG::boost gmp)
+TARGET_LINK_LIBRARIES(ket ${Python_LIBRARIES} CONAN_PKG::boost gmp)
 
 install(TARGETS ket DESTINATION ket)
