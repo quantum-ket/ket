@@ -17,7 +17,7 @@ from __future__ import annotations
 from ..ket import label, branch, jump
 from ..types import future
 
-__all__ = ['_ket_is_future', '_ket_if', '_ket_if_else', '_ket_next']
+__all__ = ['_ket_is_future', '_ket_if', '_ket_if_else','_ket_else', '_ket_next', '_ket_while', '_ket_while_else', '_ket_while_body', '_ket_loop', '_ket_goto']
 
 def _ket_is_future(obj) -> bool:
     return isinstance(obj, future)
@@ -37,6 +37,40 @@ def _ket_if_else(test : future) -> tuple[label]:
     if_then.begin()
     return if_else, if_end
 
+def _ket_else(else_ : label, end : label):
+    jump(end)
+    else_.begin()
+
 def _ket_next(end : label):
     jump(end)
     end.begin()
+
+def _ket_while() -> tuple[label]:
+    while_test = label('while.test')
+    while_loop = label('while.loop')
+    while_end  = label('while.end')
+    jump(while_test)
+    while_test.begin()
+    return while_test, while_loop, while_end
+
+def _ket_while_else() -> tuple[label]:
+    while_test = label('while.test')
+    while_loop = label('while.loop')
+    while_else = label('while.else')
+    while_end  = label('while.end')
+    jump(while_test)
+    while_test.begin()
+    return while_test, while_loop, while_else, while_end
+
+def _ket_while_body(test : future, body : label, end : label):
+    branch(test, body, end)
+    body.begin()
+
+def _ket_loop(test : label, end : label):
+    jump(test)
+    end.begin()
+
+def _ket_goto(where : label):
+    dead_code = label('dead.code')
+    jump(where)
+    dead_code.begin()
