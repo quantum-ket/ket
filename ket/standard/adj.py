@@ -23,7 +23,7 @@ class inverse:
 
     Inside a ``with inverse`` scope, the the quantum operations backwards.
     
-    **Usage:**
+    :Usage:
 
     .. code-block:: ket
 
@@ -58,7 +58,7 @@ def adj(func       : Union[Callable, Iterable[Callable]],
         **kwargs) -> Union[Callable, Any]:
     """Inverse of a Callable
     
-    **Call inverse**
+    :Call inverse:
     
     .. code-block:: ket
 
@@ -75,7 +75,7 @@ def adj(func       : Union[Callable, Iterable[Callable]],
         #         ret2.append(f(*args, **kwargs))
 
 
-    **Create inverse operation**
+    :Create inverse operation:
 
     1. If the keyword argument ``later_call`` is ``True``, return a
     ``Callable[[], Any]``:
@@ -95,7 +95,7 @@ def adj(func       : Union[Callable, Iterable[Callable]],
         # Equivalent to:
         # adj_func = lambda *args, **kwargs : adj(func, *args, **kwargs)
 
-    **Example:**
+    Example:
 
     .. code-block:: ket
 
@@ -136,7 +136,7 @@ class around:
         with around(V):
             U
     
-    **Example:**
+    :Example:
 
     .. code-block:: ket
 
@@ -150,7 +150,7 @@ class around:
                  func : Union[Callable, Iterable[Callable], Generator[Callable, None, None]], 
                  *args,
                  **kwargs):
-        self.outter_func = list(func) if type(func) == GeneratorType else func
+        self.outter_func = list(func) if isinstance(func, GeneratorType) else func
         self.args = args
         self.kwargs = kwargs
 

@@ -13,9 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .import_ket import __import_globals_ket__
+from .import_ket import _import_globals_ket
 from . import *
 from .ket import label, branch, jump
+from .preprocessor import *
 
 def __ket__():
     import argparse
@@ -33,7 +34,7 @@ def __ket__():
     globals()['__name__'] = '__main__'
     globals()['__in_ket__'] = True
     source = path.join(getcwd(), args.input[0])
-    __import_globals_ket__(source, globals())
+    _import_globals_ket(source, globals())
 
 if __name__ == '__main__':
     __ket__()

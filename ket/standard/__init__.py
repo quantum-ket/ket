@@ -13,7 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import measure, exec_quantum, process_begin, process_end
+from ..ket import measure as _measure, exec_quantum, process_begin, process_end
+from ..types import quant, future
+from ..preprocessor import _ket_if, _ket_next
 from .ctrl import *
 from .adj import *
 
@@ -26,7 +28,7 @@ exec_quantum.__doc__ = \
     :class:`~ket.types.dump` variables.
     """
 
-measure.__doc__ = \
+def measure(q : quant, free : bool = False) -> future:
     """Quantum measurement
 
     Measure the qubits of a :class:`~ket.types.quant` and return a
@@ -34,14 +36,24 @@ measure.__doc__ = \
 
     Args:
         q: Qubits to measure.
+        free: If ``True``, free the qubits after the measuremet.
     """
-    
+
+    ret = _measure(q)
+    if free:
+        for i in q:
+            end = _ket_if(_measure(i))
+            X(i)
+            _ket_next(end) 
+        q.free()
+    return ret
+
 class run:
     """Execute in a new process
     
     Run the quantum operations in a new separated process.
     
-    **Usage:**
+    :Usage:
 
     .. code-block:: ket
 

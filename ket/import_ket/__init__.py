@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -14,14 +15,15 @@
 #  limitations under the License.
 
 from ..preprocessor import ketpp
+from inspect import getsource
 from ast import fix_missing_locations, parse
 from os import path, PathLike
 from types import ModuleType
-from typing import Tuple
+from typing import Callable
 
 __all__ = ['import_ket', 'from_import_ket']
 
-def __import_ket__(source : PathLike):
+def _import_ket(source : PathLike):
     with open(source, 'r') as file:
         tree = parse(file.read(), source)
     
@@ -32,9 +34,16 @@ def __import_ket__(source : PathLike):
 
     return compile(tree, source, 'exec', optimize=2)
     
-def __import_globals_ket__(source : PathLike, globals):
-    exec(__import_ket__(source), globals)    
+def _import_globals_ket(source : PathLike, globals):
+    exec(_import_ket(source), globals)    
 
+buildins = \
+"""
+from ket import *
+from ket.ket import label, branch, jump
+from ket.preprocessor import *
+"""
+ 
 def import_ket(source : PathLike) -> ModuleType:
     """Import Ket file.
 
@@ -46,18 +55,63 @@ def import_ket(source : PathLike) -> ModuleType:
     _, file_name = path.split(source)
     module = ModuleType(file_name[:-4])
 
-    src = 'from ket import *\nfrom ket.ket import label, branch, jump\n'
-    obj = compile(src, '<ket build-in functions>', 'exec', optimize=2)
+    obj = compile(buildins, '<ket build-in functions>', 'exec', optimize=2)
     exec(obj, module.__dict__)
 
-    __import_globals_ket__(source, module.__dict__)
+    _import_globals_ket(source, module.__dict__)
     return module
 
-def from_import_ket(source : PathLike, *names) -> Tuple:
+def from_import_ket(source : PathLike, *names : list[str]) -> tuple:
     """Import names from Ket file.
-     
-    :param source: Ket source file.  
+
+    Args 
+        source: Ket source file.  
+        names: Names to import from ``source``.
     """
     
     module = import_ket(source)
     return tuple(module.__dict__[name] for name in names)
+
+def code_ket(func : Callable) -> Callable:
+    """Parse as Ket function.
+    
+    Decorator to parse a Python function as a Ket Function.
+    
+    Worning:
+        Do not use this decorator in a .ket file.    
+
+    **Usage:**
+
+    .. code-block:: python
+        
+        @code_ket
+        def func(a : quant, b : quant, c : quant):
+            m0 = measure(a)
+            m1 = measure(b)
+            if m1 == 1: # need @code_ket to properly execute
+                x(c)
+            if m0 == 1: # need @code_ket to properly execute
+                z(c)
+    """
+
+    if '__in_ket__' in globals() and globals()['__in_ket__']:
+        return func
+
+    in_ket = "__in_ket__{}__".format(func.__name__)
+    if in_ket in func.__globals__ and func.__globals__[in_ket]: 
+        return func
+        
+    buildins_more = buildins+'\n'+in_ket+' = True\n'
+    buildins_obj = compile(buildins_more, '<ket build-in functions>', 'exec', optimize=2)
+    exec(buildins_obj, func.__globals__)
+    
+    tree = parse(getsource(func), '<function ' + func.__name__ + '>')
+    pp = ketpp()
+
+    pp.visit(tree)
+    fix_missing_locations(tree)
+
+    obj =  compile(tree, '<code_ket function ' + func.__name__ + '>', 'exec', optimize=2)
+    exec(obj, func.__globals__)
+
+    return func.__globals__[func.__name__]  

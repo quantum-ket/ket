@@ -18,6 +18,7 @@ from ..ket import ctrl_begin, ctrl_end, X
 from ..types import quant
 from typing import Iterable, Callable, Optional, Any
 from functools import reduce
+from operator import add
 
 def _create_mask(on_state : Optional[int | Iterable[int]], length : int) -> list[int]:
     """Create a mask for ctrl and control"""
@@ -58,14 +59,14 @@ class control:
     :math:`\left|\left[\dots0\right]11\right>`, use ``with control(ctr, on_state=3):``
     or ``with control(ctr, on_state=[0, 1, 1]):`` if ``ctr`` has exactly 3 qubits.
     
-    **Usage:**
+    :Usage:
 
     .. code-block:: ket
     
         with control(*ctr[, on_state]):
             ...
 
-    **Example:**
+    :Example:
 
     .. code-block:: ket
 
@@ -90,7 +91,7 @@ class control:
     """
 
     def __init__(self, *ctr : quant, on_state : Optional[int | Iterable[int]] = None):
-        self.ctr = reduce(lambda a, b : a | b, ctr)
+        self.ctr = reduce(add, ctr)
         self.mask = _create_mask(on_state, len(self.ctr))
 
     def __enter__ (self):
@@ -128,12 +129,12 @@ def _ctrl(control  : quant | Iterable[quant],
 def _qubit_for_ctrl(qubits : quant | Iterable[quant] | slice | int | Iterable[int]) -> tuple[Callable[[quant], quant] | quant, bool]:
     """Get qubits for ctrl"""
 
-    if type(qubits) == slice or type(qubits) == int:
+    if any(isinstance(qubits, tp) for tp in [slice, int]):
         return lambda q : q[qubits], True
-    elif hasattr(qubits, '__iter__') and all(type(i) == int for i in qubits):
+    elif hasattr(qubits, '__iter__') and all(isinstance(i, int) for i in qubits):
         return lambda q : q.at(qubits), True
-    elif hasattr(qubits, '__iter__') and all(type(i) == quant for i in qubits):
-        return reduce(lambda a, b : a | b, qubits), False
+    elif hasattr(qubits, '__iter__') and all(isinstance(i, quant) for i in qubits):
+        return reduce(add, qubits), False
     else:
         return qubits, False
 
@@ -146,7 +147,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
          **kwargs) -> Callable | Any :
     r"""Add controll-qubits to a Callable
 
-    **Call with control qubits**
+    :Call with control qubits:
 
     * ``control`` type must be :class:`~ket.types.quant` or ``Iterable[quant]``
     * ``func`` type must be ``Callable`` or ``Iterable[Callable]``
@@ -170,7 +171,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
         #     for f in func:
         #         ret3.append(f(*args, **kwargs))
  
-    **Create controlled-operation**
+    :Create controlled-operation:
 
     1. If the keyword argument ``later_call`` is ``True``, return a
     ``Callable[[], Any]``:
@@ -181,7 +182,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
         # Equivalent to:
         # ctrl_func = lambda : ctrl(control_qubits, func, *args, **kwargs)
 
-    **Example:**
+    Example:
 
     .. code-block:: ket
         :emphasize-lines: 8
@@ -207,7 +208,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
         # Equivalent to:
         # ctrl_func = lambda q : ctrl(q[ctrl_index], func, q[target_index])
 
-    **Example:**
+    Example:
 
     .. code-block:: ket
 

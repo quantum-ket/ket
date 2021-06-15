@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -13,17 +14,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .util import *
-from .gates import *
-from .types import *
-from .standard import *
-from .import_ket import *
-from .util import __all__ as all_util
-from .gates import __all__ as all_gate
-from .types import __all__ as all_types
-from .import_ket import __all__ as all_import
-from .standard import __all__ as all_standard
+from ..ket import label, branch, jump
+from ..types import future
 
-__all__ = all_util+all_gate+all_types+all_import+all_standard
+__all__ = ['_ket_is_future', '_ket_if', '_ket_if_else', '_ket_next']
 
-from .import_ket import code_ket
+def _ket_is_future(obj) -> bool:
+    return isinstance(obj, future)
+
+def _ket_if(test : future) -> label:
+    if_then = label('if.then')
+    if_end  = label('if.end') 
+    branch(test, if_then, if_end)
+    if_then.begin()
+    return if_end
+
+def _ket_if_else(test : future) -> tuple[label]:
+    if_then = label('if.then')
+    if_else = label('if.else') 
+    if_end  = label('if.end') 
+    branch(test, if_then, if_else)
+    if_then.begin()
+    return if_else, if_end
+
+def _ket_next(end : label):
+    jump(end)
+    end.begin()

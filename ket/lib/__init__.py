@@ -47,17 +47,6 @@ def qft(q : quant, invert : bool = True) -> quant:
             swap(q[i], q[len(q)-i-1])
     return q.inverted()
 
-@code_ket
-def measure_free(q : quant) -> future:
-    """Measure and free a quant."""
-    res = measure(q)
-    for i in q:
-        m = measure(i)
-        if m:
-            X(i) 
-    q.free()
-    return res
-
 def dump_matrix(u : Union[Callable, Iterable[Callable]], size : int) -> List[List[complex]]:
     """Get the matrix of a quantum operation."""
 

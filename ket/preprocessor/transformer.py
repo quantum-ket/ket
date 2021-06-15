@@ -1,0 +1,312 @@
+#  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
+#  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
+# 
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+# 
+#      http://www.apache.org/licenses/LICENSE-2.0
+# 
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+import ast, copy
+
+class ketpp (ast.NodeTransformer):
+
+    def __init__(self):
+        self.id_count = 0
+        self.in_if = False
+        self.ignore_if = False
+        self.in_while = False
+        self.while_id = None
+
+    def label_new(self, name, label_id):
+        label_call = ast.Call(func=ast.Name(id='label', ctx=ast.Load()), args=[ast.Constant(value=label_id, kind=None)], keywords=[])
+        return ast.Assign(targets=[ast.Name(id=name, ctx=ast.Store())], value=label_call)
+    
+    def label_begin(self, name):
+        call = ast.Call(func=ast.Attribute(value=ast.Name(id=name, ctx=ast.Load()), attr='begin', ctx=ast.Load()), args=[], keywords=[])
+        return ast.Expr(call)
+
+    def branch_call(self, test_name, true_name, false_name):
+        call = ast.Call(func=ast.Name(id='branch', ctx=ast.Load()), args=[ast.Name(id=test_name, ctx=ast.Load()), ast.Name(id=true_name, ctx=ast.Load()), ast.Name(id=false_name, ctx=ast.Load())], keywords=[])
+        return ast.Expr(call)
+
+    def jump_call(self, label_name):
+        call =  ast.Call(func=ast.Name(id='jump', ctx=ast.Load()), args=[ast.Name(id=label_name, ctx=ast.Load())], keywords=[])
+        return ast.Expr(call)
+    
+    def type_future(self, test_name):
+        type_call_exp = ast.Call(func=ast.Name(id='type', ctx=ast.Load()), args=[ast.Name(id=test_name, ctx=ast.Load())], keywords=[])
+        return ast.Compare(left=type_call_exp, ops=[ast.Eq()], comparators=[ast.Name(id='future', ctx=ast.Load())])
+
+    def visit_If(self, node):
+        
+        if_id = self.id_count
+        self.id_count += 1
+        
+        _test_name = '_ket_temp_if_test'+str(if_id)
+        test_name = ast.Name(id=_test_name, ctx=ast.Load())
+
+        next_name = '_ket_tmp_if_next'+str(if_id)
+        end_name = None
+        if node.orelse:
+            end_name = '__ket_tmp_if_end'+str(if_id)
+            if_begin = ast.Assign(
+                targets=[
+                    ast.Tuple(
+                        elts=[
+                            ast.Name(id=next_name, ctx=ast.Store()),
+                            ast.Name(id=end_name, ctx=ast.Store())
+                        ],
+                        ctx=ast.Store()
+                    )
+                ],
+                value=ast.Call(
+                    func=ast.Name(id = '_ket_if_else', ctx=ast.Load()),
+                    args=[test_name],
+                    keywords=[]
+                )
+            )
+        else:
+            if_begin = ast.Assign(
+                targets=[
+                    ast.Name(id=next_name, ctx=ast.Store()),
+                ],
+                value=ast.Call(
+                    func=ast.Name(id = '_ket_if', ctx=ast.Load()),
+                    args=[test_name],
+                    keywords=[]
+                )
+            )
+        
+        node_cp = copy.deepcopy(node)
+        self.generic_visit(node)
+
+        if_body = [if_begin, *node.body, ast.Expr(value=ast.Call(
+                func=ast.Name(id = '_ket_next', ctx=ast.Load()),
+                args=[ast.Name(id=next_name, ctx=ast.Load())],
+                keywords=[]
+            ))
+        ]
+
+        if end_name is not None:
+            if_body.extend(node.orelse)
+            if_body.append(
+                ast.Expr(value=ast.Call(
+                    func=ast.Name(id = '_ket_next', ctx=ast.Load()),
+                    args=[ast.Name(id=end_name, ctx=ast.Load())],
+                    keywords=[]
+                ))
+            )
+
+        test_assing = ast.Assign(
+            targets=[ast.Name(id=_test_name, ctx=ast.Store())], 
+            value=node.test
+        )
+
+        type_check = ast.Call(
+            func=ast.Name(id='_ket_is_future', ctx=ast.Load()),
+            args=[test_name],
+            keywords=[]
+        )
+ 
+        node_cp.test = test_name
+
+        if_future = ast.If(
+            test=type_check,
+            body=if_body,
+            orelse=[node_cp]
+        )
+        
+        return [test_assing, if_future]
+            
+       # if self.ignore_if:
+       #     self.generic_visit(node)
+       #     return node
+
+       # tmp = self.in_if
+       # 
+       # self.in_if = True
+       # if_id = self.id_count
+       # self.id_count += 1
+
+       #node_copy = copy.deepcopy(node)
+
+       # self.ignore_if = True
+       # self.visit(node_copy)
+       # self.ignore_if = False
+
+       # self.generic_visit(node)
+       # self.in_if = tmp
+ 
+       # test_name = 'ket_temp_if_test'+str(if_id)+'___' 
+       # test_assing = ast.Assign(targets=[ast.Name(id=test_name, ctx=ast.Store())], value=node.test)
+
+       # ########### LABEL #############
+
+       # then_name = 'ket_tmp_if_then'+str(if_id)+'___'
+       # then_label = self.label_new(then_name, 'if.then')
+
+       # end_name = 'ket_tmp_if_end'+str(if_id)+'___'
+       # end_label = self.label_new(end_name, 'if.end')
+
+       # if node.orelse:
+       #     else_name = 'ket_tmp_if_else'+str(if_id)+'___' 
+       #     else_label = self.label_new(else_name, 'if.else')
+       #     if_body = [then_label, else_label, end_label]
+
+       #     branch_stmt = self.branch_call(test_name, then_name, else_name)
+       # else:
+       #     branch_stmt = self.branch_call(test_name, then_name, end_name)
+       #     if_body = [then_label, end_label]
+       # 
+       # ########### THEN #############
+
+       # then_begin = self.label_begin(then_name)
+
+       # if_body.extend([branch_stmt, then_begin])
+       # if_body.extend(node.body)
+
+       # jump_stmt = self.jump_call(end_name)
+
+       # if_body.append(jump_stmt)
+
+       # ########### ELSE #############
+
+       # if node.orelse:
+       #     else_begin = self.label_begin(else_name)
+       #     if_body.append(else_begin)
+       #     if_body.extend(node.orelse)
+       #     if_body.append(jump_stmt)
+
+       # end_begin = self.label_begin(end_name)
+       # 
+       # if_body.append(end_begin)
+
+       # ##############################
+
+       # if not self.in_if:
+       #     test_type = self.type_future(test_name)
+
+       #     node_copy.test = ast.Name(id=test_name, ctx=ast.Load())
+       #     if_future_stmt = ast.If(test=test_type, body=if_body, orelse=[node_copy])
+
+       #     return [test_assing, if_future_stmt]
+       # else:
+       #     ret_body = [test_assing]
+       #     ret_body.extend(if_body)
+
+       #     return ret_body
+
+    def visit_While(self, node):
+        tmp = self.in_while
+        tmp_id = self.while_id
+
+        self.in_while = True
+        self.while_id = self.id_count
+        self.id_count += 1
+
+        node_copy = copy.deepcopy(node)
+
+        self.generic_visit(node)
+
+        test_out_name = 'ket_temp_while_out_test'+str(self.while_id)+'___' 
+        test_out_assing = ast.Assign(targets=[ast.Name(id=test_out_name, ctx=ast.Store())], value=node.test)
+
+        ########### LABEL #############
+
+        test_name = 'ket_tmp_while_test'+str(self.while_id)+'___'
+        test_new = self.label_new(test_name, 'while.test')
+        
+        loop_name = 'ket_tmp_while_loop'+str(self.while_id)+'___'
+        loop_new = self.label_new(loop_name, 'while.loop')
+        
+        end_name = 'ket_tmp_while_end'+str(self.while_id)+'___'
+        end_new = self.label_new(end_name, 'while.end')
+        
+        if_body = [test_new, loop_new, end_new]
+        if node.orelse:
+            else_name = 'ket_tmp_while_else'+str(self.while_id)+'___'
+            else_new = self.label_new(else_name, 'while.else')
+            if_body.append(else_new)
+
+        ########### TEST #############
+        
+        if node.orelse: 
+            branch_stmt = self.branch_call(test_out_name, loop_name, else_name)
+        else:
+            branch_stmt = self.branch_call(test_out_name, loop_name, end_name)
+
+        test_begin = self.label_begin(test_name)
+        
+        test_in_name = 'ket_temp_while_in_test'+str(self.while_id)+'___' 
+        test_in_assing = ast.Assign(targets=[ast.Name(id=test_in_name, ctx=ast.Store())], value=node.test)
+        
+        if node.orelse: 
+            branch_in_stmt = self.branch_call(test_in_name, loop_name, else_name)
+        else:
+            branch_in_stmt = self.branch_call(test_in_name, loop_name, end_name)
+
+        ########### LOOP #############
+
+        loop_begin = self.label_begin(loop_name)
+
+        if_body.extend([branch_stmt, test_begin, test_in_assing, branch_in_stmt, loop_begin])
+        if_body.extend(node.body)
+
+        jump_stmt = self.jump_call(test_name)
+
+        if_body.append(jump_stmt)
+
+        ########### ELSE #############
+
+        if node.orelse:
+            else_begin = self.label_begin(else_name)
+            
+            if_body.append(else_begin)
+            if_body.extend(node.orelse)
+
+            jump_end = self.jump_call(end_name)
+            
+            if_body.append(jump_end)
+            
+        end_begin =  self.label_begin(end_name)
+
+        if_body.append(end_begin)
+
+        ########### IF #############
+        
+        test_out_type = self.type_future(test_out_name)
+
+        if_future = ast.If(test=test_out_type, body=if_body, orelse=[node_copy])
+
+        self.in_while = tmp
+        self.while_id = tmp_id
+        return [test_out_assing, if_future]
+
+    def visit_Break(self, node):
+        if self.in_while:
+            continuing_name = 'ket_tmp_continuing'+str(self.while_id)+'___'
+            continue_label = self.label_new(continuing_name, 'continuing')
+            end_name = 'ket_tmp_while_end'+str(self.while_id)+'___'
+            jump = self.jump_call(end_name)
+            continue_begin = self.label_begin(continuing_name)
+            return [continue_label, jump, continue_begin]
+        else:
+            return node
+         
+    def visit_Continue(self, node):
+        if self.in_while:
+            continuing_name = 'ket_tmp_continuing'+str(self.while_id)+'___'
+            continue_label = self.label_new(continuing_name, 'continuing')
+            test_name = 'ket_tmp_while_test'+str(self.while_id)+'___'
+            jump = self.jump_call(test_name)
+            continue_begin = self.label_begin(continuing_name)
+            return [continue_label, jump, continue_begin]
+        else:
+            return node
