@@ -1,5 +1,3 @@
-from ket.lib import measure_free
-
 class steane_code (quant):
     g1 = [I, I, I, X, X, X, X]
     g2 = [I, X, X, I, I, X, X]
@@ -19,7 +17,7 @@ class steane_code (quant):
                 with control(aux):
                     for gi, q in zip(g, self):
                         gi(q)
-            return measure_free(aux)
+            return measure(aux, free=True)
        
     def correct(self, error):
         if error != X and error != Z:

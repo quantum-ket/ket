@@ -1,7 +1,6 @@
-from ket.lib import bell
-
 def teleport(alice : quant) -> quant:
-    alice_b, bob_b = bell()
+    alice_b, bob_b = quant(2)
+    ctrl(H(alice_b), X, bob_b)
 
     ctrl(alice, X, alice_b)
     H(alice)
