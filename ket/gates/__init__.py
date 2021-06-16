@@ -428,8 +428,8 @@ def I(q : quant | Iterable[quant]) -> quant:
     .. math::
 
         \begin{matrix} 
-            X\left|0\right> = & \left|0\right> \\
-            X\left|1\right> = & \left|1\right>
+            I\left|0\right> = & \left|0\right> \\
+            I\left|1\right> = & \left|1\right>
         \end{matrix}
 
     :param q: Input qubits.
