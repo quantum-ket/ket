@@ -48,9 +48,9 @@ class dump(_dump):
         super().__init__(q)
         self.size = len(q)
     
-    def get_states(self) -> list[int]:
+    def states(self) -> list[int]:
         """Return the list of basis states."""
-        return super.get_states()
+        return super().get_states()
 
     def amplitude(self, state : int) -> complex | list[complex]:
         """Return the amplitude of a given state
