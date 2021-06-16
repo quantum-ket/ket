@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -16,7 +17,7 @@
 from .. import *
 from .. import code_ket
 from math import pi, sqrt
-from typing import Callable, Iterable, Union, List
+from typing import Callable, Iterable
 
 def qft(q : quant, invert : bool = True) -> quant:
     """Quantum Fourier Transformation
@@ -36,19 +37,27 @@ def qft(q : quant, invert : bool = True) -> quant:
     if len(q) == 1:
         H(q)
     else:
-        head, tail = q[0], q[1:]
+        head, *tail = q
         H(head)
         for i in range(len(tail)):
-            ctrl(tail[i], phase, 2*pi/2**(i+2), head)
+            with control(tail[i]):
+                phase(2*pi/2**(i+2), head)
         qft(tail, invert=False)
 
     if invert:
         for i in range(len(q)//2):
             swap(q[i], q[len(q)-i-1])
-    return q.inverted()
+        return q
+    else:
+        return reversed(q)
 
-def dump_matrix(u : Union[Callable, Iterable[Callable]], size : int) -> List[List[complex]]:
-    """Get the matrix of a quantum operation."""
+def dump_matrix(u : Callable | Iterable[Callable], size : int = 1) -> list[list[complex]]:
+    """Get the matrix of a quantum operation.
+    
+    Args:
+        u: Quantum operation.
+        size: Number of qubits.
+    """
 
     mat = [[0 for _ in range(2**size)] for _ in range(2**size)]
     with run():

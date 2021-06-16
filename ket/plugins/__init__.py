@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -13,8 +14,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import plugin, quant
-from typing import List
+from ..ket import plugin
+from ..types import quant
 from inspect import getsource
 from base64 import b64encode
 from textwrap import dedent
@@ -22,14 +23,19 @@ from typing import Optional
 
 __all__ = ['plugin', 'pown', 'diagonal', 'make_quantum']
 
-def pown(a : int, x : quant, n : int) -> quant: 
+def pown(a : int, x : quant, N : int) -> quant: 
     r"""Apply a modular exponentiation in a superposition.
 
     .. math::
 
-        \left| x \right> \left| 0 \right> \rightarrow  \left| x \right> \left| a^x\; \text{mod} \, n \right>
+        \left| x \right> \left| 0 \right> \rightarrow  \left| x \right> \left| a^x\; \text{mod} \, N \right>
 
-    :return: Quant with the result of the operation.
+    Args:
+        a: :math:`a`.
+        x: :math:`x`.
+        N: :math:`N`.
+
+    :return: :class:`~ket.types.quant` with the operation result.
     """
     
     ret = quant(n.bit_length())
@@ -39,7 +45,7 @@ def pown(a : int, x : quant, n : int) -> quant:
 
     return ret
 
-def diagonal(diag : List[float], q : quant):
+def diagonal(diag : list[float], q : quant):
     r"""Apply a diagonal matrix.
 
     .. math::
@@ -51,7 +57,9 @@ def diagonal(diag : List[float], q : quant):
                  0              & 0              & \cdots & e^{i\lambda_{2^n-1}} 
              \end{bmatrix}
 
-    :param diag: :math:`\left[ \lambda_0, \lambda_1, \dots, \lambda_{2^n-1} \right]`
+    Args:
+        diag: :math:`\left[ \lambda_0, \lambda_1, \dots, \lambda_{2^n-1} \right]`
+        q: Input qubits.
     """
     
     arg = ' '.join(str(i) for i in diag)
@@ -68,7 +76,7 @@ def matrix(u00 : complex, u01 : complex, u10 : complex, u11 :complex, q : Option
 def make_quantum(*args, **kwargs):
     r'''Make a Python function operate with quant variables.
 
-    Usage:
+    :Usage:
 
     .. code-block:: ket
 

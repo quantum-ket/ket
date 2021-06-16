@@ -64,7 +64,7 @@ def import_ket(source : PathLike) -> ModuleType:
 def from_import_ket(source : PathLike, *names : list[str]) -> tuple:
     """Import names from Ket file.
 
-    Args 
+    Args:
         source: Ket source file.  
         names: Names to import from ``source``.
     """
@@ -80,7 +80,7 @@ def code_ket(func : Callable) -> Callable:
     Worning:
         Do not use this decorator in a .ket file.    
 
-    **Usage:**
+    :Usage:
 
     .. code-block:: python
         
@@ -101,6 +101,9 @@ def code_ket(func : Callable) -> Callable:
     if in_ket in func.__globals__ and func.__globals__[in_ket]: 
         return func
         
+    doc = func.__doc__
+    annotations = func.__annotations__
+
     buildins_more = buildins+'\n'+in_ket+' = True\n'
     buildins_obj = compile(buildins_more, '<ket build-in functions>', 'exec', optimize=2)
     exec(buildins_obj, func.__globals__)
@@ -113,5 +116,7 @@ def code_ket(func : Callable) -> Callable:
 
     obj =  compile(tree, '<code_ket function ' + func.__name__ + '>', 'exec', optimize=2)
     exec(obj, func.__globals__)
+    func.__globals__[func.__name__].__doc__ = doc
+    func.__globals__[func.__name__].__annotations__ = annotations
 
     return func.__globals__[func.__name__]  

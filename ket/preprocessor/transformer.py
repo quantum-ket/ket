@@ -205,7 +205,7 @@ class ketpp (ast.NodeTransformer):
                     test=ast.Name(id=ndone_name, ctx=ast.Load()),
                     body = [*node_cp.body, 
                         ast.If(
-                            test=node_cp.test,
+                            test=ast.UnaryOp(op=ast.Not(), operand=node_cp.test),
                             body=[
                                 ast.Assign(
                                     targets=[ast.Name(id=ndone_name, ctx=ast.Store())],
@@ -232,14 +232,7 @@ class ketpp (ast.NodeTransformer):
         if_future = ast.If(
             test=type_check,
             body=[body_call, *node.body, loop_call, *else_call],
-            orelse=[
-                ast.Expr(value=ast.Call(
-                    func=ast.Name(id = '_ket_next', ctx=ast.Load()),
-                    args=[ast.Name(id=end_name, ctx=ast.Load())],
-                    keywords=[]
-                )),
-                if_not_future
-            ]
+            orelse=[if_not_future]
         )
 
         self.while_begin = while_begin_save 

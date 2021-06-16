@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -14,12 +15,11 @@
 #  limitations under the License.
 
 from ... import *
-from ... import code_ket
+from ...preprocessor import _ket_if, _ket_next
 from math import sqrt, asin
-from typing import Union
+from typing import Optional, Callable
 
-@code_ket
-def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
+def bell(x : int = 0, y : int = 0, qubits : Optional[quant] = None) -> quant:
     r"""Bell state preparation
     
     Return two entangle qubits in the Bell state:
@@ -27,11 +27,11 @@ def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
     .. math::
 
         \left|\beta_{x,y}\right> = \frac{\left|0,y\right> + (-1)^x\left|1,¬y\right>}{\sqrt{2}}
-        
-    :param x: aux 0
-    :param y: aux 1
-    :param qubits: if provided, prepare state in qubits; else, create a new quant
-    :return: 2 qubits in the Bell state
+
+    Args: 
+        x: :math:`x`.
+        y: :math:`y`.
+        qubits: if provided, prepare the state in ``qubits``.
     """
 
     if qubits is not None and (len(qubits) != 2 or type(qubits) != quant):
@@ -40,26 +40,36 @@ def bell(x : int = 0, y : int = 0, qubits : quant = None) -> quant:
     if qubits is None:
         qubits = quant(2)
 
-    if x == 1:
+    if isinstance(x, future):
+        end = _ket_if(x)
         X(qubits[0])
-    if y == 1:
+        _ket_next(end)
+    elif x:
+        X(qubits[0])
+
+    if isinstance(y, future):
+        end = _ket_if(y)
         X(qubits[1])
+        _ket_next(end)
+    elif y:
+        X(qubits[1])
+
     H(qubits[0])
     ctrl(qubits[0], X, qubits[1])
     return qubits
 
-def ghz(qubits : Union[quant, int]) -> quant:
+def ghz(qubits : quant | int) -> quant:
     """GHZ state preparation"""
-    if type(qubits) == int:
+    if not isinstance(qubits, quant):
         qubits = quant(qubits)
     
     ctrl(H(qubits[0]), X, qubits[1:])
 
     return qubits
 
-def w(qubits : Union[quant, int]) -> quant:
+def w(qubits : quant | int) -> quant:
     """W state preparation"""
-    if type(qubits) == int:
+    if not isinstance(qubits, quant):
         size = qubits
         qubits = quant(qubits)
     size = len(qubits) 
@@ -73,11 +83,20 @@ def w(qubits : Union[quant, int]) -> quant:
 
     return qubits
 
-@code_ket
-def pauli(basis : Union[X, Y, Z], q : quant, state : int = +1) -> quant:
-    """Prepares qubits in the +1 or -1 eigenstate of a given Pauli operator."""
+def pauli(basis : Callable, q : quant, state : int = +1) -> quant:
+    """Prepare in the +1 or -1 eigenstate of a given Pauli operator.
+    
+    Args:
+        basis: Pauli operator :func:`~ket.gates.X`, :func:`~ket.gates.Y`, or :func:`~ket.gates.Z`.
+        q: Input qubits.
+        state: Eigenstate.
+    """
 
-    if state == -1:
+    if isinstance(state, future):
+        end = _ket_if(state == -1)
+        X(q)
+        _ket_next(end)
+    elif state == -1:
         X(q)
     elif state == 1:
         pass
