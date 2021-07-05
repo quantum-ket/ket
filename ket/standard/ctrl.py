@@ -226,7 +226,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
 
     control, create_gate = _qubit_for_ctrl(control)
     if create_gate:
-        target, _ = _qubit_for_ctrl(*args if target is None else target)
+        target, _ = _qubit_for_ctrl(*args if target is None else [target])
         def _ctrl_gate(q : quant) -> quant:
             _ctrl(control(q), func, target(q), on_state=on_state)
             return q
