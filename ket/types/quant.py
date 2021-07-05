@@ -91,6 +91,11 @@ class quant(_quant):
         ret.__class__ = quant
         return ret
 
+    def __or__(self, other):
+        ret = super().__or__(other)
+        ret.__class__ = quant
+        return ret
+
     def at(self, index : Iterable[int]):
         r"""Return qubits at `index`
         
