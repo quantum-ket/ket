@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
-
 project(ketpy)
 
-if(NOT CMAKE_BUILD_TYPE) 
-    set(CMAKE_BUILD_TYPE Release)
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
     message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
@@ -14,31 +12,31 @@ endif()
 
 include(${CMAKE_BINARY_DIR}/conan.cmake)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 conan_cmake_run(REQUIRES boost/1.71.0
+                         gmp/6.2.1
                 BASIC_SETUP CMAKE_TARGETS
                 BUILD missing)
-
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/libket/cmake;${CMAKE_MODULE_PATH}")
-
-find_package(GMP REQUIRED)
-            
-FIND_PACKAGE(Python COMPONENTS Development.Embed)
-INCLUDE_DIRECTORIES(${Python_INCLUDE_DIRS})
+        
+include_directories(${PYTHON_INCLUDE_DIR})
 
 file(GLOB_RECURSE LIBKET_SRC libket/src/*.cpp)
 
-ADD_LIBRARY(ket SHARED
-            src/ket.cpp 
-            ${LIBKET_SRC})
+add_library(libket STATIC ${LIBKET_SRC})
+set_target_properties(libket PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-SET_TARGET_PROPERTIES(ket PROPERTIES 
-                      CXX_STANDARD 17
-                      PREFIX "_"
-                      POSITION_INDEPENDENT_CODE ON
-                     )
-                      
-TARGET_LINK_LIBRARIES(ket ${Python_LIBRARIES} CONAN_PKG::boost gmp)
+target_link_libraries(libket CONAN_PKG::boost 
+                             CONAN_PKG::gmp)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+add_library(ket SHARED
+            src/ket.cpp)
+
+set_target_properties(ket PROPERTIES
+                     PREFIX "_")
+
+target_link_libraries(ket libket 
+                          -static-libgcc 
+                          -static-libstdc++)
 
 install(TARGETS ket DESTINATION ket)
