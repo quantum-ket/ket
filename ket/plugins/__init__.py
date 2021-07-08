@@ -38,8 +38,8 @@ def pown(a : int, x : quant, N : int) -> quant:
     :return: :class:`~ket.types.quant` with the operation result.
     """
     
-    ret = quant(n.bit_length())
-    arg = str(len(ret)) + ' ' + str(a) + ' ' + str(n)
+    ret = quant(N.bit_length())
+    arg = str(len(ret)) + ' ' + str(a) + ' ' + str(N)
 
     plugin('ket_pown', x|ret, arg)
 
