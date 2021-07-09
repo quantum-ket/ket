@@ -1,9 +1,9 @@
 python_wheel:
   image: quay.io/pypa/manylinux2014_x86_64
   stage: deploy
-  variables: 
-    PATH: $PATH:/opt/python/cp39-cp39/bin/
   script:
+    - git submodule update --init --recursive --remote
+    - export PATH=$PATH:/opt/python/cp39-cp39/bin/
     - pip install conan auditwheel
     - python3.7  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
     - python3.8  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
