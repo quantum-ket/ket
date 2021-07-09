@@ -10,7 +10,7 @@ python_wheel:
     - python3.9  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
     - python3.10 setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
     - pypy3.7    setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
-    - for whl in dist/*.whl; do auditwheel repair $whl; done
-    artifacts:
+    - ./wheelrepair.sh
+  artifacts:
     paths:
       - wheelhouse
