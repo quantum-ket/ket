@@ -1,46 +1,16 @@
-image: ubuntu:20.04
-
-before_script:
-  - ln -snf /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
-  - apt-get update -y 
-  - apt-get install -y 
-      cmake 
-      desktop-file-utils
-      fakeroot
-      fuse
-      g++ 
-      gcc 
-      git
-      gtk-update-icon-cache
-      libgdk-pixbuf2.0-dev 
-      libgmp-dev
-      libssl-dev 
-      make 
-      ninja-build 
-      patchelf
-      pkg-config
-      python3
-      python3-pip 
-      python3-setuptools
-      sed
-      swig 
-      unzip
-      uuid-dev
-      wget
-  - wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/bin/appimagetool.AppImage
-  - chmod +x /usr/bin/appimagetool.AppImage
-  - /usr/bin/appimagetool.AppImage --appimage-extract
-  - mv squashfs-root /usr/bin/appimage.AppDir
-  - ln -s /usr/bin/appimage.AppDir/AppRun /usr/bin/appimagetool
-  - pip3 install appimage-builder
-
-appimage:
+python_wheel:
+  image: quay.io/pypa/manylinux2014_x86_64
+  stage: deploy
+  variables: 
+    PATH: $PATH:/opt/python/cp39-cp39/bin/
   script:
-    - git submodule update --init --recursive --remote
-    - sed 's/VERSION/"'$(git rev-parse --short HEAD)'"/' AppImageBuilder.yml.in > AppImageBuilder.yml
-    - appimage-builder --skip-test
-  artifacts:
+    - pip install conan auditwheel
+    - python3.7  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
+    - python3.8  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
+    - python3.9  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
+    - python3.10 setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
+    - pypy3.7    setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
+    - for whl in dist/*.whl; do auditwheel repair $whl; done
+    artifacts:
     paths:
-      - ./*.AppImage
-  only:
-    - master
+      - wheelhouse

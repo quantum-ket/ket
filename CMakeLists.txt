@@ -23,20 +23,24 @@ file(GLOB_RECURSE LIBKET_SRC libket/src/*.cpp)
 
 add_library(libket STATIC ${LIBKET_SRC})
 set_target_properties(libket PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
 target_link_libraries(libket CONAN_PKG::boost 
                              CONAN_PKG::gmp)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(ket SHARED
-            src/ket.cpp)
+find_package(SWIG REQUIRED)
+include(UseSWIG)
 
-set_target_properties(ket PROPERTIES
-                     PREFIX "_")
+set_property(SOURCE src/ket.i
+             PROPERTY CPLUSPLUS ON)
+
+swig_add_library(ket
+                 LANGUAGE python
+                 SOURCES src/ket.i)
 
 target_link_libraries(ket libket 
                           -static-libgcc 
                           -static-libstdc++)
 
 install(TARGETS ket DESTINATION ket)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ket.py DESTINATION ket)

@@ -3,11 +3,6 @@ import setuptools
 import sys
 
 try:
-    from conans import client
-except ImportError:
-    subprocess.call([sys.executable, '-m', 'pip', 'install', 'conan'])
-
-try:
     from skbuild import setup
 except ImportError:
     subprocess.call([sys.executable, '-m', 'pip', 'install', 'scikit-build'])
@@ -23,7 +18,7 @@ setup_requirements = ['scikit-build>=0.11.1',
 
 setup (
     name = 'ket-lang',
-    version='0.1b11',
+    version='0.1.dev0',
     cmake_source_dir='.',
     cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
     author='Evandro Chagas Ribeiro da Rosa',

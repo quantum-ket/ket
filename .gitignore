@@ -13,3 +13,4 @@ AppDir
 appimage-builder-cache
 *.AppImage
 **.kqasm
+wheelhouse/
