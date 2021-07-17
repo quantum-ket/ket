@@ -9,8 +9,7 @@ script:
   - cp icon/ket.svg AppDir/usr/share/icons/hicolor/scalable/apps/
   - cp icon/ket.svg AppDir/
   # Install application
-  - make
-  - python3 setup.py install --prefix=/usr --root=AppDir
+  - pip install wheelhouse/ket_lang*cp38* --prefix=/usr --root=AppDir
 
 AppDir:
   path: ./AppDir
@@ -30,8 +29,6 @@ AppDir:
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3B4FE6ACC0B21F32'
       
     include:
-      - libpython3.8-dev
-      - libstdc++6
       - python3.8-minimal
     exclude: []
 
