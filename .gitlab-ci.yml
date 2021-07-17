@@ -1,6 +1,6 @@
 Python_wheel:
   image: quay.io/pypa/manylinux2014_x86_64
-  stage: deploy
+  stage: build
   script:
     - git submodule update --init --recursive --remote
     - export PATH=$PATH:/opt/python/cp39-cp39/bin/
