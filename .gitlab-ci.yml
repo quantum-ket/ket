@@ -15,23 +15,25 @@ Python_wheel:
     paths:
       - wheelhouse
   
-  AppImage:
-    image: ubuntu:20.04
-    stage: deploy
-    before_script:
-      - apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace fuse
-      - wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/bin/appimagetool.AppImage
-      - chmod +x /usr/bin/appimagetool.AppImage
-      - /usr/bin/appimagetool.AppImage --appimage-extract
-      - mv squashfs-root /usr/bin/appimage.AppDir
-      - ln -s /usr/bin/appimage.AppDir/AppRun /usr/bin/appimagetool
-      - pip3 install appimage-builder
-    script:
-      - sed 's/VERSION/"'$(git rev-parse --short HEAD)'"/' AppImageBuilder.yml.in > AppImageBuilder.yml
-      - appimage-builder --skip-test
-    artifacts:
-      paths:
-        - ./*.AppImage
-    dependencies:
-      - python_wheel
+AppImage:
+  image: ubuntu:20.04
+  stage: deploy
+  before_script:
+    - ln -snf /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+    - apt-get update -y 
+    - apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace fuse
+    - wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/bin/appimagetool.AppImage
+    - chmod +x /usr/bin/appimagetool.AppImage
+    - /usr/bin/appimagetool.AppImage --appimage-extract
+    - mv squashfs-root /usr/bin/appimage.AppDir
+    - ln -s /usr/bin/appimage.AppDir/AppRun /usr/bin/appimagetool
+    - pip3 install appimage-builder
+  script:
+    - sed 's/VERSION/"'$(git rev-parse --short HEAD)'"/' AppImageBuilder.yml.in > AppImageBuilder.yml
+    - appimage-builder --skip-test
+  artifacts:
+    paths:
+      - ./*.AppImage
+  dependencies:
+    - Python_wheel
 
