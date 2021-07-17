@@ -30,6 +30,7 @@ AppDir:
       
     include:
       - python3.8-minimal
+      - libpython3.8-stdlib
     exclude: []
 
   runtime:
