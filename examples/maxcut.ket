@@ -1,0 +1,75 @@
+from random import uniform
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+
+class G:
+    def __init__(self, n_nodes, edges, idx=None):
+        self.n_nodes = n_nodes
+        self.edges = edges
+        self.idx = idx
+    
+    def __iter__(self):
+        return G(self.n_nodes, self.edges, -1)
+    
+    def __next__(self):
+        self.idx += 1
+        if self.idx < len(self.edges):
+            return self.edges[self.idx]
+        else:
+            raise StopIteration
+
+def U_C(gamma, g, q):
+    for j, k in g:
+        with around(cnot, q[j], q[k]):
+            RZ(gamma, q[k])
+
+U_B = lambda beta, q : RX(2*beta, q)
+
+def QAOA_base(gammas, betas, g : G, p):
+    q = H(quant(g.n_nodes))
+    for i in range(p):
+        U_C(gammas[i], g, q)
+        U_B(betas[i], q)
+    return q
+
+def expval(d):
+    val = 0.0
+    for state in d.get_states():
+        if bool(state & 1) != bool(state & 2):
+            val -= d.probability(state)
+        else:
+            val += d.probability(state)
+    return val
+
+def QAOA(gammas, betas, g : G, p):
+    q = QAOA_base(gammas, betas, g, p)
+
+    ds = [dump(q[j]+q[k]) for j, k in g]
+    return sum(0.5 * (1 - expval(d)) for d in ds) 
+    
+
+def maxcut(g : G, p=1):
+    def objective(params):
+        gammas = params[:p]
+        betas = params[p:]
+        return -QAOA(gammas, betas, g, p)
+
+    params = [uniform(0, 1) for _ in range(p*2)]
+    res = minimize(objective, params, method='COBYLA')
+    
+    params = res.x
+    result = dump(QAOA_base(params[:p], params[p:], g, p))
+    
+    print(res)
+
+    _, ax = plt.subplots()
+
+    ax.bar([f"{i:0{g.n_nodes}b}" for i in result.states()], [result.probability(i) for i in result.states()])
+    plt.xticks(rotation=90)
+    plt.show()
+
+if __name__ == '__main__':
+    g = G(4, [(0, 1), (1, 2), (2, 3), (3, 0)])
+    maxcut(g, 3)
+
+
