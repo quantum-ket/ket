@@ -17,12 +17,13 @@ from __future__ import annotations
 from ..ket import X as _X, Y as _Y, Z as _Z, H as _H, S as _S, SD as _SD, T as _T, TD as _TD
 from ..ket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ 
 from ..types import quant
-from ..standard import ctrl
+from ..standard import ctrl, around
 from typing import Callable, Optional, Iterable
 from functools import reduce
 from operator import add
+from math import pi
 
-__all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap']
+__all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ']
 
 def X(q : quant | Iterable[quant]) -> quant:
     r""" Pauli-X gate (:math:`\sigma_x`)
@@ -508,3 +509,63 @@ def swap(a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quan
     cnot(a, b)
 
     return a, b
+
+def RXX(theta : float, a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
+    r"""XX-axis rotation gate
+    
+
+    :Matrix Representation:
+
+    .. math::
+
+        RXX(\theta) = \begin{bmatrix}
+                          \cos\theta   & 0            & 0            & -i\sin\theta \\
+                          0            & \cos\theta   & -i\sin\theta & 0 \\
+                          0            & -i\sin\theta & \cos\theta   & 0 \\
+                          -i\sin\theta & 0            & 0            & \cos\theta
+                      \end{bmatrix}
+  
+    :param theta: :math:`\theta`.
+    :param a: Input qubits.
+    :param b: Input qubits.
+    """
+    a = reduce(add, a)
+    b = reduce(add, b)
+    
+    for qa, qb in zip(a, b):
+        with around([H, ctrl(0, X, 1)], qa+qb):
+            RZ(theta, qb)
+
+    return a, b 
+
+def RYY(theta : float, a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
+    r"""YY-axis rotation gate
+    
+    :param theta: :math:`\theta`.
+    :param a: Input qubits.
+    :param b: Input qubits.
+    """
+    a = reduce(add, a)
+    b = reduce(add, b)
+    
+    for qa, qb in zip(a, b):
+        with around([RX(pi/2), ctrl(0, X, 1)], qa+qb):
+            RZ(theta, qb)
+
+    return a, b 
+
+def RZZ(theta : float, a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
+    r"""ZZ-axis rotation gate
+    
+    :param theta: :math:`\theta`.
+    :param a: Input qubits.
+    :param b: Input qubits.
+    """
+    a = reduce(add, a)
+    b = reduce(add, b)
+    
+    for qa, qb in zip(a, b):
+        with around(ctrl(0, X, 1), qa+qb):
+            RZ(theta, qb)
+            
+    return a, b 

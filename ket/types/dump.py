@@ -18,6 +18,8 @@ from ..ket import dump as _dump
 from .quant import quant
 from typing import Optional
 from random import choices
+from functools import reduce
+from operator import add
 
 class dump(_dump):
     """Dump qubits
@@ -45,6 +47,7 @@ class dump(_dump):
     """
     
     def __init__(self, q : quant):
+        q = reduce(add, q)
         super().__init__(q)
         self.size = len(q)
     
