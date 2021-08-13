@@ -19,7 +19,7 @@ __all__ = ['ket_config', 'report', 'context']
 
 def ket_config(**params):
     for param in params:
-        config(param, params[param])
+        config(param, str(params[param]))
 
 report.__doc__ = \
     """Return the current KQASM metrics 
