@@ -1,15 +1,16 @@
 Python_wheel:
   image: quay.io/pypa/manylinux2014_x86_64
   stage: build
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - git submodule update --init --recursive --remote
     - export PATH=$PATH:/opt/python/cp39-cp39/bin/
     - pip install conan auditwheel
-    - python3.7  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
-    - python3.8  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
-    - python3.9  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
-    - python3.10 setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
-    - pypy3.7    setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-9/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-9/root/bin/c++
+    - python3.7  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
+    - python3.8  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
+    - python3.9  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
+    - python3.10 setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
+    - pypy3.7    setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
     - ./wheelrepair.sh
   artifacts:
     paths:

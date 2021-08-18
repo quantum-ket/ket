@@ -11,23 +11,25 @@ except ImportError:
 with open('README.md', 'r') as file:
     long_description = file.read()
 
-setup_requirements = ['scikit-build>=0.11.1',
-                      'cmake>=3.15',
-                      'conan>=1.25'
-                      ]
+setup_requirements = [
+    'scikit-build>=0.11',
+    'cmake>=3.15', 
+    'ninja>=1.10', 
+    'conan>=1.25'
+]
 
-setup (
-    name = 'ket-lang',
-    version='0.1.dev0',
+setup(
+    name            = 'ket-lang',
+    description     = 'Ket Quantum Programming Language interpreter and library.',
+    url             = 'https://quantum-ket.gitlab.io',
+    version         = '0.1.dev0',
+    author          = 'Evandro Chagas Ribeiro da Rosa',
+    author_email    = 'evandro.crr@posgrad.ufsc.br',
+    license         = 'Apache-2.0',
     cmake_source_dir='.',
     cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
-    author='Evandro Chagas Ribeiro da Rosa',
-    author_email='evandro.crr@posgrad.ufsc.br',
-    description='Ket Quantum Programming Language interpreter and library.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://gitlab.com/quantum-ket/ket',
-    license='Apache-2.0',
     packages=setuptools.find_namespace_packages(include=['ket', 'ket.*']),
     setup_requires=setup_requirements,
     classifiers=[
