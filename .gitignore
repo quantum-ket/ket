@@ -14,3 +14,4 @@ appimage-builder-cache
 *.AppImage
 **.kqasm
 wheelhouse/
+ket/_ket.so
