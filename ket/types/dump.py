@@ -50,10 +50,28 @@ class dump(_dump):
         q = reduce(add, q)
         super().__init__(q)
         self.size = len(q)
+        padding = self.size%64
+        if padding != 0:
+            padding = 64-padding
+        self._bit_size = self.size+padding
+        self._states = None
     
+    @property
     def states(self) -> list[int]:
-        """Return the list of basis states."""
-        return super().get_states()
+        """List of basis states."""
+
+        if self._states is None:
+            self._states = [int(reduce(add, [f'{i:064b}' for i in reversed(state)]) , 2) for state in super().get_states()]
+
+        return self._states
+
+    def _convert_state(self, state : int) -> list[int]:
+        state_bin = f'{state:0b}'
+        padding = self._bit_size - len(state_bin)
+        if padding != 0:
+            state_bin = '0'*padding+state_bin    
+        
+        return [int(state_bin[i:i+64], 2) for i in reversed(range(0, self._bit_size, 64))]
 
     def amplitude(self, state : int) -> complex | list[complex]:
         """Return the amplitude of a given state
@@ -65,7 +83,7 @@ class dump(_dump):
             state: Basis state.
         """
 
-        ret = super().amplitude(state)
+        ret = super().amplitude(self._convert_state(state))
         return ret[0] if len(ret) == 1 else ret
     
     def probability(self, state : int) -> float:
@@ -74,7 +92,7 @@ class dump(_dump):
         Args:
             state: Basis state.
         """
-        return super().probability(state)
+        return super().probability(self._convert_state(state))
 
     def show(self, format : Optional[str] = None) -> str:
         r"""Return the quantum state as a string

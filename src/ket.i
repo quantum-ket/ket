@@ -16,9 +16,15 @@
 
 %include <std_string.i>
 %include <std_vector.i>
+%include <std_complex.i>
 %include <stdint.i>
 
 %template(vec_float) std::vector<double>;
+%template(vec_uint) std::vector<unsigned long>;
+%template(vec_vec_uint) std::vector<std::vector<unsigned long>>;
+%template(vec_complex) std::vector<std::complex<double>>;
+%template(complex_d) std::complex<double>;
+
 
 %module ket
 %{
@@ -47,50 +53,6 @@
         throw std::runtime_error("quant.__getitem__ accepts a slice or int as param");
     }
 }
-
-%typemap(out) std::vector<std::vector<unsigned long>> ket::dump::get_states
-%{
-    $result = PyList_New($1.size());
-    {
-        auto* py_int_64 = PyLong_FromLong(64);
-        for (size_t i = 0; i < $1.size(); i++) {
-            auto& state = $1.at(i);
-            auto* py_int = PyLong_FromUnsignedLong(state.back());
-            for (auto it = state.rbegin()+1; it != state.rend(); ++it) {
-                auto* py_int_it = PyLong_FromUnsignedLong(*it);
-                auto* py_int_ls = PyNumber_Lshift(py_int, py_int_64);
-                auto* py_int_new = PyNumber_Or(py_int, py_int_it);
-                Py_DECREF(py_int_it);
-                Py_DECREF(py_int_ls);
-                Py_DECREF(py_int);
-                py_int = py_int_new;
-            }
-            PyList_SetItem($result, i, py_int);
-        }
-        Py_DECREF(py_int_64);
-    }
-%}
-
-%typemap(out) std::vector<std::complex<double>> ket::dump::amplitude
-%{
-    $result = PyList_New($1.size());
-    for (size_t i = 0; i < $1.size(); i++) {
-        PyList_SetItem($result, i, PyComplex_FromDoubles($1.at(i).real(), $1.at(i).imag()));
-    }
-%}
-
-%typemap(in) (std::vector<unsigned long> idx) 
-%{  
-    $1 = std::vector<unsigned long>();
-    $1.push_back(PyLong_AsUnsignedLongMask($input));
-    for (int i = 0; i < arg1->nbits/64; i++) {
-        auto* old = $input;
-        $input = PyNumber_Rshift($input, PyLong_FromLong(64));
-        Py_DECREF(old);
-        $1.push_back(PyLong_AsUnsignedLongMask($input));
-    } 
-%}
-
 
 %include "libket/include/ket"
 
