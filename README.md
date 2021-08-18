@@ -11,88 +11,63 @@ Ket is a Python-embedded  language for hybridity classical-quantum  programming.
 * [Code examples](#code-examples)
 * [Usage](#usage)
 * [Installation](#installation)
-* [Run examples](#run-examples)
-
 
 ## Code examples
 
 ### Random Number Generation
 
 ```python
+# random.ket
 def random(n_bits):
   with run():
      q = quant(n_bits)
-     h(q)
+     H(q)
      return measure(q).get()
 
 n_bits = 32
 print(n_bits, 'bits random number:', random(n_bits))
 ```
 
-> 32 bits random number: 3830764503
+```console
+$ ket random.ket
+32 bits random number: 3830764503
+```
 
 ### Quantum Teleportation:
 
 ```python
-from ket.lib import bell
+# teleport.ket
+def teleport(alice : quant) -> quant:
+    alice_b, bob_b = quant(2)
+    ctrl(H(alice_b), X, bob_b)
 
-def teleport(a):
-    b = bell(0, 0)
-    with control(a):
-        x(b[0])
-    h(a)
-    m0 = measure(a)
-    m1 = measure(b[0])
+    ctrl(alice, X, alice_b)
+    H(alice)
+
+    m0 = measure(alice)
+    m1 = measure(alice_b)
+
     if m1 == 1:
-        x(b[1])
+        X(bob_b)
     if m0 == 1:
-        z(b[1])
-    return b[1]
+        Z(bob_b)
 
-a = quant(1)    # a = |0⟩
-h(a)            # a = |+⟩ 
-z(a)            # a = |-⟩
-y = teleport(a) # y <- a
-h(y)            # y = |1⟩
-print('Expected measure 1, result =', measure(y).get())
+    return bob_b
+
+alice = quant(1)         # alice = |0⟩
+H(alice)                 # alice = |+⟩
+Z(alice)                 # alice = |–⟩
+bob = teleport(alice)    # bob  <- alice
+H(bob)                   # bob   = |1⟩
+bob_m = measure(bob)
+
+print('Expected measure 1, result =', bob_m.get())
 ```
 
-> Expected measure 1, result = 1
-
-### Shor's Algorithm Factoring 15:
-
-```python
-from math import pi, gcd
-from ket import plugins
-from ket.lib import qft
-
-def period():
-    reg1 = quant(4)
-    h(reg1)
-    reg2 = plugins.pown(7, reg1, 15)
-    qft(reg1)
-    return measure(reg1).get()
-
-r = period()
-results = [r]
-for _ in range(4):
-    results.append(period())
-    r = gcd(r, results[-1])
-
-print(results)
-r = 2**4/r
-
-print('measurements =', results)
-print('r =', r)
-p = gcd(int(7**(r/2))+1, 15)
-q = gcd(int(7**(r/2))-1, 15)
-print(15, '=', p , "x", q)
+```console
+$ ket teleport.ket
+Expected measure 1, result = 1
 ```
-
-> [8, 12, 12, 4, 8]\
-> measurements = [8, 12, 12, 4, 8]\
-> r = 4.0\
-> 15 = 5 x 3
 
 ## Usage 
 
@@ -104,6 +79,7 @@ Ket program options:
   -s [ --kbw ]  (=127.0.0.1) Quantum execution (KBW) address.
   -p [ --port ]  (=4242)     Quantum execution (KBW) port.
   --seed                     Set RNG seed for quantum execution.
+  --api-args                 Additional parameters for quantum execution.
   --no-execute               Does not execute KQASM, measurements return 0.
   --dump-to-fs               Use the filesystem to transfer dump data.
 ```
@@ -115,10 +91,44 @@ Ket program options:
 
 Available installation methods:
 
-* [Snap](#install-using-snap) (recommended)
 * [pip](#install-using-pip)
 * [Source](#install-from-source)
-* AppImage [:arrow_down:](https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/download?job=appimage)
+* [Snap](#install-using-snap) 
+
+### Install using pip
+
+Install requirements:
+
+* C/C++ compiler
+* CMake
+* Ninja or GNU Make
+* Conan
+
+Installing from PyPI:
+
+```console
+$ pip install ket-lang
+```
+
+Installing the last version from git:
+
+```console
+$ pip install git+https://gitlab.com/quantum-ket/ket.git
+```
+
+> Compiled manylinux wheel available [here](https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/download?job=python_manylinux_wheel)
+
+### Install from source 
+
+Same requirements os installing with pip.
+
+To install from source runs:
+
+```console
+$ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
+$ cd ket
+$ python setup.py install
+```
 
 ### Install using Snap
 
@@ -138,43 +148,6 @@ $ sudo snap install ket --edge
 > $ source ~/snap/ket/common/bin/activate
 > $ pip install <package>
 > ```
-
-### Install using pip
-
-Install requirements:
-
-* C/C++ compiler
-* CMake
-* Ninja or GNU Make
-* GMP
-
-To install using pip runs:
-
-```console
-$ pip install ket-lang
-```
-
-You can import Ket source code as a Python module using the `ket.import_ket.import_ket` function.
-
-### Install from source 
-
-> Recommended if you want to be up to date without using Snap.
-
-Install requirements:
-
-* C/C++ compiler
-* CMake
-* Ninja or GNU Make
-* SWIG
-
-To install from source runs:
-
-```console
-$ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-$ cd ket
-$ make
-$ python setup.py install
-```
 
 -----------
 
