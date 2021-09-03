@@ -1,6 +1,4 @@
 from typing import Callable
-
-from ket.ket import quant
 from ket.lib import qft
 from math import pi
 
@@ -25,7 +23,7 @@ if __name__ == '__main__':
 
     precision = 15
     
-    measurement = phase_estimator(theta_oracle, X(quant(1)), precision).get()
+    measurement = phase_estimator(theta_oracle, X(quant()), precision).get()
     
     result = measurement/2**precision
 

@@ -34,7 +34,7 @@ def QAOA_base(gammas, betas, g : G, p):
 
 def expval(d):
     val = 0.0
-    for state in d.get_states():
+    for state in d.states:
         if bool(state & 1) != bool(state & 2):
             val -= d.probability(state)
         else:
@@ -64,7 +64,7 @@ def maxcut(g : G, p=1):
 
     _, ax = plt.subplots()
 
-    ax.bar([f"{i:0{g.n_nodes}b}" for i in result.states()], [result.probability(i) for i in result.states()])
+    ax.bar([f"{i:0{g.n_nodes}b}" for i in result.states], [result.probability(i) for i in result.states])
     plt.xticks(rotation=90)
     plt.show()
 
