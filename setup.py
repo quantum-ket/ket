@@ -4,7 +4,10 @@ import sys
 from datetime import datetime
 
 def git_hash():
-    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode()[:-1]
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode()[:-1] + ", "
+    except:
+        return ""
 
 try:
     from skbuild import setup
@@ -35,7 +38,7 @@ setup(
     cmake_source_dir='.',
     cmake_args=[
         '-DCMAKE_BUILD_TYPE=Release',
-        f'-DKET_BUILD_INFO="{__version__} ({git_hash()}, {datetime.now()})"',
+        f'-DKET_BUILD_INFO="{__version__} ({git_hash()}{datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")})"',
     ],
     long_description=long_description,
     long_description_content_type='text/markdown',

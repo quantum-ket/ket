@@ -23,7 +23,7 @@ def __ket__():
     from os import path, getcwd
 
     parser = argparse.ArgumentParser(prog='ket', description='Ket interprester')
-    parser.add_argument('--version', action='version', version=build_info())
+    parser.add_argument('--version', action='version', version=f'Ket {build_info()}')
     parser.add_argument('input', metavar='.ket', nargs=argparse.REMAINDER, type=str, help='source code')
 
     args = parser.parse_args()
