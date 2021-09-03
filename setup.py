@@ -1,6 +1,10 @@
 import subprocess
 import setuptools
 import sys
+from datetime import datetime
+
+def git_hash():
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode()[:-1]
 
 try:
     from skbuild import setup
@@ -18,16 +22,21 @@ setup_requirements = [
     'conan>=1.25'
 ]
 
+__version__ = '0.1'
+
 setup(
     name            = 'ket-lang',
     description     = 'Ket Quantum Programming Language interpreter and library.',
     url             = 'https://quantum-ket.gitlab.io',
-    version         = '0.1.dev0',
+    version         = __version__,
     author          = 'Evandro Chagas Ribeiro da Rosa',
     author_email    = 'evandro.crr@posgrad.ufsc.br',
     license         = 'Apache-2.0',
     cmake_source_dir='.',
-    cmake_args=['-DCMAKE_BUILD_TYPE=Release'],
+    cmake_args=[
+        '-DCMAKE_BUILD_TYPE=Release',
+        f'-DKET_BUILD_INFO="{__version__} ({git_hash()}, {datetime.now()})"',
+    ],
     long_description=long_description,
     long_description_content_type='text/markdown',
     packages=setuptools.find_namespace_packages(include=['ket', 'ket.*']),

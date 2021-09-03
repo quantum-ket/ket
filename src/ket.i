@@ -29,6 +29,7 @@
 %module ket
 %{
     #include "libket/include/ket"
+    #include "src/build_info.hpp"
 %}
 
 %exception {
@@ -55,6 +56,8 @@
 }
 
 %include "libket/include/ket"
+%include "src/build_info.hpp"
+
 
 %pythoncode 
 %{

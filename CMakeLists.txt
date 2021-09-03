@@ -36,7 +36,9 @@ set_property(SOURCE src/ket.i
 
 swig_add_library(ket
                  LANGUAGE python
-                 SOURCES src/ket.i)
+                 SOURCES src/ket.i 
+                         src/build_info.cpp)
+target_compile_definitions(ket PRIVATE KET_BUILD_INFO=${KET_BUILD_INFO})
 
 target_link_libraries(ket libket 
                           -static-libgcc 

@@ -13,9 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import report, metrics, context, config
+from ..ket import report, metrics, context, config, build_info as ket_version
 
-__all__ = ['ket_config', 'report', 'context']
+__all__ = ['ket_config', 'report', 'context', 'ket_version']
 
 def ket_config(**params):
     for param in params:

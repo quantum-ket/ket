@@ -15,7 +15,7 @@
 
 from .import_ket import _import_globals_ket
 from . import *
-from .ket import label, branch, jump
+from .ket import label, branch, jump, build_info
 from .preprocessor import *
 
 def __ket__():
@@ -23,6 +23,7 @@ def __ket__():
     from os import path, getcwd
 
     parser = argparse.ArgumentParser(prog='ket', description='Ket interprester')
+    parser.add_argument('--version', action='version', version=build_info())
     parser.add_argument('input', metavar='.ket', nargs=argparse.REMAINDER, type=str, help='source code')
 
     args = parser.parse_args()

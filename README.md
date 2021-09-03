@@ -1,4 +1,3 @@
-[![ket](https://snapcraft.io//ket/badge.svg)](https://snapcraft.io/ket)
 [![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
 [![AppImage](https://gitlab.com/quantum-ket/ket/badges/master/pipeline.svg)](https://gitlab.com/quantum-ket/ket/-/jobs)
 
@@ -129,25 +128,6 @@ $ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
 $ cd ket
 $ python setup.py install
 ```
-
-### Install using Snap
-
-The ket is available in most Linux distribution through the Snap Store.
-
->Information on how to enable Snap on your Linux distribution is available on
->https://snapcraft.io/ket.
-
-To install using snap runs:
-
-```console
-$ sudo snap install ket --edge
-```
-> To install Python packages setup a [virtual environment](https://docs.python.org/3/tutorial/venv.html):
-> ```console
-> $ virtualenv -p /snap/ket/current/usr/bin/python3.8 ~/snap/ket/common
-> $ source ~/snap/ket/common/bin/activate
-> $ pip install <package>
-> ```
 
 -----------
 
