@@ -92,16 +92,8 @@ Available installation methods:
 
 * [pip](#install-using-pip)
 * [Source](#install-from-source)
-* [Snap](#install-using-snap) 
 
 ### Install using pip
-
-Install requirements:
-
-* C/C++ compiler
-* CMake
-* Ninja or GNU Make
-* Conan
 
 Installing from PyPI:
 
@@ -119,7 +111,12 @@ $ pip install git+https://gitlab.com/quantum-ket/ket.git
 
 ### Install from source 
 
-Same requirements os installing with pip.
+Install requirements:
+
+* C/C++ compiler
+* CMake
+* Ninja or GNU Make
+* Conan
 
 To install from source runs:
 
