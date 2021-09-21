@@ -43,6 +43,8 @@ def __ket__():
         "dump2fs" : args.dump2fs,
     }
 
+    if args.out:
+        ket_args["kqasm"] = args.out
     if args.seed:
         ket_args["seed"] = args.seed
     if args.api_args:
