@@ -72,15 +72,25 @@ Expected measure 1, result = 1
 
 ```console
 $ ket -h
-Ket program options:
-  -h [ --help ]              Show this information.
-  -o [ --out ]               KQASM output file.
-  -s [ --kbw ]  (=127.0.0.1) Quantum execution (KBW) address.
-  -p [ --port ]  (=4242)     Quantum execution (KBW) port.
-  --seed                     Set RNG seed for quantum execution.
-  --api-args                 Additional parameters for quantum execution.
-  --no-execute               Does not execute KQASM, measurements return 0.
-  --dump-to-fs               Use the filesystem to transfer dump data.
+usage: ket [-h] [--version] [-o OUT] [-s KBW] [-p PORT] [--seed SEED]
+           [--api-args API_ARGS] [--no-execute] [--dump2fs]
+           .ket
+
+Ket interpreter
+
+positional arguments:
+  .ket                  source code
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+  -o OUT, --out OUT     KQASM output file
+  -s KBW, --kbw KBW     quantum execution (KBW) IP address
+  -p PORT, --port PORT  quantum execution (KBW) port
+  --seed SEED           set RNG seed for quantum execution
+  --api-args API_ARGS   additional parameters for quantum execution
+  --no-execute          does not execute KQASM, measurements return 0
+  --dump2fs             use the filesystem to transfer dump data
 ```
 
 ## Installation

@@ -19,6 +19,8 @@ __all__ = ['ket_config', 'report', 'context', 'ket_version']
 
 def ket_config(**params):
     for param in params:
+        if type(params[param]) == bool:
+          params[param] = int(params[param])
         config(param, str(params[param]))
 
 report.__doc__ = \
