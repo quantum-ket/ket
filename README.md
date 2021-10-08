@@ -72,8 +72,9 @@ Expected measure 1, result = 1
 
 ```console
 $ ket -h
-usage: ket [-h] [--version] [-o OUT] [-s KBW] [-p PORT] [--seed SEED]
-           [--api-args API_ARGS] [--no-execute] [--dump2fs]
+usage: ket [-h] [--version] [-o OUT] [-s KBW] [-u USER] [-p PORT]
+           [-P SSH_PORT] [--seed SEED] [--api-args API_ARGS] [--no-execute]
+           [--dump2fs]
            .ket
 
 Ket interpreter
@@ -86,7 +87,10 @@ optional arguments:
   --version             show program's version number and exit
   -o OUT, --out OUT     KQASM output file
   -s KBW, --kbw KBW     quantum execution (KBW) IP address
+  -u USER, --user USER  quantum execution (KBW) SSH user
   -p PORT, --port PORT  quantum execution (KBW) port
+  -P SSH_PORT, --ssh-port SSH_PORT
+                        quantum execution (KBW) SSH port
   --seed SEED           set RNG seed for quantum execution
   --api-args API_ARGS   additional parameters for quantum execution
   --no-execute          does not execute KQASM, measurements return 0

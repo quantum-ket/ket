@@ -4,6 +4,7 @@ python_manylinux_wheel:
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
+    - yum install openssl-devel -y
     - export PATH=$PATH:/opt/python/cp39-cp39/bin/
     - pip install conan auditwheel ninja
     - python3.7  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
