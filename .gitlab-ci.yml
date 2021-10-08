@@ -1,9 +1,9 @@
 python_manylinux_wheel:
   image: quay.io/pypa/manylinux2014_x86_64
   stage: build
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
   script:
+    - git submodule init
+    - git submodule update
     - yum install openssl-devel -y
     - export PATH=$PATH:/opt/python/cp39-cp39/bin/
     - pip install conan auditwheel ninja
