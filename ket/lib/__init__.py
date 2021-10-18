@@ -74,10 +74,10 @@ def dump_matrix(u : Callable | Iterable[Callable], size : int = 1) -> list[list[
         d = dump(column|row)
         exec_quantum()
     
-    for state in d.get_states():
+    for state in d.states:
         column = state >> size
         row = state & ((1 << size)-1)
-        mat[row][column] = d.amplitude(state)[0]/(1/sqrt(2**size))
+        mat[row][column] = d.amplitude(state)*sqrt(2**size)
 
     if ret != None:
         return mat, ret

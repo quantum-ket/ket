@@ -3,6 +3,7 @@
 ## 0.2.0
 
 - Add SSH authentication support for the quantum execution
+- Fix lib.dump_matrix
 
 ## 0.1.1
 
