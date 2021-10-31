@@ -22,126 +22,40 @@ from typing import Callable, Optional, Iterable
 from functools import reduce
 from operator import add
 from math import pi
+from .quantum_gate import quantum_gate
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ']
 
-def X(q : quant | Iterable[quant]) -> quant:
-    r""" Pauli-X gate (:math:`\sigma_x`)
+X = quantum_gate(
+    name='Pauli-X', 
+    gate=_X, 
+    func='``X``', 
+    matrix=r":math:`\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}`",
+    effect=r":math:`\begin{matrix} X\left|0\right> = & \left|1\right> \\ X\left|1\right> = & \left|0\right> \end{matrix}`"
+)
+Y = quantum_gate(
+    name='Pauli-Y', 
+    gate=_Y, 
+    func='``Y``',
+    matrix=r":math:`\begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}`",
+    effect=r":math:`\begin{matrix} Y\left|0\right> = & i\left|1\right> \\ Y\left|1\right> =& -i\left|0\right> \end{matrix}`"
+)
 
-    Apply a single-qubit Pauli-X gate on every qubit of ``q``.
+Z = quantum_gate(
+    name='Pauli-Z', 
+    gate=_Z, 
+    func='``Z``',
+    matrix=r":math:`\begin{bmatrix}  1 & 0 \\ 0 & -1 \end{bmatrix}`",
+    effect=r":math:`\begin{matrix} Z\left|0\right> = & \left|0\right> \\ Z\left|1\right> = & -\left|1\right> \end{matrix}`"
+)
 
-    :Matrix Representation:
-
-    .. math::
-
-        X = \begin{bmatrix} 
-                0 & 1 \\
-                1 & 0 
-            \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            X\left|0\right> = & \left|1\right> \\
-            X\left|1\right> = & \left|0\right>
-        \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _X(q)
-    return q
-
-def Y(q : quant | Iterable[quant]) -> quant:
-    r"""Pauli-Y gate (:math:`\sigma_y`)
-
-    Apply a single-qubit Pauli-Y gate on every qubit of ``q``.
-
-    :Matrix Representation:
-
-    .. math::
-
-        Y = \begin{bmatrix} 
-                   0 & -i \\
-                   i & 0 
-            \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            Y\left|0\right> = & -i\left|1\right> \\
-            Y\left|1\right> =& i\left|1\right>
-        \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _Y(q)
-    return q
-
-def Z(q : quant | Iterable[quant]) -> quant:
-    r"""Pauli-Z gate (:math:`\sigma_z`)
-
-    Apply a single-qubit Pauli-Y gate on every qubit of ``q``.
-
-    :Matrix Representation:
-
-    .. math::
-
-        Z = \begin{bmatrix} 
-                1 & 0 \\
-                0 & -1 
-            \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            Z\left|0\right> = & \left|0\right> \\ 
-            Z\left|1\right> = & -\left|1\right>
-        \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _Z(q)
-    return q
-
-def H(q : quant | Iterable[quant]) -> quant:
-    r"""Hadamard gate
-
-    Apply a single-qubit Hadamard gate on every qubit of ``q``.
-
-    :Matrix Representation:
-
-    .. math::
-
-        H = \frac{1}{\sqrt{2}}\begin{bmatrix} 
-                                    1 & 1 \\
-                                    1 & -1 
-                              \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            H\left|0\right> = & \frac{\left|0\right>+\left|1\right>}{\sqrt{2}} = & \left|+\right> \\
-            H\left|1\right> = & \frac{\left|0\right>-\left|1\right>}{\sqrt{2}} = & \left|-\right> \\
-            H\left|+\right> = & \left|0\right> \\
-            H\left|-\right> = & \left|1\right> \\
-        \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _H(q)
-    return q
+H = quantum_gate(
+    name='Hadamard',
+    gate=_H,
+    func='``H``',
+    matrix=r":math:`\frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}`",
+    effect=r":math:`\begin{matrix} H\left|0\right> = & \frac{\left|0\right>+\left|1\right>}{\sqrt{2}} = & \left|+\right> \\ H\left|1\right> = & \frac{\left|0\right>-\left|1\right>}{\sqrt{2}} = & \left|-\right> \\ H\left|+\right> = & \left|0\right> \\ H\left|-\right> = & \left|1\right> \\ \end{matrix}`"
+)
 
 def S(q : quant | Iterable[quant]) -> quant:
     r"""S gate 
