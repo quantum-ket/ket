@@ -14,9 +14,11 @@
 
 from functools import reduce
 from operator import add
+from ..types import quant
 
 class quantum_gate:
-    _gates = []
+    _gates_1 = []
+    _gates_m = []
     _matrix = {}
     _effect = {}
 
@@ -26,20 +28,39 @@ class quantum_gate:
         nl = '\n'
         return \
 f"""
+
+Single Qubit Gates
+~~~~~~~~~~~~~~~~~~
+
 .. csv-table::
+    :delim: ;
     :header: Gate,  Function, Matrix, Effect
 
-{nl.join(f'    {gate}, {func}, {cls._matrix[gate]}, {cls._effect[gate]}' for gate, func in cls._gates)}
+{nl.join(f'    {gate}; {func}; {cls._matrix[gate]}; {cls._effect[gate]}' for gate, func in cls._gates_1)}
+
+Multiple Qubit Gates
+~~~~~~~~~~~~~~~~~~~~
+
+.. csv-table::
+    :delim: ;
+    :header: Gate,  Function, Matrix
+
+{nl.join(f'    {gate}; {func}; {cls._matrix[gate]}' for gate, func in cls._gates_m)}
 
 """
 
     def __new__(cls, *args, **kwargs):
-        if 'name' in kwargs:
+        if 'doc' in kwargs:
+            doc = kwargs['doc']
             name = kwargs['name']
-            cls._gates.append((name, kwargs['func']))
-            cls._matrix[name] = kwargs['matrix']
-            cls._effect[name] = kwargs['effect']
-        return cls
+            if 'q_args' in kwargs and kwargs['q_args'] == 1 or 'q_args' not in kwargs:
+                cls._gates_1.append((name, doc['func']))
+                cls._effect[name] = doc['effect']
+            else:
+                cls._gates_m.append((name, doc['func']))
+            cls._matrix[name] = doc['matrix']
+
+        return super().__new__(cls)
 
     def __init__(self, *, name, gate, c_args=0, q_args=1, **kwargs):
         self.name = name
@@ -87,11 +108,9 @@ f"""
         elif any(isinstance(args, quantum_gate) for arg in q_args):
             raise ValueError(f'Incomplete gate call')
 
-        for i in range(len(q_args)):
-            q_args[i] = reduce(add, q_args[i])
-
-        self.gate(*c_args, *q_args)
-        return q_args
+        reduced_q_args = tuple(map(lambda q : reduce(add, q), q_args))
+        self.gate(*c_args, *reduced_q_args)
+        return reduced_q_args[0] if len(reduced_q_args) == 1 else reduced_q_args
 
     def __repr__(self):
         return f'{self.name} Ket Quantum Gate'

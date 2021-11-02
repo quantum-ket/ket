@@ -26,460 +26,217 @@ from .quantum_gate import quantum_gate
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ']
 
+I = quantum_gate(
+    name='Identity', 
+    gate=_X, 
+    doc={
+        'func' : '``I(q)``', 
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} I\left|0\right> = & \left|0\right> \\ I\left|1\right> = & \left|1\right> \end{matrix}`"
+    }
+)
+
 X = quantum_gate(
     name='Pauli-X', 
     gate=_X, 
-    func='``X``', 
-    matrix=r":math:`\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}`",
-    effect=r":math:`\begin{matrix} X\left|0\right> = & \left|1\right> \\ X\left|1\right> = & \left|0\right> \end{matrix}`"
+    doc={
+        'func' : '``X(q)``', 
+        'matrix' : r":math:`\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} X\left|0\right> = & \left|1\right> \\ X\left|1\right> = & \left|0\right> \end{matrix}`"
+    }
 )
+
 Y = quantum_gate(
     name='Pauli-Y', 
     gate=_Y, 
-    func='``Y``',
-    matrix=r":math:`\begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}`",
-    effect=r":math:`\begin{matrix} Y\left|0\right> = & i\left|1\right> \\ Y\left|1\right> =& -i\left|0\right> \end{matrix}`"
+    doc={
+        'func' : '``Y(q)``',
+        'matrix' : r":math:`\begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} Y\left|0\right> = & i\left|1\right> \\ Y\left|1\right> =& -i\left|0\right> \end{matrix}`"
+    }
 )
 
 Z = quantum_gate(
     name='Pauli-Z', 
     gate=_Z, 
-    func='``Z``',
-    matrix=r":math:`\begin{bmatrix}  1 & 0 \\ 0 & -1 \end{bmatrix}`",
-    effect=r":math:`\begin{matrix} Z\left|0\right> = & \left|0\right> \\ Z\left|1\right> = & -\left|1\right> \end{matrix}`"
+    doc={
+        'func' : '``Z(q)``',
+        'matrix' : r":math:`\begin{bmatrix}  1 & 0 \\ 0 & -1 \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} Z\left|0\right> = & \left|0\right> \\ Z\left|1\right> = & -\left|1\right> \end{matrix}`"
+    }
 )
 
 H = quantum_gate(
     name='Hadamard',
     gate=_H,
-    func='``H``',
-    matrix=r":math:`\frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}`",
-    effect=r":math:`\begin{matrix} H\left|0\right> = & \frac{\left|0\right>+\left|1\right>}{\sqrt{2}} = & \left|+\right> \\ H\left|1\right> = & \frac{\left|0\right>-\left|1\right>}{\sqrt{2}} = & \left|-\right> \\ H\left|+\right> = & \left|0\right> \\ H\left|-\right> = & \left|1\right> \\ \end{matrix}`"
+    doc={
+        'func' : '``H(q)``',
+        'matrix' : r":math:`\frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} H\left|0\right> = & \frac{\left|0\right>+\left|1\right>}{\sqrt{2}} = & \left|+\right> \\ H\left|1\right> = & \frac{\left|0\right>-\left|1\right>}{\sqrt{2}} = & \left|-\right> \\ H\left|+\right> = & \left|0\right> \\ H\left|-\right> = & \left|1\right> \\ \end{matrix}`"
+    }
 )
 
-def S(q : quant | Iterable[quant]) -> quant:
-    r"""S gate 
-
-    Apply a single-qubit S gate on every qubit of ``q``.
-
-    :Matrix Representation:
-
-    .. math::
-
-        S = \begin{bmatrix} 
-                1 & 0 \\
-                0 & i 
-            \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            S\left|0\right> = & \left|0\right> \\
-            S\left|1\right> = & i\left|1\right> 
-        \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _S(q)
-    return q
-
-def SD(q : quant | Iterable[quant]) -> quant:
-    r"""S-dagger gate (:math:`S^\dagger`)
-
-    Apply a single-qubit S-dagger gate on every qubit of ``q``.
-    
-    ``SD`` :math:`\equiv` ``adj(S)``
-
-    :Matrix Representation:
-
-    .. math::
-
-        S^\dagger = \begin{bmatrix} 
-                        1 & 0 \\
-                        0 & -i 
-                    \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-                 S^\dagger\left|0\right> = & \left|0\right> \\
-                 S^\dagger\left|1\right> = & -i\left|1\right> 
-             \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _SD(q)
-    return q
-
-def T(q : quant | Iterable[quant]) -> quant:
-    r"""T gate
-
-    Apply a single-qubit T gate on every qubit of ``q``.
-
-    :Matrix Representation:
-
-    .. math::
-
-         T = \begin{bmatrix} 
-                    1 & 0 \\
-                    0 & e^{i\pi/4} 
-             \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            T\left|0\right> = & \left|0\right> \\
-            T\left|1\right> = & \frac{1+i}{\sqrt{2}}\left|1\right> \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _T(q)
-    return q
-
-def TD(q : quant | Iterable[quant]) -> quant:
-    r"""T-dagger gate (:math:`T^\dagger`)
-
-    Apply a single-qubit T-dagger gate on every qubit of ``q``.
-
-    ``ST`` :math:`\equiv` ``adj(T)``
-
-    :Matrix Representation:
-
-    .. math::
-
-         T^\dagger = \begin{bmatrix} 
-                        1 & 0 \\
-                        0 & e^{-i\pi/4}
-                     \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-                T^\dagger\left|0\right> = & \left|0\right> \\
-                T^\dagger\left|1\right> = & \frac{1-i}{\sqrt{2}}\left|1\right> \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    _TD(q)
-    return q
-
-def phase(lamb : float, q : Optional[quant | Iterable[quant]] = None) -> Callable[[quant], quant] | quant:
-    r"""Phase gate
-
-    Apply a relative phase of :math:`e^{i\lambda}` on every qubit of ``q``.
-
-    If ``q`` is not provided, return a new gate: ``phase(lamb)(q)``
-    :math:`\equiv` ``phase(lamb, q)``. 
-
-
-    :Matrix Representation:
-
-    .. math::
-
-        P(\lambda) = \begin{bmatrix}
-                        1 & 0 \\
-                        0 & e^{i\lambda}
-                     \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix}
-                P\left|0\right> = & \left|0\right> \\
-                P\left|1\right> =& e^{i\lambda}\left|1\right> 
-        \end{matrix}
-
-    :param q: Input qubits.
-    :param lamb: Relative phase :math:`\lambda`.
-    """
-    def __phase(q):
-        q = reduce(add, q)
-        _phase(lamb, q)
-        return q
-      
-    return __phase(q) if q is not None else __phase
-
-def RX(theta : float, q : Optional[quant | Iterable[quant]] = None) -> Callable[[quant], quant] | quant:
-    r"""X-axis rotation gate
-
-    Apply a rotation of :math:`\theta` about the X-axis on every qubit of ``q``.
-
-    If ``q`` is not provided, return a new gate: ``RX(theta)(q)``
-    :math:`\equiv` ``RX(theta, q)``. 
-
-    :Matrix Representation:
-
-    .. math::
-
-         RX(\theta) = \begin{bmatrix} 
-                        \cos{\frac{\theta}{2}} & -i\sin{\frac{\theta}{2}} \\
-                        -i\sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} 
-                      \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix}
-                RX\left|0\right> = & \cos\frac{\theta}{2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\
-                RX\left|1\right> =& -i\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right>
-        \end{matrix}
-
-    :param q: Input qubits.
-    :param theta: Rotation angle :math:`\theta`.
-    """
-    def __RX(q):
-        q = reduce(add, q)
-        _RX(theta, q)
-        return q
-     
-    return __RX(q) if q is not None else __RX
-
-def RY(theta : float, q : Optional[quant | Iterable[quant]] = None) -> Callable[[quant], quant] | quant:
-    r"""Y-axis rotation gate
-
-    Apply a rotation of :math:`\theta` about the Y-axis on every qubit of ``q``.
-
-    If ``q`` is not provided, return a new gate: ``RY(theta)(q)``
-    :math:`\equiv` ``RY(theta, q)``. 
-
-    :Matrix Representation:
-
-    .. math::
-
-         RY(\theta) = \begin{bmatrix} 
-                        \cos{\frac{\theta}{2}} & -\sin{\frac{\theta}{2}} \\
-                        \sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} 
-                      \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix}
-            RY\left|0\right> = & \cos{\theta\over2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\
-            RY\left|1\right> =& -\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> 
-        \end{matrix}
-
-    :param q: Input qubits.
-    :param theta: Rotation angle :math:`\theta`.
-    """
-    def __RY(q):
-        q = reduce(add, q)
-        _RY(theta, q)
-        return q
-      
-    return __RY(q) if q is not None else __RY
-
-def RZ(theta : float, q : Optional[quant | Iterable[quant]] = None) -> Callable[[quant], quant] | quant:
-    r"""Z-axis rotation gate
-
-    Apply a rotation of :math:`\theta` about the Z-axis on every qubit of ``q``.
-
-    If ``q`` is not provided, return a new gate: ``RZ(theta)(q)``
-    :math:`\equiv` ``RZ(theta, q)``. 
-
-    :Matrix Representation:
-
-    .. math::
-
-         RZ(\theta) =  \begin{bmatrix} 
-                            e^{-i\theta/2} & 0 \\
-                            0 & e^{i\theta/2} 
-                       \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix}
-            RZ\left|0\right> = & e^{-i\theta/2}\left|0\right> \\ 
-            RZ\left|1\right> =& e^{i\theta/2}\left|1\right> 
-        \end{matrix}
-
-    :param q: Input qubits.
-    :param theta: Rotation angle :math:`\theta`.
-    """
-    def __RZ(q):
-        q = reduce(add, q)
-        _RZ(theta, q)
-        return q
-    
-    return __RZ(q) if q is not None else __RZ
-
-
-def I(q : quant | Iterable[quant]) -> quant:
-    r"""Identity gate 
-
-    Apply an identity gate on every qubit of ``q``.
-
-    Note:
-        This quantum gate does nothing! 
-
-    :Matrix Representation:
-
-    .. math::
-
-        I = \begin{bmatrix} 
-                1 & 0 \\
-                0 & 1 
-            \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            I\left|0\right> = & \left|0\right> \\
-            I\left|1\right> = & \left|1\right>
-        \end{matrix}
-
-    :param q: Input qubits.
-    """
-    q = reduce(add, q)
-    return q
- 
-def cnot(c : quant | Iterable[quant], t : quant | Iterable[quant]) -> tuple[quant, quant]:
-    r"""Controlled-NOT
-    
-    Apply a CNOT gate between the qubits of c and t.
-
-    :Matrix Representation:
-
-    .. math::
-
-        CNOT = \begin{bmatrix} 
-                    1 & 0 & 0 & 0\\
-                    0 & 1 & 0 & 0\\
-                    0 & 0 & 0 & 1\\
-                    0 & 0 & 1 & 0
-                \end{bmatrix}
-
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            CNOT\left|c t\right> = & \left|c (c\oplus t)\right> 
-        \end{matrix}
-
-    :param c: Control qubits.
-    :param t: Target qubits.
-    """
-    
-    c = reduce(add, c)
-    t = reduce(add, t)
-    
+S = quantum_gate(
+    name='S',
+    gate=_S,
+    doc={
+        'func' : '``S(q)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix}  S\left|0\right> = & \left|0\right> \\  S\left|1\right> = & i\left|1\right> \end{matrix}`" 
+    }
+)
+
+SD = quantum_gate(
+    name='S Dagger',
+    gate=_SD,
+    doc={
+        'func' : '``SD(q)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & -i \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} S^\dagger\left|0\right> = & \left|0\right> \\ S^\dagger\left|1\right> = & -i\left|1\right> \end{matrix}`"
+    }
+)
+
+T = quantum_gate(
+    name='T',
+    gate=_T,
+    doc={
+        'func' : '``T(q)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} T^\dagger\left|0\right> = & \left|0\right> \\ T^\dagger\left|1\right> = & \frac{1+i}{\sqrt{2}}\left|1\right> \end{matrix}`" 
+    }
+)
+
+
+TD = quantum_gate(
+    name='T Dagger',
+    gate=_TD,
+    doc={
+        'func' : '``TD(q)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & e^{-i\pi/4} \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} T^\dagger\left|0\right> = & \left|0\right> \\ T^\dagger\left|1\right> = & \frac{1-i}{\sqrt{2}}\left|1\right> \end{matrix}`" 
+    }
+)
+
+phase = quantum_gate(
+    name='Phase',
+    gate=_phase,
+    c_args=1,
+    doc={
+        'func' : '``phase(λ, q)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & e^{i\lambda} \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} P\left|0\right> = & \left|0\right> \\ P\left|1\right> =& e^{i\lambda}\left|1\right> \end{matrix}`"
+    }
+) 
+
+RX = quantum_gate(
+    name='X-axis Rotation',
+    gate=_RX,
+    c_args=1,
+    doc={
+        'func' : '``RX(θ, q)``',
+        'matrix' : r":math:`\begin{bmatrix} \cos{\frac{\theta}{2}} & -i\sin{\frac{\theta}{2}} \\ -i\sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} RX\left|0\right> = & \cos\frac{\theta}{2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\ RX\left|1\right> =& -i\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> \end{matrix}`"
+    }
+)
+
+RY = quantum_gate(
+    name='Y-axis Rotation',
+    gate=_RY,
+    c_args=1,
+    doc={
+        'func' : '``RY(θ, q)``',
+        'matrix' : r":math:`\begin{bmatrix} \cos{\frac{\theta}{2}} & -\sin{\frac{\theta}{2}} \\ \sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} \end{bmatrix}`",
+        'effect' : r":math:`\begin{matrix} RY\left|0\right> = & \cos{\theta\over2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\ RY\left|1\right> =& -\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> \end{matrix}`"
+    }
+)
+
+RZ = quantum_gate(
+    name='Z-axis Rotation',
+    gate=_RZ,
+    c_args=1,
+    doc={
+        'func' : '``RZ(θ, q)``',
+        'matrix' : r":math:`\begin{bmatrix} e^{-i\theta/2} & 0 \\ 0 & e^{i\theta/2} \end{bmatrix}`",      
+        'effect' : r":math:`\begin{matrix} RZ\left|0\right> = & e^{-i\theta/2}\left|0\right> \\ RZ\left|1\right> =& e^{i\theta/2}\left|1\right> \end{matrix}`"
+        }
+)
+
+def _cnot(c, t):
     for i, j in zip(c, t):
         ctrl(i, X, j)
-    
-    return c, t
 
-def swap(a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
-    r"""SWAP gate
-    
-    Swap the qubits of a and b.
+cnot = quantum_gate(
+    name='Controlled-NOT',
+    gate=_cnot,
+    q_args=2,
+    doc={
+        'func' : '``cnot(c, t)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \end{bmatrix}`"
+    }
 
-    :Matrix Representation:
+)
+ 
+def _swap(a, b):
+    _cnot(a, b)
+    _cnot(b, a)
+    _cnot(a, b)
 
-    .. math::
+swap = quantum_gate(
+    name='SWAP',
+    gate=_swap,
+    q_args=2,
+    doc={
+        'func' : '``swap(a, b)``',
+        'matrix' : r":math:`\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}`"
+    }
 
-        CNOT = \begin{bmatrix} 
-                    1 & 0 & 0 & 0\\
-                    0 & 0 & 1 & 0\\
-                    0 & 1 & 0 & 0\\
-                    0 & 0 & 0 & 1
-                \end{bmatrix}
+)
 
-    :Effect:
-
-    .. math::
-
-        \begin{matrix} 
-            CNOT\left|a b\right> = & \left|b a\right> 
-        \end{matrix}
-
-    :param a: Input qubits.
-    :param b: Input qubits.
-    """
-    a = reduce(add, a)
-    b = reduce(add, b)
-
-    cnot(a, b)
-    cnot(b, a)
-    cnot(a, b)
-
-    return a, b
-
-def RXX(theta : float, a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
-    r"""XX-axis rotation gate
-    
-
-    :Matrix Representation:
-
-    .. math::
-
-        RXX(\theta) = \begin{bmatrix}
-                          \cos\theta   & 0            & 0            & -i\sin\theta \\
-                          0            & \cos\theta   & -i\sin\theta & 0 \\
-                          0            & -i\sin\theta & \cos\theta   & 0 \\
-                          -i\sin\theta & 0            & 0            & \cos\theta
-                      \end{bmatrix}
-  
-    :param theta: :math:`\theta`.
-    :param a: Input qubits.
-    :param b: Input qubits.
-    """
-    a = reduce(add, a)
-    b = reduce(add, b)
-    
+def _RXX(theta, a, b):
     for qa, qb in zip(a, b):
-        with around([H, ctrl(0, X, 1)], qa+qb):
+        with around(cnot(H, H), qa, qb):
             RZ(theta, qb)
 
-    return a, b 
+RXX = quantum_gate(
+    name='XX-axis Rotation',
+    gate=_RXX,
+    c_args=1,
+    q_args=2,
+    doc={
+        'func' : '``RXX(θ, a, b)``',
+        'matrix' : r":math:`\begin{bmatrix} \cos\frac{\theta}{2} & 0 & 0 & -i\sin\frac{\theta}{2} \\ 0 & \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} & 0 \\ 0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\ -i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2} \end{bmatrix}`"
+    }
+)
 
-def RYY(theta : float, a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
-    r"""YY-axis rotation gate
-    
-    :param theta: :math:`\theta`.
-    :param a: Input qubits.
-    :param b: Input qubits.
-    """
-    a = reduce(add, a)
-    b = reduce(add, b)
-    
+def _RYY(theta, a, b):
     for qa, qb in zip(a, b):
-        with around([RX(pi/2), ctrl(0, X, 1)], qa+qb):
+        with around(cnot(RX(pi/2), RX(pi/2)), qa, qb):
             RZ(theta, qb)
 
-    return a, b 
+RYY = quantum_gate(
+    name='YY-axis Rotation',
+    gate=_RYY,
+    c_args=1,
+    q_args=2,
+    doc={
+        'func' : '``RYY(θ, a, b)``',
+        'matrix' : r":math:`\begin{bmatrix} \cos\frac{\theta}{2} & 0 & 0 & i\sin\frac{\theta}{2} \\ 0 & \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} & 0 \\ 0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\ i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2} \end{bmatrix}`"
+    }
+)
 
-def RZZ(theta : float, a : quant | Iterable[quant], b : quant | Iterable[quant]) -> tuple[quant, quant]:
-    r"""ZZ-axis rotation gate
-    
-    :param theta: :math:`\theta`.
-    :param a: Input qubits.
-    :param b: Input qubits.
-    """
-    a = reduce(add, a)
-    b = reduce(add, b)
-    
+def _RZZ(theta, a, b):
     for qa, qb in zip(a, b):
-        with around(ctrl(0, X, 1), qa+qb):
+        with around(cnot, qa, qb):
             RZ(theta, qb)
+
+RZZ = quantum_gate(
+    name='ZZ-axis Rotation',
+    gate=_RYY,
+    c_args=1,
+    q_args=2,
+    doc={
+        'func' : '``RZZ(θ, a, b)``',
+        'matrix' : r":math:`\begin{bmatrix} e^{-i \frac{\theta}{2}} & 0 & 0 & 0 \\ 0 & e^{i \frac{\theta}{2}} & 0 & 0 \\ 0 & 0 & e^{i \frac{\theta}{2}} & 0 \\ 0 & 0 & 0 & e^{-i \frac{\theta}{2}} \end{bmatrix}`"
+    }
+)
             
-    return a, b 
