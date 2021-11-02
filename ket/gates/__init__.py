@@ -18,11 +18,9 @@ from ..ket import X as _X, Y as _Y, Z as _Z, H as _H, S as _S, SD as _SD, T as _
 from ..ket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ 
 from ..types import quant
 from ..standard import ctrl, around
-from typing import Callable, Optional, Iterable
-from functools import reduce
-from operator import add
-from math import pi
 from .quantum_gate import quantum_gate
+from typing import Callable, Optional, Iterable
+from math import pi
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ']
 
