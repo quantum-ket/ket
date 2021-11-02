@@ -231,7 +231,7 @@ def _RZZ(theta, a, b):
 
 RZZ = quantum_gate(
     name='ZZ-axis Rotation',
-    gate=_RYY,
+    gate=_RZZ,
     c_args=1,
     q_args=2,
     doc={
