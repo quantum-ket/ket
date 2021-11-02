@@ -2,9 +2,11 @@
 
 ## 0.2.0
 
-- Add SSH authentication support for the quantum execution
-- Fix lib.dump_matrix
+- Added SSH authentication support for the quantum execution.
+- Changed quantum gates to the `quantum_gate` class, allowing composition of quantum gates.
+- `dump.show` reimplemented in Python to fix error in Jupyter Notebook.   
+- Fixed lib.dump_matrix.
 
 ## 0.1.1
 
-- Change from Boost.Program_options (Libket, C++) to argparse (Python) to fix segmentation fault with flag `-h`. 
+- Changed from Boost.Program_options (Libket, C++) to argparse (Python) to fix segmentation fault with flag `-h`. 

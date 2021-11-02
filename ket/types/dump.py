@@ -141,10 +141,49 @@ class dump(_dump):
             format: Format string that matchs ``(i|b)\d*(:(i|b)\d+)*``.
         """
         
-        if format == 'i' or format == 'b':
-            format += str(self.size)
+        dump_str = ''
 
-        return super().show(format if format is not None else "")
+        if format is not None:
+            fmt = []
+            count = 0
+            for b, size in map(lambda f : (f[0], int(f[1:])), format.split(':')):
+                fmt.append((b, count, count+size))
+                count += size
+            if count < self.size:
+                fmt.append(('b', count, self.size))
+        else:
+            fmt = [('b', 0, self.size)]
+
+        fmt_ket = lambda state, begin, end, f : f'|{state[begin:end]}⟩' if f == 'b' else f'|{int(state[begin:end], base=2)}⟩'
+
+        for state in self.states:
+            dump_str += ''.join(fmt_ket(f'{state:0{self.size}b}', b, e, f) for f, b, e in fmt)
+            dump_str += f"\t({100*self.probability(state):.2f}%)\n"
+            for amp in super().amplitude(self._convert_state(state)):
+                real = abs(amp.real) > 1e-10
+                real_l0 = amp.real < 0
+
+                imag = abs(amp.imag) > 1e-10
+                imag_l0 = amp.imag < 0
+
+                sqrt_dem = 1/abs(amp)**2
+                use_sqrt = abs(round(sqrt_dem)-sqrt_dem) < .001
+                sqrt_dem = f'/√{round(1/abs(amp)**2)}'
+ 
+                if real and imag:
+                    sqrt_num = ('-1' if real_l0 else ' 1')+('-i' if imag_l0 else '+i')
+                    sqrt_str = f'\t≅ {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                    dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i"+sqrt_str 
+                elif real:
+                    sqrt_num = '  -1' if real_l0 else '   1'
+                    sqrt_str = f'\t≅ {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                    dump_str += f"{amp.real:9.6f}       "+sqrt_str
+                else:
+                    sqrt_num = '  -i' if real_l0 else '   i'
+                    sqrt_str = f'\t≅ {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                    dump_str += f" {amp.imag:17.6f}i"+sqrt_str
+
+        return dump_str
 
     __repr__ = lambda self : f"<Ket type 'dump'; {super().__repr__()}>"
 

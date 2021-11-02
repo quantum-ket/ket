@@ -71,7 +71,7 @@ def dump_matrix(u : Callable | Iterable[Callable], size : int = 1) -> list[list[
                ret.append(ui(row)) 
         else:
             ret = u(row)
-        d = dump(column|row)
+        d = dump(column+row)
         exec_quantum()
     
     for state in d.states:
