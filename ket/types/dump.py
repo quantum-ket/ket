@@ -108,34 +108,33 @@ class dump(_dump):
             
         .. code-block:: ket
 
-            q = quant(20)
+            q = quant(19)
             X(ctrl(H(q[0]), X, q[1:])[1::2])
             d = dump(q)
 
             print(d.show('i'))
-            #|174762⟩		(50%)
-            #0.707107                 ≅  1/√2
-            #
-            #|873813⟩		(50%)
-            #0.707107                 ≅  1/√2
+            #|87381⟩         (50.00%)
+            # 0.707107               ≅      1/√2
+            #|436906⟩        (50.00%)
+            # 0.707107               ≅      1/√2
+
             print(d.show('b'))
-            #|00101010101010101010⟩		(50%)
-            #0.707107                 ≅  1/√2
-            #
-            #|11010101010101010101⟩		(50%)
-            #0.707107                 ≅  1/√2
+            #|0010101010101010101⟩   (50.00%)
+            # 0.707107               ≅      1/√2
+            #|1101010101010101010⟩   (50.00%)
+            # 0.707107               ≅      1/√2
+            
             print(d.show('i4'))
-            #|2⟩|1010101010101010⟩		(50%)
-            #0.707107                 ≅  1/√2
-            #
-            #|13⟩|0101010101010101⟩		(50%)
-            #0.707107                 ≅  1/√2
+            #|2⟩|101010101010101⟩    (50.00%)
+            # 0.707107               ≅      1/√2
+            #|13⟩|010101010101010⟩   (50.00%)
+            # 0.707107               ≅      1/√2
+
             print(d.show('b5:i4'))
-            #|00101⟩|2⟩|101010101010⟩		(50%)
-            #0.707107                 ≅  1/√2
-            #
-            #|11010⟩|5⟩|010101010101⟩		(50%)
-            #0.707107                 ≅  1/√2
+            #|00101⟩|5⟩|0101010101⟩  (50.00%)
+            # 0.707107               ≅      1/√2
+            #|11010⟩|10⟩|1010101010⟩ (50.00%)
+            # 0.707107               ≅      1/√2
 
         Args:
             format: Format string that matchs ``(i|b)\d*(:(i|b)\d+)*``.
@@ -144,6 +143,8 @@ class dump(_dump):
         dump_str = ''
 
         if format is not None:
+            if format == 'b' or format == 'i':
+                format += str(self.size)
             fmt = []
             count = 0
             for b, size in map(lambda f : (f[0], int(f[1:])), format.split(':')):
@@ -171,16 +172,16 @@ class dump(_dump):
                 sqrt_dem = f'/√{round(1/abs(amp)**2)}'
  
                 if real and imag:
-                    sqrt_num = ('-1' if real_l0 else ' 1')+('-i' if imag_l0 else '+i')
-                    sqrt_str = f'\t≅ {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                    sqrt_num = ('(-1' if real_l0 else ' (1')+('-i' if imag_l0 else '+i')
+                    sqrt_str = f'\t≅ {sqrt_num}){sqrt_dem}\n' if use_sqrt else '\n'
                     dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i"+sqrt_str 
                 elif real:
                     sqrt_num = '  -1' if real_l0 else '   1'
-                    sqrt_str = f'\t≅ {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                    sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
                     dump_str += f"{amp.real:9.6f}       "+sqrt_str
                 else:
-                    sqrt_num = '  -i' if real_l0 else '   i'
-                    sqrt_str = f'\t≅ {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                    sqrt_num = '  -i' if imag_l0 else '   i'
+                    sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
                     dump_str += f" {amp.imag:17.6f}i"+sqrt_str
 
         return dump_str
