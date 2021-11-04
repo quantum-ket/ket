@@ -26,7 +26,7 @@ __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', '
 
 I = quantum_gate(
     name='Identity', 
-    gate=_X, 
+    gate=lambda q : q, 
     doc={
         'func' : '``I(q)``', 
         'matrix' : r":math:`\begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}`",
