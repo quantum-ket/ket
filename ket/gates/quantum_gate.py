@@ -77,7 +77,7 @@ Multiple Qubit Gates
             if any(isinstance(arg, quant) for arg in args):
                 raise ValueError(f'{self.name} requirers {self.c_args} classical parameters')
 
-            args_name = ' '.join(str(arg) for arg in args)
+            args_name = ', '.join(str(arg) for arg in args)
             return quantum_gate(
                 name=f'{self.name}({args_name})', 
                 gate=lambda *q_args : self.__call__(*args, *q_args),
@@ -101,7 +101,7 @@ Multiple Qubit Gates
                     args_ = args_[gate.q_args:]
                 return self.gate(*c_args, *args)
 
-            args_name = ' '.join(gate.name for gate in q_args)
+            args_name = ', '.join(gate.name for gate in q_args)
             return quantum_gate(
                 name=f'{self.name}({args_name})', 
                 gate=new_gate, 
