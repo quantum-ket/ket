@@ -144,7 +144,7 @@ RY = quantum_gate(
     doc={
         'func' : '``RY(θ, q)``',
         'matrix' : r":math:`\begin{bmatrix} \cos{\frac{\theta}{2}} & -\sin{\frac{\theta}{2}} \\ \sin{\frac{\theta}{2}} & \cos{\frac{\theta}{2}} \end{bmatrix}`",
-        'effect' : r":math:`\begin{matrix} RY\left|0\right> = & \cos{\theta\over2}\left|0\right> -i\sin\frac{\theta}{2}\left|1\right> \\ RY\left|1\right> =& -\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> \end{matrix}`"
+        'effect' : r":math:`\begin{matrix} RY\left|0\right> = & \cos{\theta\over2}\left|0\right> + \sin\frac{\theta}{2}\left|1\right> \\ RY\left|1\right> =& -\sin\frac{\theta}{2}\left|0\right> + \cos\frac{\theta}{2}\left|1\right> \end{matrix}`"
     }
 )
 
