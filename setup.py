@@ -25,7 +25,7 @@ setup_requirements = [
     'conan>=1.25'
 ]
 
-__version__ = '0.2.0.dev0'
+__version__ = '0.2'
 
 setup(
     name            = 'ket-lang',

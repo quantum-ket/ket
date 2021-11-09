@@ -106,6 +106,7 @@ Available installation methods:
 
 * [pip](#install-using-pip)
 * [Source](#install-from-source)
+* [Docker](#docker-with-jupyter-notebook)
 
 ### Install using pip
 
@@ -138,6 +139,12 @@ To install from source runs:
 $ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
 $ cd ket
 $ python setup.py install
+```
+
+### Docker with Jupyter Notebook
+
+```console
+$ docker run --rm -it -v `pbw`:/home/ket -p 8888:8888 evandrocrr/ket:0.2
 ```
 
 -----------

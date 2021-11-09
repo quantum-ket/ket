@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0
+## 0.2
 
 - Added SSH authentication support for the quantum execution.
 - Changed quantum gates to the `quantum_gate` class, allowing composition of quantum gates.
