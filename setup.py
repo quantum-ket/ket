@@ -25,7 +25,7 @@ setup_requirements = [
     'conan>=1.25'
 ]
 
-__version__ = '0.2'
+__version__ = '0.2.1'
 
 setup(
     name            = 'ket-lang',
@@ -44,6 +44,7 @@ setup(
     long_description_content_type='text/markdown',
     packages=setuptools.find_namespace_packages(include=['ket', 'ket.*']),
     setup_requires=setup_requirements,
+    include_package_data=True,
     classifiers=[
         'Programming Language :: Python :: 3',
         'Programming Language :: C++',

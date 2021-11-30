@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Libket updated to fix segfault when the execution server returns an error. 
+
 ## 0.2
 
 - Added SSH authentication support for the quantum execution.

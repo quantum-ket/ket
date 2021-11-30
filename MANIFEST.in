@@ -1,6 +1,2 @@
 include LICENSE
-include README.md
-include libket/include/ket
-include libket/src/*.cpp
-include CMakeLists.txt
-include src/*
+include libssh/COPYING
