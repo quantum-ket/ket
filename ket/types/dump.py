@@ -172,6 +172,7 @@ class dump(_dump):
                 sqrt_dem = f'/√{round(1/abs(amp)**2)}'
  
                 if real and imag:
+                    sqrt_dem = f'/√{round(2*(1/abs(amp)**2))}'
                     sqrt_num = ('(-1' if real_l0 else ' (1')+('-i' if imag_l0 else '+i')
                     sqrt_str = f'\t≅ {sqrt_num}){sqrt_dem}\n' if use_sqrt else '\n'
                     dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i"+sqrt_str 

@@ -3,6 +3,7 @@
 ## 0.2.1
 
 - Libket updated to fix segfault when the execution server returns an error. 
+- Fixed sqrt approximation in `dump.show`.
 
 ## 0.2
 
