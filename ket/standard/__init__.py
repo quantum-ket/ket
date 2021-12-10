@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -18,6 +19,8 @@ from ..types import quant, future
 from ..preprocessor import _ket_if, _ket_next
 from .ctrl import *
 from .adj import *
+from functools import reduce
+from operator import add
 
 __all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure', 'exec_quantum']
 
@@ -28,7 +31,7 @@ exec_quantum.__doc__ = \
     :class:`~ket.types.dump` variables.
     """
 
-def measure(q : quant, free : bool = False) -> future:
+def measure(q : quant | list[quant], free : bool = False) -> future:
     """Quantum measurement
 
     Measure the qubits of a :class:`~ket.types.quant` and return a
@@ -38,6 +41,7 @@ def measure(q : quant, free : bool = False) -> future:
         q: Qubits to measure.
         free: If ``True``, free the qubits after the measuremet.
     """
+    q = reduce(add, q)
 
     ret = _measure(q)
     if free:

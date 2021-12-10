@@ -5,6 +5,7 @@
 - Libket updated to fix segfault when the execution server returns an error. 
 - Libket updated to unstack process with execution error, allowing further quantum executions.
 - Fixed sqrt approximation in `dump.show`.
+- Changed `measure` to accept `list[quant]`. 
 
 ## 0.2
 
