@@ -1,12 +1,12 @@
 sdist:
-  image: quay.io/pypa/manylinux2014_x86_64
+  image: ubuntu:20.04
   stage: build
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - export PATH=$PATH:/opt/python/cp310-cp310/bin/
-    - source /opt/rh/devtoolset-10/enable
-    - pip install conan ninja
+    - apt update
+    - DEBIAN_FRONTEND=noninteractive TZ=America/Sao_Paulo apt install python3-pip cmake ninja-build g++ -y
+    - pip install conan
     - mkdir build
     - cd build
     - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
