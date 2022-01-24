@@ -12,7 +12,7 @@ sdist:
     - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
     - ninja 
     - cd ..
-    - python3.10 setup.py sdist
+    - python3 setup.py sdist
   artifacts:
     paths:
       - dist
