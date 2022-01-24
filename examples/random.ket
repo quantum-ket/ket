@@ -1,7 +1,7 @@
 def random(n_bits : int) -> int:
     with run():
-        return int(H(quant(n_bits)))
+        return measure(H(quant(n_bits))).value
 
 if __name__ == '__main__':
-    n_bits = 60
+    n_bits = 16
     print(n_bits, 'bits random number:', random(n_bits))

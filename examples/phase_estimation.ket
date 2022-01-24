@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     precision = 15
     
-    measurement = phase_estimator(theta_oracle, X(quant()), precision).get()
+    measurement = phase_estimator(theta_oracle, X(quant()), precision).value
     
     result = measurement/2**precision
 

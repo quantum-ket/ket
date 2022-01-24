@@ -14,8 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import ctrl_begin, ctrl_end, X
-from ..types import quant
+from ..libket import ctrl_push, ctrl_pop, X, quant
 from typing import Iterable, Callable, Optional, Any
 from functools import reduce
 from operator import add
@@ -96,10 +95,10 @@ class control:
 
     def __enter__ (self):
         _apply_mask(self.mask, self.ctr)
-        ctrl_begin(self.ctr)
+        ctrl_push(*self.ctr.qubits)
      
     def __exit__ (self, type, value, tb):
-        ctrl_end()
+        ctrl_pop()
         _apply_mask(self.mask, self.ctr)
             
 def _ctrl(control  : quant | Iterable[quant], 
@@ -113,7 +112,7 @@ def _ctrl(control  : quant | Iterable[quant],
     mask = _create_mask(on_state, len(control))
 
     _apply_mask(mask, control)
-    ctrl_begin(control)
+    ctrl_push(*control.qubits)
     
     if hasattr(func, '__iter__'): 
         for f in func:
@@ -121,7 +120,7 @@ def _ctrl(control  : quant | Iterable[quant],
     else:
         ret = func(*args, **kwargs)
 
-    ctrl_end()
+    ctrl_pop()
     _apply_mask(mask, control)
     
     return ret

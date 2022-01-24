@@ -20,5 +20,5 @@ def deutsch(oracle):
     return measure(H(x))
 
 if __name__ == '__main__':
-    print("Balanced", deutsch(balanced_oracle).get())
-    print("Constant", deutsch(constant_oracle).get())
+    print("Balanced", deutsch(balanced_oracle).value)
+    print("Constant", deutsch(constant_oracle).value)

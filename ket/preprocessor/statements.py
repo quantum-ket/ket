@@ -14,8 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import label, branch, jump
-from ..types import future
+from ..libket import label, branch, jump, future
 
 __all__ = ['_ket_is_future', '_ket_if', '_ket_if_else','_ket_else', '_ket_next', '_ket_while', '_ket_while_else', '_ket_while_body', '_ket_loop', '_ket_goto']
 
@@ -23,16 +22,16 @@ def _ket_is_future(obj) -> bool:
     return isinstance(obj, future)
 
 def _ket_if(test : future) -> label:
-    if_then = label('if.then')
-    if_end  = label('if.end') 
+    if_then = label()
+    if_end  = label() 
     branch(test, if_then, if_end)
     if_then.begin()
     return if_end
 
 def _ket_if_else(test : future) -> tuple[label]:
-    if_then = label('if.then')
-    if_else = label('if.else') 
-    if_end  = label('if.end') 
+    if_then = label()
+    if_else = label() 
+    if_end  = label() 
     branch(test, if_then, if_else)
     if_then.begin()
     return if_else, if_end
@@ -46,18 +45,18 @@ def _ket_next(end : label):
     end.begin()
 
 def _ket_while() -> tuple[label]:
-    while_test = label('while.test')
-    while_loop = label('while.loop')
-    while_end  = label('while.end')
+    while_test = label()
+    while_loop = label()
+    while_end  = label()
     jump(while_test)
     while_test.begin()
     return while_test, while_loop, while_end
 
 def _ket_while_else() -> tuple[label]:
-    while_test = label('while.test')
-    while_loop = label('while.loop')
-    while_else = label('while.else')
-    while_end  = label('while.end')
+    while_test = label()
+    while_loop = label()
+    while_else = label()
+    while_end  = label()
     jump(while_test)
     while_test.begin()
     return while_test, while_loop, while_else, while_end
@@ -71,6 +70,6 @@ def _ket_loop(test : label, end : label):
     end.begin()
 
 def _ket_goto(where : label):
-    dead_code = label('dead.code')
+    dead_code = label()
     jump(where)
     dead_code.begin()

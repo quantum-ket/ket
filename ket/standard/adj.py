@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import adj_begin, adj_end
+from ..libket import adj_begin, adj_end
 from typing import Union, Callable, Iterable, Generator, Any
 from inspect import signature
 from types import GeneratorType

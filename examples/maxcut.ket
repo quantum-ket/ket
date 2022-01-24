@@ -1,3 +1,4 @@
+from ket import *
 from random import uniform
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -34,19 +35,19 @@ def QAOA_base(gammas, betas, g : G, p):
 
 def expval(d):
     val = 0.0
-    for state in d.states:
+    #print(d.show())
+    for state, amp in zip(d.states, d.amplitudes):
         if bool(state & 1) != bool(state & 2):
-            val -= d.probability(state)
+            val -= abs(amp)**2
         else:
-            val += d.probability(state)
+            val += abs(amp)**2
     return val
 
 def QAOA(gammas, betas, g : G, p):
     q = QAOA_base(gammas, betas, g, p)
 
     ds = [dump(q[j]+q[k]) for j, k in g]
-    return sum(0.5 * (1 - expval(d)) for d in ds) 
-    
+    return sum(0.5 * (1 - expval(d)) for d in ds)     
 
 def maxcut(g : G, p=1):
     def objective(params):
@@ -54,7 +55,7 @@ def maxcut(g : G, p=1):
         betas = params[p:]
         return -QAOA(gammas, betas, g, p)
 
-    params = [uniform(0, 1) for _ in range(p*2)]
+    params = [.5 for _ in range(p*2)]
     res = minimize(objective, params, method='COBYLA')
     
     params = res.x
@@ -64,7 +65,7 @@ def maxcut(g : G, p=1):
 
     _, ax = plt.subplots()
 
-    ax.bar([f"{i:0{g.n_nodes}b}" for i in result.states], [result.probability(i) for i in result.states])
+    ax.bar([f"{i:0{g.n_nodes}b}" for i in result.states], [abs(amp)**2 for amp in result.amplitudes])
     plt.xticks(rotation=90)
     plt.show()
 

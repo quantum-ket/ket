@@ -1,2 +1,3 @@
 include LICENSE
-include libssh/COPYING
+include ket/libketc.so
+include ket/kbw.so

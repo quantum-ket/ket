@@ -1,18 +1,17 @@
 python_manylinux_wheel:
   image: quay.io/pypa/manylinux2014_x86_64
   stage: build
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - git submodule init
-    - git submodule update
-    - yum install openssl-devel -y
-    - export PATH=$PATH:/opt/python/cp39-cp39/bin/
-    - pip install conan auditwheel ninja
-    - python3.7  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
-    - python3.8  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
-    - python3.9  setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
-    - python3.10 setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
-    - pypy3.7    setup.py bdist_wheel -DCMAKE_C_COMPILER=/opt/rh/devtoolset-10/root/bin/cc -DCMAKE_CXX_COMPILER=/opt/rh/devtoolset-10/root/bin/c++
-    - ./wheelrepair.sh
+    - export PATH=$PATH:/opt/python/cp310-cp310/bin/
+    - source /opt/rh/devtoolset-10/enable
+    - pip install conan ninja
+    - mkdir build
+    - cd build
+    - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+    - ninja 
+    - python3.10 setup.py sdist
   artifacts:
     paths:
-      - wheelhouse
+      - dist

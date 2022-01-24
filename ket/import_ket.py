@@ -14,7 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..preprocessor import ketpp
+from .preprocessor import ketpp
 from inspect import getsource
 from ast import fix_missing_locations, parse
 from os import path, PathLike

@@ -14,22 +14,14 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..ket import measure as _measure, exec_quantum, process_begin, process_end
-from ..types import quant, future
+from ..libket import measure as _measure, process_begin, process_end, quant, future
 from ..preprocessor import _ket_if, _ket_next
 from .ctrl import *
 from .adj import *
 from functools import reduce
 from operator import add
 
-__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure', 'exec_quantum']
-
-exec_quantum.__doc__ = \
-    """Trigger the quantum execution
-
-    Execute the top process and fullfil the :class:`~ket.types.future` and
-    :class:`~ket.types.dump` variables.
-    """
+__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure']
 
 def measure(q : quant | list[quant], free : bool = False) -> future:
     """Quantum measurement
@@ -43,7 +35,7 @@ def measure(q : quant | list[quant], free : bool = False) -> future:
     """
     q = reduce(add, q)
 
-    ret = _measure(q)
+    ret = _measure(*q.qubits)
     if free:
         for i in q:
             end = _ket_if(_measure(i))

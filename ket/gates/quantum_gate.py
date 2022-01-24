@@ -15,7 +15,7 @@
 
 from functools import reduce
 from operator import add
-from ..types import quant
+from ..libket import quant
 
 class quantum_gate:
     _gates_1 = []

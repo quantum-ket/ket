@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3
+
+- 
+
 ## 0.2.1
 
 - Libket updated to fix segfault when the execution server returns an error. 
