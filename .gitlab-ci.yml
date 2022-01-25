@@ -1,18 +1,20 @@
 sdist:
-  image: ubuntu:20.04
+  image: centos:7
   stage: build
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - apt update
-    - DEBIAN_FRONTEND=noninteractive TZ=America/Sao_Paulo apt install python3-pip cmake ninja-build g++ -y
-    - pip install conan
+    - yum install centos-release-scl -y
+    - yum install devtoolset-10-toolchain rh-python38 -y
+    - source scl_source enable devtoolset-10
+    - source scl_source enable rh-python38
+    - pip install setuptools conan cmake ninja -U
     - mkdir build
     - cd build
     - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
     - ninja 
     - cd ..
-    - python3 setup.py sdist
+    - python setup.py sdist
   artifacts:
     paths:
       - dist
