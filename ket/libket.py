@@ -3,13 +3,13 @@
 from math import pi
 from ctypes import *
 from typing import Iterable, Optional
+from random import randint
+from os import environ
+from os.path import dirname
 
 __all__ = ['quant', 'future', 'dump']
 
 def load_libketc():
-    from os import environ
-    from os.path import dirname
-
     if "LIBKETC_PATH" in environ:
         libketc_path = environ["LIBKETC_PATH"]
     else:
@@ -18,9 +18,6 @@ def load_libketc():
     return cdll.LoadLibrary(libketc_path)
 
 def set_kbw_path():
-    from os import environ
-    from os.path import dirname
-
     if "KET_QUANTUM_EXECUTOR" not in environ:
         environ["KET_QUANTUM_EXECUTOR"] = dirname(__file__)+"/kbw.so"
     if "KQE_PLUGIN_PATH" not in environ:
@@ -1071,6 +1068,7 @@ def process_top():
     return process_stack[-1]
 
 def exec_quantum():
+    environ["KQE_SEED"] = str(randint(0, 1 << 31))
     process_end().run()
     process_begin()
 

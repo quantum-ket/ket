@@ -22,6 +22,7 @@ from .preprocessor import *
 def __ket__():
     import argparse
     from os import path, getcwd, environ
+    from random import seed
 
     parser = argparse.ArgumentParser(prog='ket', description='Ket interpreter')
     parser.add_argument('--version', action='version', version=f'Ket {__version__}')
@@ -33,7 +34,7 @@ def __ket__():
     args = parser.parse_args()
 
     if args.seed:
-        environ["KQE_SEED"] = str(args.seed)
+        seed(args.seed)
     if args.out:
         environ["KQASM_OUTPUT"] = str(args.out)
 
