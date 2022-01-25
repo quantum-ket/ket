@@ -5,9 +5,9 @@ sdist:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
     - yum install centos-release-scl -y
-    - yum install devtoolset-10-toolchain rh-python38 -y
-    - source scl_source enable devtoolset-10
-    - source scl_source enable rh-python38
+    - yum install devtoolset-8-toolchain rh-python38 -y
+    - source scl_source enable devtoolset-8 || true
+    - source scl_source enable rh-python38 || true
     - pip install setuptools conan cmake ninja -U
     - mkdir build
     - cd build
