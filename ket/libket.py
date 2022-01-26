@@ -1077,8 +1077,14 @@ def process_top():
 
 def exec_quantum():
     environ["KQE_SEED"] = str(randint(0, 1 << 31))
-    process_end().run()
+    error = None
+    try:
+        process_end().run()
+    except Exception as e:
+        error = e
     process_begin()
+    if error:
+        raise error
 
 def measure(*qubits):
     return process_top().measure(*qubits)
