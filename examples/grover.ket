@@ -28,8 +28,13 @@ def grover(size : int, oracle : Callable, outcomes : int = 1) -> int:
     return measure(s).value
     
 if __name__ == '__main__':
-    size = 4
+    from ket.libket import process_top
+    size = 12
     print(size+1, 'Qubits used')
 
+    ps = process_top()
+    #ps.timeout(2)
     result = grover(size, oracle)
     print('Exprexted result = 3, measured:', result)
+    print(f'Execution time = {ps.exec_time:.2f}s')
+

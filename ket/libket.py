@@ -943,6 +943,9 @@ class process:
     ket_process_id = libketc.ket_process_id
     ket_process_id.argtypes = [c_void_p, POINTER(c_uint)]
 
+    ket_process_timeout = libketc.ket_process_timeout
+    ket_process_timeout.argtypes = [c_void_p, c_ulong]
+
     def __init__(self, process_id : int):
         self._as_parameter_ = c_void_p()
         ket_error_warpper(
@@ -1039,8 +1042,13 @@ class process:
         ket_error_warpper(
             self.ket_process_id(self, value)
         )
-        return value.value    
-    
+        return value.value  
+
+    def timeout(self, time):
+        ket_error_warpper(
+            self.ket_process_timeout(self, time)
+        )
+            
     def dump(self, dump_var, *qubits):
         self.ket_process_dump.argtypes = [c_void_p, c_void_p, c_int] + [c_void_p for _ in range(len(qubits))]
         ket_error_warpper(
