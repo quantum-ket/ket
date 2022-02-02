@@ -8,13 +8,14 @@ sdist:
     - yum install devtoolset-8-toolchain rh-python38 -y
     - source scl_source enable devtoolset-8 || true
     - source scl_source enable rh-python38 || true
-    - pip install setuptools conan cmake ninja -U
+    - pip install auditwheel build cmake conan ninja patchelf setuptools -U
     - mkdir build
     - cd build
     - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
     - ninja 
     - cd ..
-    - python setup.py sdist
+    - python -m build
+    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang-*-py3-none-any.whl
   artifacts:
     paths:
-      - dist
+      - wheelhouse
