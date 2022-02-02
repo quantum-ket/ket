@@ -1,4 +1,4 @@
-sdist:
+wheelhouse:
   image: centos:7
   stage: build
   variables:
