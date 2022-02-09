@@ -400,8 +400,6 @@ class dump:
             format: Format string that matchs ``(i|b)\d*(:(i|b)\d+)*``.
         """
         
-        dump_str = ''
-
         if format is not None:
             if format == 'b' or format == 'i':
                 format += str(self.size)
@@ -417,8 +415,8 @@ class dump:
 
         fmt_ket = lambda state, begin, end, f : f'|{state[begin:end]}⟩' if f == 'b' else f'|{int(state[begin:end], base=2)}⟩'
 
-        for state, amp in sorted(zip(self.states, self.amplitudes)):
-            dump_str += ''.join(fmt_ket(f'{state:0{self.size}b}', b, e, f) for f, b, e in fmt)
+        def state_amp_str(state, amp):
+            dump_str = ''.join(fmt_ket(f'{state:0{self.size}b}', b, e, f) for f, b, e in fmt)
             dump_str += f"\t({100*abs(amp)**2:.2f}%)\n"
             real = abs(amp.real) > 1e-10
             real_l0 = amp.real < 0
@@ -433,18 +431,20 @@ class dump:
             if real and imag:
                 sqrt_dem = f'/√{round(2*(1/abs(amp)**2))}'
                 sqrt_num = ('(-1' if real_l0 else ' (1')+('-i' if imag_l0 else '+i')
-                sqrt_str = f'\t≅ {sqrt_num}){sqrt_dem}\n' if use_sqrt else '\n'
+                sqrt_str = f'\t≅ {sqrt_num}){sqrt_dem}' if use_sqrt else ''
                 dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i"+sqrt_str 
             elif real:
                 sqrt_num = '  -1' if real_l0 else '   1'
-                sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}' if use_sqrt else ''
                 dump_str += f"{amp.real:9.6f}       "+sqrt_str
             else:
                 sqrt_num = '  -i' if imag_l0 else '   i'
-                sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}\n' if use_sqrt else '\n'
+                sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}' if use_sqrt else ''
                 dump_str += f" {amp.imag:17.6f}i"+sqrt_str
 
-        return dump_str
+            return dump_str
+        
+        return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes)))
             
     @property
     def available(self):
