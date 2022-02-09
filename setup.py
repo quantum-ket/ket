@@ -17,10 +17,14 @@ setup(
     zip_safe=False,
     packages=find_namespace_packages(include=['ket', 'ket.*']),
     include_package_data=True,
+    python_requires='>=3.7',
     classifiers=[
-        'Programming Language :: Python :: 3',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
-        'Topic :: Scientific/Engineering',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: C++',
+        'Programming Language :: Python :: 3 :: Only',
     ],
     entry_points={'console_scripts': ['ket = ket.__main__:__ket__']},
 )

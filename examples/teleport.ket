@@ -5,31 +5,22 @@ def teleport(alice : quant) -> quant:
     ctrl(alice, X, alice_b)
     H(alice)
 
-    di = dump(alice+alice_b+bob_b)
-
     m0 = measure(alice)
     m1 = measure(alice_b)
-
-    dm = dump(alice+alice_b+bob_b)
 
     if m1 == 1:
         X(bob_b)
     if m0 == 1:
         Z(bob_b)
 
-    df = dump(alice+alice_b+bob_b)
-    return bob_b, di, dm, df
+    return bob_b
 
-alice = quant(1)        # alice = |0⟩
-#H(alice)                 # alice = |+⟩
-#Z(alice)                 # alice = |–⟩
-bob, di, dm, df = teleport(alice)    # bob  <- alice
-#H(bob)                   # bob   = |1⟩
+alice = quant()        # alice = |0⟩
+H(alice)               # alice = |+⟩
+Z(alice)               # alice = |–⟩
+bob = teleport(alice)  # bob  <- alice
+H(bob)                 # bob   = |1⟩
 bob_m = measure(bob)
 
-print("-----\n", di.show())
-print("-----\n", dm.show())
-print("-----\n", df.show())
-
-print('Expected measure 1~, result =', bob_m.value)
+print('Expected measure 1, result =', bob_m.value)
 # Expected measure 1, result = 1     

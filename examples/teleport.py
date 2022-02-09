@@ -25,5 +25,5 @@ bob = teleport(alice)    # bob  <- alice
 H(bob)                   # bob   = |1⟩
 bob_m = measure(bob)
 
-print('Expected measure 1, result =', bob_m.get())
+print('Expected measure 1, result =', bob_m.value)
 # Expected measure 1, result = 1     

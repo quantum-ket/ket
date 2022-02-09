@@ -95,7 +95,7 @@ class control:
 
     def __enter__ (self):
         _apply_mask(self.mask, self.ctr)
-        ctrl_push(*self.ctr.qubits)
+        ctrl_push(self.ctr)
      
     def __exit__ (self, type, value, tb):
         ctrl_pop()
@@ -112,7 +112,7 @@ def _ctrl(control  : quant | Iterable[quant],
     mask = _create_mask(on_state, len(control))
 
     _apply_mask(mask, control)
-    ctrl_push(*control.qubits)
+    ctrl_push(control)
     
     if hasattr(func, '__iter__'): 
         for f in func:

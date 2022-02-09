@@ -2,7 +2,8 @@
 
 ## 0.3
 
-- 
+- Libket and its Python wrapper wore refactored. Libket dropped support for the HTTP API.  Quantum simulators are now loaded from a shared library.
+- Ket module now includes the KBW simulator. KBW is loaded automatically as the default quantum execution target.
 
 ## 0.2.1
 

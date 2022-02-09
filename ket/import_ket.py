@@ -40,7 +40,7 @@ def _import_globals_ket(source : PathLike, globals):
 buildins = \
 """
 from ket import *
-from ket.ket import label, branch, jump
+from ket.libket import label, branch, jump
 from ket.preprocessor import *
 """
  

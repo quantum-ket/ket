@@ -35,7 +35,7 @@ def measure(q : quant | list[quant], free : bool = False) -> future:
     """
     q = reduce(add, q)
 
-    ret = _measure(*q.qubits)
+    ret = _measure(q)
     if free:
         for i in q:
             end = _ket_if(_measure(i))

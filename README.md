@@ -3,7 +3,7 @@
 
 # Ket Quantum Programming Language
 
-Ket is a Python-embedded  language for hybridity classical-quantum  programming.
+Ket is a Python-embedded language for hybridity classical-quantum  programming.
 
 ### Table of contents:
 
@@ -21,7 +21,7 @@ def random(n_bits):
   with run():
      q = quant(n_bits)
      H(q)
-     return measure(q).get()
+     return measure(q).value
 
 n_bits = 32
 print(n_bits, 'bits random number:', random(n_bits))
@@ -60,7 +60,7 @@ bob = teleport(alice)    # bob  <- alice
 H(bob)                   # bob   = |1⟩
 bob_m = measure(bob)
 
-print('Expected measure 1, result =', bob_m.get())
+print('Expected measure 1, result =', bob_m.value)
 ```
 
 ```console
@@ -72,79 +72,57 @@ Expected measure 1, result = 1
 
 ```console
 $ ket -h
-usage: ket [-h] [--version] [-o OUT] [-s KBW] [-u USER] [-p PORT]
-           [-P SSH_PORT] [--seed SEED] [--api-args API_ARGS] [--no-execute]
-           [--dump2fs]
-           .ket
+usage: ket [-h] [--version] [-o OUT] [-s SEED] .ket
 
 Ket interpreter
 
 positional arguments:
   .ket                  source code
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   -o OUT, --out OUT     KQASM output file
-  -s KBW, --kbw KBW     quantum execution (KBW) IP address
-  -u USER, --user USER  quantum execution (KBW) SSH user
-  -p PORT, --port PORT  quantum execution (KBW) port
-  -P SSH_PORT, --ssh-port SSH_PORT
-                        quantum execution (KBW) SSH port
-  --seed SEED           set RNG seed for quantum execution
-  --api-args API_ARGS   additional parameters for quantum execution
-  --no-execute          does not execute KQASM, measurements return 0
-  --dump2fs             use the filesystem to transfer dump data
+  -s SEED, --seed SEED  set RNG seed for quantum execution
 ```
 
 ## Installation
 
-> Ket Bitwise Simulator is required for quantum execution. See
-> https://gitlab.com/quantum-ket/kbw#installation for installation instructions.
-
 Available installation methods:
 
-* [pip](#install-using-pip)
-* [Source](#install-from-source)
-* [Docker](#docker-with-jupyter-notebook)
+* [pip](#installing-with-pip)
+* [Source](#installing-from-source)
 
-### Install using pip
+### Installing with pip
 
 Installing from PyPI:
 
 ```console
 $ pip install ket-lang
 ```
-
-Installing the last version from git:
+Installing latest Gitlab CI build:
 
 ```console
-$ pip install git+https://gitlab.com/quantum-ket/ket.git
+$ pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-0.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
 ```
 
-> Compiled manylinux wheel available [here](https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/download?job=python_manylinux_wheel)
+### Installing from source 
 
-### Install from source 
+Requirements:
 
-Install requirements:
-
-* C/C++ compiler
+* C++ compiler
 * CMake
-* Ninja or GNU Make
-* Conan
+* [Conan](https://pypi.org/project/conan)
 
 To install from source runs:
 
 ```console
 $ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-$ cd ket
+$ mkdir ket/build
+$ cd ket/build
+$ cmake ../libket -DCMAKE_BUILD_TYPE=Release
+$ make -j8
 $ python setup.py install
-```
-
-### Docker with Jupyter Notebook
-
-```console
-$ docker run --rm -it -v `pbw`:/home/ket -p 8888:8888 evandrocrr/ket:0.2
 ```
 
 -----------

@@ -909,6 +909,11 @@ class process:
 
     ket_process_measure = libketc.ket_process_measure
 
+    ket_process_new_int = libketc.ket_process_new_int
+    ket_process_new_int.argtypes = [c_void_p, c_void_p, c_long]
+
+    ket_process_plugin = libketc.ket_process_plugin
+
     ket_process_ctrl_push = libketc.ket_process_ctrl_push
 
     ket_process_ctrl_pop = libketc.ket_process_ctrl_pop
@@ -981,6 +986,19 @@ class process:
             self.ket_process_measure(self, result, len(qubits), *qubits)
         )
         return result
+    
+    def new_int(self, value):
+        result = future()
+        ket_error_warpper(
+            self.ket_process_new_int(self, result, value)
+        )
+        return result
+    
+    def plugin(self, name, args, *qubits):
+        self.ket_process_plugin.argtypes = [c_void_p, c_char_p, c_char_p, c_int] + [c_void_p for _ in range(len(qubits))]
+        ket_error_warpper(
+            self.ket_process_plugin(self, name.encode(), args.encode(), len(qubits), *qubits)
+        )
 
     def ctrl_push(self, *qubits):
         self.ket_process_ctrl_push.argtypes = [c_void_p, c_int] + [c_void_p for _ in range(len(qubits))]
@@ -1086,11 +1104,17 @@ def exec_quantum():
     if error:
         raise error
 
-def measure(*qubits):
-    return process_top().measure(*qubits)
+def qc_int(value : int) -> future: 
+    return process_top().new_int(value)
 
-def ctrl_push(*qubits):
-    return process_top().ctrl_push(*qubits)
+def measure(q : quant):
+    return process_top().measure(*q.qubits)
+
+def plugin(name, args, q : quant):
+    process_top().plugin(name, args, *q.qubits)
+
+def ctrl_push(q : quant):
+    return process_top().ctrl_push(*q.qubits)
 
 def ctrl_pop():
     return process_top().ctrl_pop()
@@ -1101,57 +1125,57 @@ def adj_begin():
 def adj_end():
     return process_top().adj_end()
 
-def jump(label):
-    return process_top().jump(label)
+def jump(goto : label):
+    return process_top().jump(goto)
 
-def branch(test, then, otherwise):
+def branch(test : future, then : label, otherwise : label):
     return process_top().branch(test, then, otherwise)
 
-def X(q):
+def X(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PAULI_X, qubit, 0.0)
 
-def Y(q):
+def Y(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PAULI_Y, qubit, 0.0)
 
-def Z(q):
+def Z(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PAULI_Z, qubit, 0.0)
 
-def H(q):
+def H(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_HADAMARD, qubit, 0.0)
 
-def S(q):
+def S(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PHASE, qubit, pi/2)
 
-def SD(q):
+def SD(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PHASE, qubit, -pi/2)
 
-def T(q):
+def T(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PHASE, qubit, pi/4)
 
-def TD(q):
+def TD(q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PHASE, qubit, -pi/4)
 
-def phase(lambda_, q):
+def phase(lambda_, q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_PHASE, qubit, lambda_)
 
-def RX(theta, q):
+def RX(theta, q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_ROTATION_X, qubit, theta)
 
-def RY(theta, q):
+def RY(theta, q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_ROTATION_Y, qubit, theta)
 
-def RZ(theta, q):
+def RZ(theta, q : quant):
     for qubit in q.qubits:
         process_top().gate(KET_ROTATION_Z, qubit, theta)
     

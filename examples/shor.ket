@@ -39,7 +39,7 @@ def order_find(x, N):
         pown(x, reg1, N)
 
         adj(qft, reg1)
-        return measure(reg1).get()
+        return measure(reg1).value
 
     rs = reduce(gcd, [find() for _ in range(3)])
     try:

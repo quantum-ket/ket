@@ -1,5 +1,10 @@
 from math import sqrt, pi
 from typing import Callable
+from os import environ
+from qclabs import qubox_ufsc
+
+qubox_ufsc.set_token('eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJRQ0xhYnMgU2VydmVyIChRQ0xhYnMpIiwic3ViIjoiUUNMYWJzIFNlcnZlciBVU0VSIHRva2VuIiwiYXVkIjoidXNlciIsImV4cCI6MTY0NDk3MzI2NywibmJmIjoxNjQ0MzY4NDY3LCJpYXQiOjE2NDQzNjg0NjcsIm5hbWUiOiJFdmFuZHJvIENoYWdhcyIsImVtYWlsIjoiZXYuY3JyOTdAZ21haWwuY29tIn0.TjQ25dxYKLzf4x3ZOjkM1JfL2s8sdTeEesFBYwpccBg')
+qubox_ufsc.set_backend('pbw')
 
 def oracle(x : quant , y : quant):
     """f(x) = 1 if x == 3 else 0
