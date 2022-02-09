@@ -334,7 +334,7 @@ class dump:
             ket_error_warpper(
                 self.ket_dump_state_at(c_states, c_state, c_state_size, i)
             )
-            yield int(''.join(f'{c_state[j]:064b}' for j in range(c_state_size.value)), 2)
+            yield int(''.join(f'{c_state[j]:064b}' for j in reversed(range(c_state_size.value))), 2)
     
     @property
     def amplitudes(self):
