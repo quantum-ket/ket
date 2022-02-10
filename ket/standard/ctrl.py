@@ -141,7 +141,6 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
          func       : Callable | Iterable[Callable] , 
          *args,    
          on_state   : Optional[int | Iterable[int]] = None,
-         target     : Optional[slice | int | Iterable[int]] = None,
          later_call : bool = False,
          **kwargs) -> Callable | Any :
     r"""Add controll-qubits to a Callable
@@ -198,7 +197,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
                     X(output)
             inc.free()
 
-    2. If ``control`` and ``target`` type is ``int``, ``slice``, or
+    2. If ``control`` and ``args`` type is ``int``, ``slice``, or
     ``Iterable[int]``,  return a ``Callable[[quant], Any]``:
 
     .. code-block:: ket
@@ -218,16 +217,17 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
     Args:
         control: Control qubits.
         func: Functions to add control.
+        args: ``func`` arguments.
+        kwargs: ``func`` keyword arguments.
         on_state: Change the control state, same as for :class:`~ket.standard.control`. 
-        target: Target qubits to create controlled-operations.
         later_call: If ``True``, do not execute and return a ``Callable[[], Any]``.
     """
 
     control, create_gate = _qubit_for_ctrl(control)
     if create_gate:
-        target, _ = _qubit_for_ctrl(*args if target is None else [target])
+        target, call_target = _qubit_for_ctrl(*args)
         def _ctrl_gate(q : quant) -> quant:
-            _ctrl(control(q), func, target(q), on_state=on_state)
+            _ctrl(control(q), func, target(q) if call_target else target, on_state=on_state)
             return q
         return _ctrl_gate
     elif later_call:

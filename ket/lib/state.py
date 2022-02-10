@@ -59,7 +59,16 @@ def bell(x : int = 0, y : int = 0, qubits : Optional[quant] = None) -> quant:
     return qubits
 
 def ghz(qubits : quant | int) -> quant:
-    """GHZ state preparation"""
+    r"""GHZ state preparation
+    
+    Return qubits on the state:
+
+    .. math::
+
+        \left|GHZ\right> = \frac{\left|0\dots0\right> + \left|1\dots1\right>}{\sqrt{2}}
+
+    """
+
     if not isinstance(qubits, quant):
         qubits = quant(qubits)
     

@@ -103,6 +103,8 @@ def adj(func       : Union[Callable, Iterable[Callable]],
 
     Args:
         func: Function or list of functions to add control.
+        args: ``func`` arguments.
+        kwargs: ``func`` keyword arguments.
         later_call: If ``True``, do not execute and return a ``Callable[[], Any]``.
     """
     
@@ -129,7 +131,7 @@ class around:
     With the quantum operations U and V, execute VUV :math:`\!^\dagger`, where V
     is defined as by ``func, *args, **kwargs`` and U is the open scope. 
     
-    * ``func`` must be a ``Callable`` or ``Callable`` iterable. 
+    * ``func`` must be a ``Callable`` or ``Iterable[Callable]``. 
 
     .. code-block:: ket
 
@@ -144,10 +146,15 @@ class around:
         with around([H, X], s):
             with control(s[1:]):
                 Z(s[0])
+
+    Args:
+        func: ``V`` operation.
+        args: ``func`` arguments.
+        kwargs: ``func`` keyword arguments.
     """
 
     def __init__(self, 
-                 func : Union[Callable, Iterable[Callable], Generator[Callable, None, None]], 
+                 func : Union[Callable, Iterable[Callable]], 
                  *args,
                  **kwargs):
         self.outter_func = list(func) if isinstance(func, GeneratorType) else func

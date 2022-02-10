@@ -1,3 +1,4 @@
+from __future__ import annotations
 #Licensed under the Apache License, Version 2.0;
 #Copyright 2022 Evandro Chagas Ribeiro da Rosa
 from math import pi
@@ -6,8 +7,9 @@ from typing import Iterable, Optional
 from random import randint
 from os import environ
 from os.path import dirname
+from typing import Optional, List, Generator
 
-__all__ = ['quant', 'future', 'dump']
+__all__ = ['quant', 'future', 'dump', 'qc_int', 'exec_quantum']
 
 def load_libketc():
     if "LIBKETC_PATH" in environ:
@@ -99,7 +101,7 @@ class qubit:
         )
 
     @property
-    def index(self):
+    def index(self) -> int:
         c_value = c_uint()
         ket_error_warpper(
             self.ket_qubit_index(self, c_value)
@@ -107,7 +109,7 @@ class qubit:
         return c_value.value
 
     @property
-    def measured(self):
+    def measured(self) -> bool:
         c_value = c_bool()
         ket_error_warpper(
             self.ket_qubit_measured(self, c_value)
@@ -115,7 +117,7 @@ class qubit:
         return c_value.value
 
     @property
-    def allocated(self):
+    def allocated(self) -> bool:
         c_value = c_bool()
         ket_error_warpper(
             self.ket_qubit_allocated(self, c_value)
@@ -123,25 +125,28 @@ class qubit:
         return c_value.value
 
     @property
-    def process_id(self):
+    def process_id(self) -> int:
         c_value = c_uint()
         ket_error_warpper(
             self.ket_qubit_process_id(self, c_value)
         )
         return c_value.value
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Ket 'qubit' {(self.process_id, self.index)}>"
 
 class quant:
-    r"""Qubit list
+    r"""Create list of qubits
 
-    Allocate ``size`` qubits in the state :math:`\left|0\right>` and return
-    its reference in a new :class:`~ket.types.quant`.
+    Allocate ``size`` qubits in the state :math:`\left|0\right>`.
 
-    Qubits allocated using a ``with`` statement must be released at the end of
-    the scope.
+    If ``dirty`` is ``True``, allocate ``size`` qubits in an unknown state.
     
+    warning:
+        Using dirty qubits may have side effects due to previous entanglements.
+
+    Qubits allocated using the ``with`` statement must be free at the end of the scope.
+
     Example:
     
     .. code-block:: ket
@@ -160,7 +165,7 @@ class quant:
     :Qubit Indexing:
 
     Use brackets to index qubits as in a ``list`` and use ``+`` to concatenate
-    two :class:`~ket.types.quant`.
+    two :class:`~ket.libket.quant`.
 
     Example:
 
@@ -173,31 +178,28 @@ class quant:
         odd = q[1::2]
         reverse = reversed(q) # invert qubits order
 
-        
         a, b = quant(2) # |a⟩, |b⟩
         c = a+b         # |c⟩ = |a⟩|b⟩ 
 
-    warning:
-        Use dirty qubits may have side effects due to previous entanglement.
-
     Args:
         size: The number of qubits to allocate.
-        dirty: If `True`, Allocate ``size`` qubits at an unknown state.
+        dirty: If ``True``, allocate ``size`` qubits at an unknown state.
+        qubits: Initialize the qubit list without allocating. Intended for internal use.
     """
 
-    def __init__(self, size : int = 1, dirty : bool = False, *, qubits = None):
+    def __init__(self, size : int = 1, dirty : bool = False, *, qubits : Optional[List[qubit]] = None):
         if qubits:
             self.qubits = qubits
         else:
             self.qubits = [process_top().alloc(dirty) for _ in range(size)]
 
-    def __add__(self, other):
+    def __add__(self, other : quant) -> quant:
         return quant(qubits=self.qubits+other.qubits)
 
-    def at(self, index : Iterable[int]):
-        r"""Return qubits at `index`
+    def at(self, index : Iterable[int]) -> quant:
+        r"""Return qubits at ``index``
         
-        Create a new :class:`~ket.types.quant` with the qubit references at the
+        Create a new :class:`~ket.libket.quant` with the qubit references at the
         position defined by the ``index`` list.
 
         :Example:
@@ -278,6 +280,36 @@ class quant:
         return f"<Ket 'quant' ({qubits_str})>"
         
 class dump:
+    """Create a snapshot with the current quantum state of ``qubits``.
+
+    Gathering any information from a :class:`~ket.libket.dump` triggers the quantum execution.
+
+    :Example:
+
+    .. code-block:: ket
+
+        a, b = quant(2)
+        with around(cnot(H, I), a, b):
+            Y(a)
+            inside = dump(a+b)
+        outside = dump(a+b)
+
+        print('inside:')
+        print(inside.show())
+        #inside:
+        #|01⟩    (50.00%)
+        #         -0.707107i     ≅     -i/√2
+        #|10⟩    (50.00%)
+        #          0.707107i     ≅      i/√2
+        print('outside:')
+        print(outside.show())
+        #outside:
+        #|11⟩    (100.00%)
+        #         -1.000000i     ≅     -i/√1
+
+    :param qubits: Qubits to dump.
+    """
+
     ket_dump_new = libketc.ket_dump_new
     ket_dump_new.argtypes = [POINTER(c_void_p)]
 
@@ -305,13 +337,13 @@ class dump:
     ket_dump_process_id = libketc.ket_dump_process_id
     ket_dump_process_id.argtypes = [c_void_p, POINTER(c_uint)]
 
-    def __init__(self, q : quant):
+    def __init__(self, qubits : quant):
         self._as_parameter_ = c_void_p()
         ket_error_warpper(
             self.ket_dump_new(byref(self._as_parameter_))
         )
-        process_top().dump(self, *q.qubits)
-        self.size = len(q.qubits)
+        process_top().dump(self, *qubits.qubits)
+        self.size = len(qubits.qubits)
 
     def __del__(self):
         ket_error_warpper(
@@ -319,7 +351,9 @@ class dump:
         )
     
     @property
-    def states(self):
+    def states(self) -> Generator[int, None, None]:
+        """List of basis states"""
+
         if not self.available:
             exec_quantum()
 
@@ -337,7 +371,9 @@ class dump:
             yield int(''.join(f'{c_state[j]:064b}' for j in reversed(range(c_state_size.value))), 2)
     
     @property
-    def amplitudes(self):
+    def amplitudes(self) -> Generator[complex, None, None]:
+        """List of probability amplitudes"""
+
         if not self.available:
             exec_quantum()
 
@@ -373,23 +409,20 @@ class dump:
             d = dump(q)
 
             print(d.show('i'))
-            #|87381⟩         (50.00%)
+            #|87381⟩ (50.00%)
             # 0.707107               ≅      1/√2
             #|436906⟩        (50.00%)
             # 0.707107               ≅      1/√2
-
             print(d.show('b'))
             #|0010101010101010101⟩   (50.00%)
             # 0.707107               ≅      1/√2
             #|1101010101010101010⟩   (50.00%)
             # 0.707107               ≅      1/√2
-            
             print(d.show('i4'))
             #|2⟩|101010101010101⟩    (50.00%)
             # 0.707107               ≅      1/√2
             #|13⟩|010101010101010⟩   (50.00%)
             # 0.707107               ≅      1/√2
-
             print(d.show('b5:i4'))
             #|00101⟩|5⟩|0101010101⟩  (50.00%)
             # 0.707107               ≅      1/√2
@@ -447,7 +480,7 @@ class dump:
         return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes)))
             
     @property
-    def available(self):
+    def available(self) -> bool:
         c_value = c_bool()
         ket_error_warpper(
             self.ket_dump_available(self, c_value)
@@ -455,7 +488,7 @@ class dump:
         return c_value.value
 
     @property
-    def index(self):
+    def index(self) -> int:
         c_value = c_uint()
         ket_error_warpper(
             self.ket_dump_index(self, c_value)
@@ -463,17 +496,75 @@ class dump:
         return c_value.value
 
     @property
-    def process_id(self):
+    def process_id(self) -> int:
         c_value = c_uint()
         ket_error_warpper(
             self.ket_dump_process_id(self, c_value)
         )
         return c_value.value
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<Ket 'dump' {(self.process_id, self.index)}>"
 
 class future:
+    """64-bits integer on the quantum computer
+
+    Store a reference to a 64-bits integer available in the quantum computer. 
+
+    The integer value are available to the classical computer only after the
+    quantum execution.
+    
+    The follwing binary operations are available between
+    :class:`~ket.libket.future` variables and ``int``: 
+        
+        ``==``, ``!=``, ``<``, ``<=``,
+        ``>``, ``>=``, ``+``, ``-``, ``*``, ``/``, ``<<``, ``>>``, ``and``,
+        ``xor``, and ``or``.
+
+    A new :class:`~ket.types.future` variable is created with a quantum
+    :func:`~ket.standard.measure` (1) , binary operation with a
+    :class:`~ket.types.future` (2), or directly initialization with a ``int``
+    (2).
+
+    .. code-block:: ket
+
+        q = H(quant(2))
+        a = measure(q) # 1
+        b = a*3        # 2
+        c = qc_int(42) # 3
+    
+
+
+    Writing to the attribute ``value`` of a :class:`~ket.types.future` variable
+    passes the information to the quantum computer. 
+    Reading the attribute ``value`` triggers the quantum execution. 
+
+    If the test expression of an ``if-then-else`` or ``while`` is type future,
+    Ket passes the statement to the quantum computer.
+    
+    :Example:
+
+    .. code-block:: ket
+
+        q = quant(2)
+        with quant() as aux:
+            # Create variable done on the quantum computer
+            done = qc_int(False) 
+            while done != True:
+                H(q)
+                ctrl(q, X, aux)
+                res = measure(aux)
+                if res == 0:
+                    # Update variable done on the quantum computer
+                    done.value = True
+                else:
+                    X(q+aux)
+            aux.free()
+        # Get the measurement from the quantum computer
+        # triggering the quantum execution
+        result = measure(q).value 
+
+    """
     ket_future_new = libketc.ket_future_new
     ket_future_new.argtypes = [POINTER(c_void_p)]
 
@@ -484,7 +575,7 @@ class future:
     ket_future_value.argtypes = [c_void_p, POINTER(c_long)]
 
     ket_future_set = libketc.ket_future_set
-    ket_future_set = [c_void_p, c_void_p]
+    ket_future_set.argtypes = [c_void_p, c_void_p]
 
     ket_future_available = libketc.ket_future_available
     ket_future_available.argtypes = [c_void_p, POINTER(c_bool)]
@@ -497,7 +588,7 @@ class future:
 
     ket_future_op = libketc.ket_future_op
 
-    def __init__(self, value = None):
+    def __init__(self):
         self._as_parameter_ = c_void_p()
         ket_error_warpper(
             self.ket_future_new(byref(self._as_parameter_))
@@ -523,6 +614,8 @@ class future:
     
     def __setattr__(self, name, value):
         if name == "value":
+            if not isinstance(value, future):
+                value = qc_int(value)
             ket_error_warpper(
                 self.ket_future_set(self, value)
             )
@@ -530,7 +623,7 @@ class future:
             super().__setattr__(name, value)
 
     @property
-    def available(self):
+    def available(self) -> bool:
         c_value = c_bool()
         ket_error_warpper(
             self.ket_future_available(self, c_value)
@@ -538,7 +631,7 @@ class future:
         return c_value.value
 
     @property
-    def index(self):
+    def index(self) -> int:
         c_value = c_uint()
         ket_error_warpper(
             self.ket_future_index(self, c_value)
@@ -546,14 +639,14 @@ class future:
         return c_value.value
 
     @property
-    def process_id(self):
+    def process_id(self) -> int:
         c_value = c_uint()
         ket_error_warpper(
             self.ket_future_process_id(self, c_value)
         )
         return c_value.value
 
-    def __add__(self, other):
+    def __add__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -567,7 +660,7 @@ class future:
             )
         return result
 
-    def __sub__(self, other):
+    def __sub__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -581,7 +674,7 @@ class future:
             )
         return result
 
-    def __mul__(self, other):
+    def __mul__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -595,7 +688,7 @@ class future:
             )
         return result
 
-    def __truediv__(self, other):
+    def __truediv__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -609,10 +702,10 @@ class future:
             )
         return result
 
-    def __floordiv__(self, other):
+    def __floordiv__(self, other : future | int) -> future:
         return self.__truediv__(other)
 
-    def __lshift__(self, other):
+    def __lshift__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -626,7 +719,7 @@ class future:
             )
         return result
 
-    def __rshift__(self, other):
+    def __rshift__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -640,7 +733,7 @@ class future:
             )
         return result
 
-    def __and__(self, other):
+    def __and__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -654,7 +747,7 @@ class future:
             )
         return result
 
-    def __xor__(self, other):
+    def __xor__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -668,7 +761,7 @@ class future:
             )
         return result
 
-    def __or__(self, other):
+    def __or__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -682,7 +775,7 @@ class future:
             )
         return result
 
-    def __radd__(self, other):
+    def __radd__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -690,7 +783,7 @@ class future:
         )
         return result
 
-    def __rsub__(self, other):
+    def __rsub__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -698,7 +791,7 @@ class future:
         )
         return result
 
-    def __rmul__(self, other):
+    def __rmul__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -706,7 +799,7 @@ class future:
         )
         return result
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -714,10 +807,10 @@ class future:
         )
         return result
 
-    def __rfloordiv__(self, other):
+    def __rfloordiv__(self, other : future | int) -> future:
         return self.__rtruediv__(other)
 
-    def __rlshift__(self, other):
+    def __rlshift__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -725,7 +818,7 @@ class future:
         )
         return result
 
-    def __rrshift__(self, other):
+    def __rrshift__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -733,7 +826,7 @@ class future:
         )
         return result
 
-    def __rand__(self, other):
+    def __rand__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -741,7 +834,7 @@ class future:
         )
         return result
 
-    def __rxor__(self, other):
+    def __rxor__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -749,7 +842,7 @@ class future:
         )
         return result
 
-    def __ror__(self, other):
+    def __ror__(self, other : future | int) -> future:
         self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
         result = future()
         ket_error_warpper(
@@ -757,7 +850,7 @@ class future:
         )
         return result
 
-    def __lt__(self, other):
+    def __lt__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -771,7 +864,7 @@ class future:
             )
         return result
 
-    def __le__(self, other):
+    def __le__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -785,7 +878,7 @@ class future:
             )
         return result
 
-    def __eq__(self, other):
+    def __eq__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -799,7 +892,7 @@ class future:
             )
         return result
 
-    def __ne__(self, other):
+    def __ne__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -813,7 +906,7 @@ class future:
             )
         return result
 
-    def __gt__(self, other):
+    def __gt__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -827,7 +920,7 @@ class future:
             )
         return result
 
-    def __ge__(self, other):
+    def __ge__(self, other : future | int) -> future:
         result = future()
         if isinstance(other, future):
             self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_void_p]
@@ -901,7 +994,7 @@ class process:
     ket_process_alloc = libketc.ket_process_alloc
     ket_process_alloc.argtypes = [c_void_p, c_void_p, c_bool]
 
-    ket_process_free = libketc.ket_process_alloc
+    ket_process_free = libketc.ket_process_free
     ket_process_free.argtypes = [c_void_p, c_void_p, c_bool]
 
     ket_process_gate = libketc.ket_process_gate
@@ -971,7 +1064,7 @@ class process:
 
     def free(self, qubit : qubit, dirty = False):
         ket_error_warpper(
-            self.ket_process_alloc(self, qubit, dirty)
+            self.ket_process_free(self, qubit, dirty)
         )
 
     def gate(self, gate : int, qubit : qubit, param : float = 0):
@@ -1094,6 +1187,8 @@ def process_top():
     return process_stack[-1]
 
 def exec_quantum():
+    """Trigger the quantum execution"""
+
     environ["KQE_SEED"] = str(randint(0, 1 << 31))
     error = None
     try:
@@ -1105,13 +1200,30 @@ def exec_quantum():
         raise error
 
 def qc_int(value : int) -> future: 
+    """Instantiate an integer on the quantum computer
+    
+    args:
+        value: Initial value.
+    """
+    
     return process_top().new_int(value)
 
 def measure(q : quant):
     return process_top().measure(*q.qubits)
 
-def plugin(name, args, q : quant):
-    process_top().plugin(name, args, *q.qubits)
+def plugin(name : str, args : str, qubits : quant):
+    """Apply plugin
+    
+    .. note::
+
+        Plugin availability depends on the quantum execution target.
+
+    args:
+        name: Plugin name.
+        args: Plugin argument string.
+        qubits: Affected qubits.
+    """
+    process_top().plugin(name, args, *qubits.qubits)
 
 def ctrl_push(q : quant):
     return process_top().ctrl_push(*q.qubits)

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from .libket import plugin, quant, X
 
-__all__ = ['plugin', 'pown', 'diagonal', 'make_quantum']
+__all__ = ['plugin', 'pown']
 
 def pown(a : int, x : quant, N : int) -> quant: 
     r"""Apply a modular exponentiation in a superposition.
@@ -25,12 +25,16 @@ def pown(a : int, x : quant, N : int) -> quant:
 
         \left| x \right> \left| 1 \right> \rightarrow  \left| x \right> \left| a^x\; \text{mod} \, N \right>
 
+    .. note::
+    
+        Plugin availability depends on the quantum execution target.
+
     Args:
         a: :math:`a`.
         x: :math:`x`.
         N: :math:`N`.
 
-    :return: :class:`~ket.types.quant` with the operation result.
+    :return: :class:`~ket.libket.quant` with the operation result.
     """
     
     ret = quant(N.bit_length())

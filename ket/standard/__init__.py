@@ -14,20 +14,20 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..libket import measure as _measure, process_begin, process_end, quant, future
+from ..libket import measure as _measure, process_begin, process_end, quant, future, exec_quantum, qc_int
 from ..preprocessor import _ket_if, _ket_next
 from .ctrl import *
 from .adj import *
 from functools import reduce
 from operator import add
 
-__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure']
+__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure', 'exec_quantum', 'qc_int']
 
 def measure(q : quant | list[quant], free : bool = False) -> future:
     """Quantum measurement
 
-    Measure the qubits of a :class:`~ket.types.quant` and return a
-    :class:`~ket.types.future`.
+    Measure the qubits of a :class:`~ket.libket.quant` and return a
+    :class:`~ket.libket.future`.
 
     Args:
         q: Qubits to measure.

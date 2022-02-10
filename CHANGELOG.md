@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Fixed qubit free and future set value.
+
 ## 0.3
 
 - Libket and its Python wrapper wore refactored. Libket dropped support for the HTTP API.  Quantum simulators are now loaded from a shared library.
