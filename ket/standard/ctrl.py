@@ -15,11 +15,11 @@ from __future__ import annotations
 #  limitations under the License.
 
 from ..libket import ctrl_push, ctrl_pop, X, quant
-from typing import Iterable, Callable, Optional, Any
+from typing import Callable, Any
 from functools import reduce
 from operator import add
 
-def _create_mask(on_state : Optional[int | Iterable[int]], length : int) -> list[int]:
+def _create_mask(on_state : int | [int], length : int) -> list[int]:
     """Create a mask for ctrl and control"""
 
     if on_state is None:
@@ -33,7 +33,7 @@ def _create_mask(on_state : Optional[int | Iterable[int]], length : int) -> list
             raise ValueError(f"To control 'on_state' {on_state} you need at least {on_state.bit_length()} qubits")
         return [int(i) for i in f"{{:0{length}b}}".format(on_state)]
 
-def _apply_mask(mask : Iterable[int], q : quant):
+def _apply_mask(mask : [int], q : quant):
     """Flip qubit q[i] if mask[i] == 0"""
     
     if mask is not None:
@@ -89,7 +89,7 @@ class control:
         on_state: Change the control state. 
     """
 
-    def __init__(self, *ctr : quant, on_state : Optional[int | Iterable[int]] = None):
+    def __init__(self, *ctr : quant, on_state : int | [int] | None = None):
         self.ctr = reduce(add, ctr)
         self.mask = _create_mask(on_state, len(self.ctr))
 
@@ -101,10 +101,10 @@ class control:
         ctrl_pop()
         _apply_mask(self.mask, self.ctr)
             
-def _ctrl(control  : quant | Iterable[quant], 
-          func     : Callable | Iterable[Callable],
+def _ctrl(control  : quant | [quant], 
+          func     : Callable | [Callable],
           *args, 
-          on_state : Optional[int | list[int]] = None,
+          on_state : int | [int] | None = None,
           **kwargs) -> Any:
     """Call Callable with controll-qubits"""
 
@@ -125,7 +125,7 @@ def _ctrl(control  : quant | Iterable[quant],
     
     return ret
 
-def _qubit_for_ctrl(qubits : quant | Iterable[quant] | slice | int | Iterable[int]) -> tuple[Callable[[quant], quant] | quant, bool]:
+def _qubit_for_ctrl(qubits : quant | [quant] | slice | int | [int]) -> tuple[Callable[[quant], quant] | quant, bool]:
     """Get qubits for ctrl"""
 
     if any(isinstance(qubits, tp) for tp in [slice, int]):
@@ -137,18 +137,18 @@ def _qubit_for_ctrl(qubits : quant | Iterable[quant] | slice | int | Iterable[in
     else:
         return qubits, False
 
-def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int], 
-         func       : Callable | Iterable[Callable] , 
-         *args,    
-         on_state   : Optional[int | Iterable[int]] = None,
+def ctrl(control    : quant | [quant] | slice | int | [int], 
+         func       : Callable | [Callable] , 
+         *args,     
+         on_state   : int | [int] | None = None,
          later_call : bool = False,
          **kwargs) -> Callable | Any :
     r"""Add controll-qubits to a Callable
 
     :Call with control qubits:
 
-    * ``control`` type must be :class:`~ket.types.quant` or ``Iterable[quant]``
-    * ``func`` type must be ``Callable`` or ``Iterable[Callable]``
+    * ``control`` type must be :class:`~ket.types.quant` or ``[quant]``
+    * ``func`` type must be ``Callable`` or ``[Callable]``
 
     .. code-block:: ket
 
@@ -198,7 +198,7 @@ def ctrl(control    : quant | Iterable[quant] | slice | int | Iterable[int],
             inc.free()
 
     2. If ``control`` and ``args`` type is ``int``, ``slice``, or
-    ``Iterable[int]``,  return a ``Callable[[quant], Any]``:
+    ``[int]``,  return a ``Callable[[quant], Any]``:
 
     .. code-block:: ket
 

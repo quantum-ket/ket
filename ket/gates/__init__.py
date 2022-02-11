@@ -19,7 +19,6 @@ from ..libket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ
 from ..libket import quant
 from ..standard import ctrl, around
 from .quantum_gate import quantum_gate
-from typing import Callable, Optional, Iterable
 from math import pi
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX', 'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ']

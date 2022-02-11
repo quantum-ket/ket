@@ -14,12 +14,73 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ... import *
-from ...preprocessor import _ket_if, _ket_next
-from math import sqrt, asin
-from typing import Optional, Callable
+from math import pi, sqrt
+from typing import Callable
+from .libket import quant
+from . import *
 
-def bell(x : int = 0, y : int = 0, qubits : Optional[quant] = None) -> quant:
+def qft(q : quant, invert : bool = True) -> quant:
+    """Quantum Fourier Transformation
+    
+    Apply a QFT_ on the qubits of q.
+
+    .. _QFT: https://en.wikipedia.org/wiki/Quantum_Fourier_transform
+
+    Args:
+        q: input qubits
+        invert: if ``True``, invert qubits with swap gates
+    
+    return:
+        Qubits in the reserved order 
+    """
+
+    if len(q) == 1:
+        H(q)
+    else:
+        head, *tail = q
+        H(head)
+        for i in range(len(tail)):
+            with control(tail[i]):
+                phase(2*pi/2**(i+2), head)
+        qft(tail, invert=False)
+
+    if invert:
+        for i in range(len(q)//2):
+            swap(q[i], q[len(q)-i-1])
+        return q
+    else:
+        return reversed(q)
+
+def dump_matrix(u : Callable | [Callable], size : int = 1) -> list[list[complex]]:
+    """Get the matrix of a quantum operation.
+    
+    Args:
+        u: Quantum operation.
+        size: Number of qubits.
+    """
+
+    mat = [[0 for _ in range(2**size)] for _ in range(2**size)]
+    with run():
+        row = quant(size)
+        column = quant(size)
+        H(column)
+        cnot(column, row)
+        if hasattr(u, '__iter__'):
+            for ui in u:
+               ui(row)
+        else:
+            u(row)
+        d = dump(column+row)
+        exec_quantum()
+    
+    for state, amp in zip(d.states, d.amplitudes):
+        column = state >> size
+        row = state & ((1 << size)-1)
+        mat[row][column] = amp*sqrt(2**size)
+
+    return mat
+
+def bell(x : int = 0, y : int = 0, qubits : quant | None = None) -> quant:
     r"""Bell state preparation
     
     Return two entangle qubits in the Bell state:
@@ -65,8 +126,10 @@ def ghz(qubits : quant | int) -> quant:
 
     .. math::
 
-        \left|GHZ\right> = \frac{\left|0\dots0\right> + \left|1\dots1\right>}{\sqrt{2}}
+        \left|\text{GHZ}\right> = \frac{\left|0\dots0\right> + \left|1\dots1\right>}{\sqrt{2}}
 
+    args:
+        qubits: Qubits to prepare the state, if it is an ``int`` allocate the number of qubits. 
     """
 
     if not isinstance(qubits, quant):
@@ -77,7 +140,18 @@ def ghz(qubits : quant | int) -> quant:
     return qubits
 
 def w(qubits : quant | int) -> quant:
-    """W state preparation"""
+    r"""W state preparation"
+
+    Return qubits on the state:
+
+    .. math::
+
+        \left|\text{W}\right> = \frac{1}{\sqrt{n}} \sum_{k=0}^{n} \left|2^k\right>
+        
+    args:
+        qubits: Qubits to prepare the state, if it is an ``int`` allocate the number of qubits.     
+    """
+    
     if not isinstance(qubits, quant):
         size = qubits
         qubits = quant(qubits)
@@ -120,8 +194,4 @@ def pauli(basis : Callable, q : quant, state : int = +1) -> quant:
         return q
     else:
         raise ValueError("Param 'basis' must be X, Y, or Z.")
-
-
-
-
 

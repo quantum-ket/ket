@@ -3,11 +3,9 @@ from __future__ import annotations
 #Copyright 2022 Evandro Chagas Ribeiro da Rosa
 from math import pi
 from ctypes import *
-from typing import Iterable, Optional
 from random import randint
 from os import environ
 from os.path import dirname
-from typing import Optional, List, Generator
 
 __all__ = ['quant', 'future', 'dump', 'qc_int', 'exec_quantum']
 
@@ -71,6 +69,11 @@ def ket_error_warpper(error : c_int):
         raise libket_error(str(ket_error_message().decode()))
 
 class qubit:
+    """Qubit reference
+    
+        Intended for internal use.
+    """
+
     ket_qubit_new = libketc.ket_qubit_new
     ket_qubit_new.argtypes = [POINTER(c_void_p)]
 
@@ -187,7 +190,7 @@ class quant:
         qubits: Initialize the qubit list without allocating. Intended for internal use.
     """
 
-    def __init__(self, size : int = 1, dirty : bool = False, *, qubits : Optional[List[qubit]] = None):
+    def __init__(self, size : int = 1, dirty : bool = False, *, qubits : list[qubit] | None = None):
         if qubits:
             self.qubits = qubits
         else:
@@ -196,7 +199,7 @@ class quant:
     def __add__(self, other : quant) -> quant:
         return quant(qubits=self.qubits+other.qubits)
 
-    def at(self, index : Iterable[int]) -> quant:
+    def at(self, index : [int]) -> quant:
         r"""Return qubits at ``index``
         
         Create a new :class:`~ket.libket.quant` with the qubit references at the
@@ -351,7 +354,7 @@ class dump:
         )
     
     @property
-    def states(self) -> Generator[int, None, None]:
+    def states(self) -> [int]:
         """List of basis states"""
 
         if not self.available:
@@ -371,7 +374,7 @@ class dump:
             yield int(''.join(f'{c_state[j]:064b}' for j in reversed(range(c_state_size.value))), 2)
     
     @property
-    def amplitudes(self) -> Generator[complex, None, None]:
+    def amplitudes(self) -> [complex]:
         """List of probability amplitudes"""
 
         if not self.available:
@@ -390,7 +393,7 @@ class dump:
             )
             yield c_real.value+c_imag.value*1j
 
-    def show(self, format : Optional[str] = None) -> str:
+    def show(self, format : str | None = None) -> str:
         r"""Return the quantum state as a string
         
         Use the format starting to change the print format of the basis states:
@@ -521,9 +524,9 @@ class future:
         ``>``, ``>=``, ``+``, ``-``, ``*``, ``/``, ``<<``, ``>>``, ``and``,
         ``xor``, and ``or``.
 
-    A new :class:`~ket.types.future` variable is created with a quantum
+    A new :class:`~ket.libket.future` variable is created with a quantum
     :func:`~ket.standard.measure` (1) , binary operation with a
-    :class:`~ket.types.future` (2), or directly initialization with a ``int``
+    :class:`~ket.libket.future` (2), or directly initialization with a ``int``
     (2).
 
     .. code-block:: ket
@@ -535,7 +538,7 @@ class future:
     
 
 
-    Writing to the attribute ``value`` of a :class:`~ket.types.future` variable
+    Writing to the attribute ``value`` of a :class:`~ket.libket.future` variable
     passes the information to the quantum computer. 
     Reading the attribute ``value`` triggers the quantum execution. 
 

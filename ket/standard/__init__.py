@@ -23,7 +23,7 @@ from operator import add
 
 __all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure', 'exec_quantum', 'qc_int']
 
-def measure(q : quant | list[quant], free : bool = False) -> future:
+def measure(q : quant | [quant], free : bool = False) -> future:
     """Quantum measurement
 
     Measure the qubits of a :class:`~ket.libket.quant` and return a

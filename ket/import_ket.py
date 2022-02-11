@@ -61,7 +61,7 @@ def import_ket(source : PathLike) -> ModuleType:
     _import_globals_ket(source, module.__dict__)
     return module
 
-def from_import_ket(source : PathLike, *names : list[str]) -> tuple:
+def from_import_ket(source : PathLike, *names : [str]) -> tuple:
     """Import names from Ket file.
 
     Args:

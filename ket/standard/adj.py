@@ -1,3 +1,4 @@
+from __future__ import annotations
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 # 
@@ -14,7 +15,7 @@
 #  limitations under the License.
 
 from ..libket import adj_begin, adj_end
-from typing import Union, Callable, Iterable, Generator, Any
+from typing import Callable, Any
 from inspect import signature
 from types import GeneratorType
 
@@ -37,7 +38,7 @@ class inverse:
     def __exit__ (self, type, value, tb):
         adj_end()  
 
-def _adj(func : Union[Callable, Iterable[Callable]], 
+def _adj(func : Callable | [Callable], 
         *args, 
         **kwargs) -> Any:
     """Call inverse operation"""
@@ -52,10 +53,10 @@ def _adj(func : Union[Callable, Iterable[Callable]],
     adj_end()
     return ret
 
-def adj(func       : Union[Callable, Iterable[Callable]], 
+def adj(func       : Callable | [Callable], 
         *args, 
         later_call : bool = False,
-        **kwargs) -> Union[Callable, Any]:
+        **kwargs) -> Callable | Any:
     """Inverse of a Callable
     
     :Call inverse:
@@ -154,7 +155,7 @@ class around:
     """
 
     def __init__(self, 
-                 func : Union[Callable, Iterable[Callable]], 
+                 func : Callable | [Callable], 
                  *args,
                  **kwargs):
         self.outter_func = list(func) if isinstance(func, GeneratorType) else func
