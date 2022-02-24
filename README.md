@@ -103,7 +103,7 @@ $ pip install ket-lang
 Installing latest Gitlab CI build:
 
 ```console
-$ pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-0.3.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
+$ pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-0.3.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
 ```
 
 ### Installing from source 

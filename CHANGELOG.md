@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.2
+
+- Fixed bug that allocate a new qubit when passing an empty list to a quant
+- Fixed error raised by repeated basis states in `dump.show`.
+
 ## 0.3.1
 
 - Fixed qubit free and future set value.

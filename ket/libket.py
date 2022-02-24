@@ -191,7 +191,7 @@ class quant:
     """
 
     def __init__(self, size : int = 1, dirty : bool = False, *, qubits : list[qubit] | None = None):
-        if qubits:
+        if qubits is not None:
             self.qubits = qubits
         else:
             self.qubits = [process_top().alloc(dirty) for _ in range(size)]
@@ -276,9 +276,9 @@ class quant:
 
     def __repr__(self):
         if len(self.qubits) > 5:
-            qubits_str = ', '.join(repr(self.qubits[i]) for i in range(5))+', ...'
+            qubits_str = ', '.join(str(self.qubits[i].index) for i in range(5))+', ...'
         else:
-            qubits_str = ', '.join(repr(q) for q in self.qubits)
+            qubits_str = ', '.join(str(q.index) for q in self.qubits)
 
         return f"<Ket 'quant' ({qubits_str})>"
         
@@ -480,7 +480,7 @@ class dump:
 
             return dump_str
         
-        return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes)))
+        return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes), key=lambda k : k[0]))
             
     @property
     def available(self) -> bool:
