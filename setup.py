@@ -7,7 +7,7 @@ with open('README.md', 'r') as file:
 setup(
     name            = 'ket-lang',
     description     = 'Ket Quantum Programming Language interpreter and library.',
-    url             = 'https://quantum-ket.gitlab.io',
+    url             = 'https://quantumket.org',
     version         = __version__,
     author          = 'Evandro Chagas Ribeiro da Rosa',
     author_email    = 'evandro.crr@posgrad.ufsc.br',

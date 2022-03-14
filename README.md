@@ -128,4 +128,4 @@ $ python setup.py install
 -----------
 
 This project is part of the Ket Quantum Programming, see the documentation for
-more information https://quantum-ket.gitlab.io.
+more information https://quantumket.org.
