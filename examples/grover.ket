@@ -1,6 +1,5 @@
 from math import sqrt, pi
 from typing import Callable
-from os import environ
 
 def oracle(x : quant , y : quant):
     """f(x) = 1 if x == 3 else 0
