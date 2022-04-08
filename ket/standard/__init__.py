@@ -23,11 +23,15 @@ from operator import add
 
 __all__ = ['run', 'inverse', 'control', 'ctrl', 'adj', 'around', 'measure', 'exec_quantum', 'qc_int']
 
-def measure(q : quant | [quant], free : bool = False) -> future:
+def measure(q : quant | [quant], free : bool = False) -> future | [future]:
     """Quantum measurement
 
     Measure the qubits of a :class:`~ket.libket.quant` and return a
-    :class:`~ket.libket.future`.
+    :class:`~ket.libket.future` or [:class:`~ket.libket.future`].
+    
+    
+    When measuring more than 64 qubits, Ket split the measure every
+    63 qubits.
 
     Args:
         q: Qubits to measure.

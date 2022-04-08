@@ -5,6 +5,8 @@
 - Fixed bug that allocate a new qubit when passing an empty list to a quant
 - Fixed error raised by repeated basis states in `dump.show`.
 - Fixed import error raised by `lib.w`.
+- Fixed Libket bug that limits the measurement to 31 qubits.
+- `measure` now splits the result every 63 qubits if measuring more than 64 qubits.
 
 ## 0.3.1
 

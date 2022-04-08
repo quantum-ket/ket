@@ -575,7 +575,7 @@ class future:
     ket_future_delete.argtypes = [c_void_p]
 
     ket_future_value = libketc.ket_future_value
-    ket_future_value.argtypes = [c_void_p, POINTER(c_long)]
+    ket_future_value.argtypes = [c_void_p, POINTER(c_int64)]
 
     ket_future_set = libketc.ket_future_set
     ket_future_set.argtypes = [c_void_p, c_void_p]
@@ -609,7 +609,7 @@ class future:
         if not self.available:
             exec_quantum()
 
-        value = c_long()
+        value = c_int64()
         ket_error_warpper(
             self.ket_future_value(self, value)
         )
@@ -657,7 +657,7 @@ class future:
                 self.ket_future_op(result, KET_INT_ADD, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_ADD, KET_INT_FI, self, int(other))
             )
@@ -671,7 +671,7 @@ class future:
                 self.ket_future_op(result, KET_INT_ADD, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_ADD, KET_INT_FI, self, int(other))
             )
@@ -685,7 +685,7 @@ class future:
                 self.ket_future_op(result, KET_INT_MUL, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_MUL, KET_INT_FI, self, int(other))
             )
@@ -699,7 +699,7 @@ class future:
                 self.ket_future_op(result, KET_INT_DIV, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_DIV, KET_INT_FI, self, int(other))
             )
@@ -716,7 +716,7 @@ class future:
                 self.ket_future_op(result, KET_INT_SLL, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_SLL, KET_INT_FI, self, int(other))
             )
@@ -730,7 +730,7 @@ class future:
                 self.ket_future_op(result, KET_INT_SRL, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_SRL, KET_INT_FI, self, int(other))
             )
@@ -744,7 +744,7 @@ class future:
                 self.ket_future_op(result, KET_INT_AND, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_AND, KET_INT_FI, self, int(other))
             )
@@ -758,7 +758,7 @@ class future:
                 self.ket_future_op(result, KET_INT_XOR, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_XOR, KET_INT_FI, self, int(other))
             )
@@ -772,14 +772,14 @@ class future:
                 self.ket_future_op(result, KET_INT_OR, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_OR, KET_INT_FI, self, int(other))
             )
         return result
 
     def __radd__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_ADD, KET_INT_IF, int(other), self)
@@ -787,7 +787,7 @@ class future:
         return result
 
     def __rsub__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_SUB, KET_INT_IF, int(other), self)
@@ -795,7 +795,7 @@ class future:
         return result
 
     def __rmul__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_MUL, KET_INT_IF, int(other), self)
@@ -803,7 +803,7 @@ class future:
         return result
 
     def __rtruediv__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_DIV, KET_INT_IF, int(other), self)
@@ -814,7 +814,7 @@ class future:
         return self.__rtruediv__(other)
 
     def __rlshift__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_SLL, KET_INT_IF, int(other), self)
@@ -822,7 +822,7 @@ class future:
         return result
 
     def __rrshift__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_SRL, KET_INT_IF, int(other), self)
@@ -830,7 +830,7 @@ class future:
         return result
 
     def __rand__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_AND, KET_INT_IF, int(other), self)
@@ -838,7 +838,7 @@ class future:
         return result
 
     def __rxor__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_XOR, KET_INT_IF, int(other), self)
@@ -846,7 +846,7 @@ class future:
         return result
 
     def __ror__(self, other : future | int) -> future:
-        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_long, c_void_p]
+        self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_int64, c_void_p]
         result = future()
         ket_error_warpper(
             self.ket_future_op(result, KET_INT_OR, KET_INT_IF, int(other), self)
@@ -861,7 +861,7 @@ class future:
                 self.ket_future_op(result, KET_INT_LT, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_LT, KET_INT_FI, self, int(other))
             )
@@ -875,7 +875,7 @@ class future:
                 self.ket_future_op(result, KET_INT_LEQ, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_LEQ, KET_INT_FI, self, int(other))
             )
@@ -889,7 +889,7 @@ class future:
                 self.ket_future_op(result, KET_INT_EQ, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_EQ, KET_INT_FI, self, int(other))
             )
@@ -903,7 +903,7 @@ class future:
                 self.ket_future_op(result, KET_INT_NEQ, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_NEQ, KET_INT_FI, self, int(other))
             )
@@ -917,7 +917,7 @@ class future:
                 self.ket_future_op(result, KET_INT_GT, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_GT, KET_INT_FI, self, int(other))
             )
@@ -931,7 +931,7 @@ class future:
                 self.ket_future_op(result, KET_INT_GEQ, KET_INT_FF, self, other)
             )
         else:
-            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_long]
+            self.ket_future_op.argtypes = [c_void_p, c_int, c_int, c_void_p, c_int64]
             ket_error_warpper(
                 self.ket_future_op(result, KET_INT_GEQ, KET_INT_FI, self, int(other))
             )
@@ -1006,7 +1006,7 @@ class process:
     ket_process_measure = libketc.ket_process_measure
 
     ket_process_new_int = libketc.ket_process_new_int
-    ket_process_new_int.argtypes = [c_void_p, c_void_p, c_long]
+    ket_process_new_int.argtypes = [c_void_p, c_void_p, c_int64]
 
     ket_process_plugin = libketc.ket_process_plugin
 
@@ -1212,7 +1212,11 @@ def qc_int(value : int) -> future:
     return process_top().new_int(value)
 
 def measure(q : quant):
-    return process_top().measure(*q.qubits)
+    size = len(q)
+    if size <= 64:
+        return process_top().measure(*q.qubits)
+    else:
+        return [process_top().measure(*q.qubits[i:min(i+63, size)]) for i in reversed(range(0, size, 63))]
 
 def plugin(name : str, args : str, qubits : quant):
     """Apply plugin
