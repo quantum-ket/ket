@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "Ket: File",
+            "type": "python",
+            "request": "launch",
+            "module": "ket",
+            "justMyCode": false,
+            "args": ["${file}"],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
