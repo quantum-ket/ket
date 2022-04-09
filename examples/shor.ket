@@ -27,27 +27,14 @@ def pow_ab_of(N):
     return N, 1
 
 def order_find(x, N):
-    """Return r > 0 for x**r % N == 1"""
-
     L = N.bit_length()
     t = 2*L+1
-
-    def find():
-        reg1 = quant(t)
-        H(reg1)
-
-        pown(x, reg1, N)
-
-        adj(qft, reg1)
-        return measure(reg1).value
-
-    rs = reduce(gcd, [find() for _ in range(3)])
-    try:
-        r = 2**t//rs
-    except ZeroDivisionError:
-        raise ZeroDivisionError('All measurements returned 0. Try again!!!')   
-    
-    return r
+    reg1 = quant(t)
+    H(reg1)
+    pown(x, reg1, N)
+    adj(qft, reg1)
+    rs = reduce(gcd, dump(reg1).states)
+    return 2**t//rs
 
 def factors(N):
     """Shor's factorization algorithm"""
