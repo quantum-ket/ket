@@ -481,6 +481,41 @@ class dump:
             return dump_str
         
         return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes), key=lambda k : k[0]))
+
+    @property
+    def expected_values(self):
+        """X, Y, and Z expected values for one qubit"""
+        
+        if self.size != 1:
+            raise RuntimeError('Cannot calculate X, Y, and Z expected values from a dump with more than 1 qubit')
+        exp_x = lambda alpha, beta : (beta.conjugate()*alpha+alpha.conjugate()*beta).real
+        exp_y = lambda alpha, beta : (1j*beta.conjugate()*alpha-1j*alpha.conjugate()*beta).real
+        exp_z = lambda alpha, beta : pow(abs(alpha), 2)-pow(abs(beta), 2)
+        alpha = 0
+        beta = 0
+        for a, s in zip(self.amplitudes, self.states):
+            if s == 0:
+                alpha = a
+            else:
+                beta = a
+        return [exp_x(alpha, beta), exp_y(alpha, beta), exp_z(alpha, beta)]
+
+    def sphere(self):
+        """Result a Bloch sphere
+        
+        QuTiP and Matplotlib are needed to generate and plot the sphere.
+        """
+        try:
+            import qutip
+        except ImportError as e:
+            from sys import stderr
+            print("Unable to import QuTiP, try installing:", file=stderr)
+            print("\tpip install qutip", file=stderr)
+            raise e
+
+        b = qutip.Bloch()
+        b.add_vectors(self.expected_values)
+        return b        
             
     @property
     def available(self) -> bool:

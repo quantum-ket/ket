@@ -2,7 +2,11 @@
 
 ## 0.3.2
 
-- Fixed bug that allocate a new qubit when passing an empty list to a quant
+- Added method `dump.sphere` that returns a Bloch sphere plot.
+
+## 0.3.2
+
+- Fixed bug that allocate a new qubit when passing an empty list to a quant.
 - Fixed error raised by repeated basis states in `dump.show`.
 - Fixed import error raised by `lib.w`.
 - Fixed Libket bug that limits the measurement to 31 qubits.
