@@ -11,7 +11,7 @@ wheelhouse:
     - pip install auditwheel build cmake conan ninja patchelf setuptools -U
     - mkdir build
     - cd build
-    - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release
+    - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCONAN_BOOST_ALL=1
     - ninja 
     - cd ..
     - python -m build
