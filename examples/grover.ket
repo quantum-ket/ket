@@ -21,7 +21,7 @@ def grover(size : int, oracle : Callable, outcomes : int = 1) -> int:
     steps = int((pi/4)*sqrt(2**size/outcomes))
     for _ in range(steps):
         oracle(s, aux)
-        with around([H, X], s):
+        with around(X(H), s):
             with control(s[1:]):
                 Z(s[0])
 

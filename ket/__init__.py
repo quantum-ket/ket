@@ -1,12 +1,12 @@
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
-# 
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,3 +25,8 @@ from .standard import __all__ as all_standard
 __all__ = all_gate+all_import+all_libket+all_standard
 
 from .import_ket import code_ket
+
+from .libket import set_quantum_execution_target, quantum_execution_target
+if quantum_execution_target is None:
+    from .kbw import execute
+    set_quantum_execution_target(execute)

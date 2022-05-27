@@ -91,4 +91,3 @@ if __name__ == '__main__':
 
     else:
         print('FAIL!!!')
-        exit(-1)

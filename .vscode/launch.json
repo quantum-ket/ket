@@ -1,6 +1,14 @@
 {
     "configurations": [
     {
+        "type": "lldb",
+        "request": "launch",
+        "name": "Libket (Rust): Ket file",
+        "program": "/usr/bin/python3",
+        "args": ["-m", "ket", "${file}"],
+        "cwd": "${workspaceFolder}"
+    },
+    {
         "name": "Libket: Ket file",
         "type": "cppdbg",
         "request": "launch",
