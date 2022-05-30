@@ -1,16 +1,11 @@
 wheelhouse:
-  image: centos:7
+  image: registry.gitlab.com/quantum-ket/ket
   stage: build
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - yum install centos-release-scl -y
-    - yum install devtoolset-11-gcc rh-python38 -y
     - source scl_source enable devtoolset-11 || true
     - source scl_source enable rh-python38 || true
-    - pip install build auditwheel setuptools patchelf -U
-    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-    - source $HOME/.cargo/env
     - cd libs
     - cargo build --release
     - cd ..
