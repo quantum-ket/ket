@@ -1,5 +1,10 @@
+image: registry.gitlab.com/quantum-ket/ket
+
+stages:
+  - build
+  - deploy
+
 wheelhouse:
-  image: registry.gitlab.com/quantum-ket/ket
   stage: build
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
@@ -15,3 +20,11 @@ wheelhouse:
   artifacts:
     paths:
       - wheelhouse
+
+PyPI:
+  stage: deploy
+  script:
+    - source scl_source enable rh-python38 || true
+    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi wheelhouse/*
+  only:
+    - master
