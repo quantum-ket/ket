@@ -3,5 +3,7 @@
 **/__pycache__
 build
 dist
+**/target
 **/test*
 wheelhouse
+libs/Cargo.lock

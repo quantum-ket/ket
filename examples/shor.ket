@@ -79,8 +79,8 @@ def factors(N):
 if __name__ == '__main__':
     #N = 15  # 13 qubits
     #N = 21  # 16 qubits
-    N = 55  # 19 qubits
-    #N = 119 # 22 qubits
+    #N = 55  # 19 qubits
+    N = 119 # 22 qubits
     #N = 247 # 25 qubits
     
     try:

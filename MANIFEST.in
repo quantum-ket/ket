@@ -1,4 +1,3 @@
 include LICENSE
-include ket/libketc.so
-include ket/kbw.so
-include ket/kbw_plugins.so
+include ket/lib/libket.so
+include ket/lib/libkbw.so

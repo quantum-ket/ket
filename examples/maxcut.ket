@@ -1,5 +1,4 @@
 from ket import *
-from random import uniform
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 

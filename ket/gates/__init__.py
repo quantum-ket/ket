@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from ..libket import X as _X, Y as _Y, Z as _Z, H as _H, S as _S, SD as _SD, T as _T, TD as _TD
 from ..libket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ 
-from ..libket import quant
 from ..standard import ctrl, around
 from .quantum_gate import quantum_gate
 from math import pi

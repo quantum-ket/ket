@@ -1,44 +1,26 @@
 {
     "configurations": [
-    {
-        "type": "lldb",
-        "request": "launch",
-        "name": "Libket (Rust): Ket file",
-        "program": "/usr/bin/python3",
-        "args": ["-m", "ket", "${file}"],
-        "cwd": "${workspaceFolder}"
-    },
-    {
-        "name": "Libket: Ket file",
-        "type": "cppdbg",
-        "request": "launch",
-        "program": "/usr/bin/python3",
-        "args": ["-m", "ket", "${file}"],
-        "stopAtEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "MIMode": "gdb",
-        "setupCommands": [
-            {
-                "description": "Enable pretty-printing for gdb",
-                "text": "-enable-pretty-printing",
-                "ignoreFailures": true
-            },
-            {
-                "description":  "Set Disassembly Flavor to Intel",
-                "text": "-gdb-set disassembly-flavor intel",
-                "ignoreFailures": true
-            }
-        ]
-    },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Libket: Ket file",
+            "program": "/usr/bin/python3",
+            "args": [
+                "-m",
+                "ket",
+                "${file}"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
         {
             "name": "Ket: File",
             "type": "python",
             "request": "launch",
             "module": "ket",
             "justMyCode": false,
-            "args": ["${file}"],
+            "args": [
+                "${file}"
+            ],
             "cwd": "${workspaceFolder}"
         }
     ]

@@ -108,7 +108,7 @@ class qubit:
 
     @property
     def index(self) -> int:
-        return self.ket_qubit_pid(self)
+        return self.ket_qubit_index(self)
 
     @property
     def pid(self) -> int:
@@ -808,6 +808,10 @@ class process:
     ket_process_apply_gate = libket.ket_process_apply_gate
     ket_process_apply_gate.argtypes = [c_void_p, c_uint32, c_double, c_void_p]
 
+    ket_process_apply_plugin = libket.ket_process_apply_plugin
+    ket_process_apply_plugin.argtypes = [c_void_p, POINTER(
+        c_ubyte), c_size_t, c_void_p, c_size_t, POINTER(c_ubyte), c_size_t]
+
     ket_process_measure = libket.ket_process_measure
     ket_process_measure.argtypes = [c_void_p, c_void_p, c_size_t]
     ket_process_measure.restype = c_void_p
@@ -856,6 +860,10 @@ class process:
     ket_process_exec_time.argtypes = [c_void_p, POINTER(c_bool)]
     ket_process_exec_time.restype = c_double
 
+    ket_process_set_timeout = libket.ket_process_set_timeout
+    ket_process_set_timeout.argtypes = [c_void_p, c_uint32]
+    ket_process_set_timeout.restype = None
+
     ket_process_get_quantum_code_as_json = libket.ket_process_get_quantum_code_as_json
     ket_process_get_quantum_code_as_json.argtypes = [
         c_void_p, POINTER(c_size_t)]
@@ -865,6 +873,22 @@ class process:
     ket_process_get_quantum_code_as_bin.argtypes = [
         c_void_p, POINTER(c_size_t)]
     ket_process_get_quantum_code_as_bin.restype = POINTER(c_ubyte)
+
+    ket_process_get_metrics_as_json = libket.ket_process_get_metrics_as_json
+    ket_process_get_metrics_as_json.argtypes = [c_void_p, POINTER(c_size_t)]
+    ket_process_get_metrics_as_json.restype = POINTER(c_ubyte)
+
+    ket_process_get_metrics_as_bin = libket.ket_process_get_metrics_as_bin
+    ket_process_get_metrics_as_bin.argtypes = [c_void_p, POINTER(c_size_t)]
+    ket_process_get_metrics_as_bin.restype = POINTER(c_ubyte)
+
+    ket_process_set_quantum_result_from_json = libket.ket_process_set_quantum_result_from_json
+    ket_process_set_quantum_result_from_json.argtypes = [
+        c_void_p, POINTER(c_ubyte), c_size_t]
+
+    ket_process_set_quantum_result_from_bin = libket.ket_process_set_quantum_result_from_bin
+    ket_process_set_quantum_result_from_bin.argtypes = [
+        c_void_p, POINTER(c_ubyte), c_size_t]
 
     def __init__(self, pid: int):
         self.pid = pid
@@ -895,13 +919,14 @@ class process:
         ptr = ket_error_warpper_addr(self.ket_process_int_new(self, value))
         return future(ptr)
 
-    # def plugin(self, name, args, *qubits):
-    #    self.ket_process_plugin.argtypes = [
-    #        c_void_p, c_char_p, c_char_p, c_int] + [c_void_p for _ in range(len(qubits))]
-    #    ket_error_warpper(
-    #        self.ket_process_plugin(
-    #            self, name.encode(), args.encode(), len(qubits), *qubits)
-    #    )
+    def plugin(self, name, args, *qubits):
+        qubits = (c_void_p*len(qubits))(*(q._as_parameter_ for q in qubits))
+        name = name.encode()
+        name = (c_ubyte*len(name)).from_buffer(bytearray(name))
+        args = args.encode()
+        args = (c_ubyte*len(args)).from_buffer(bytearray(args))
+        ket_error_warpper(self.ket_process_apply_plugin(
+            self, name, len(name), qubits, len(qubits), args, len(args)))
 
     def ctrl_push(self, *qubits):
         qubits = (c_void_p*len(qubits))(*(q._as_parameter_ for q in qubits))
@@ -934,14 +959,12 @@ class process:
         available = c_bool()
         time = self.ket_process_exec_time(self, available)
         if available.value:
-            return time.value
+            return time
         else:
             return None
 
-    # def timeout(self, time):
-    #    ket_error_warpper(
-    #        self.ket_process_timeout(self, time)
-    #    )
+    def set_timeout(self, time):
+        self.ket_process_set_timeout(self, time)
 
     def dump(self, *qubits):
         qubits = (c_void_p*len(qubits))(*(q._as_parameter_ for q in qubits))
@@ -968,6 +991,31 @@ class process:
         data = ket_error_warpper_addr(
             self.ket_process_get_quantum_code_as_bin(self, size))
         return bytearray(data[:size.value])
+
+    def get_metrics_as_json(self):
+        size = c_size_t()
+        data = ket_error_warpper_addr(
+            self.ket_process_get_metrics_as_json(self, size))
+        return bytearray(data[:size.value]).decode()
+
+    def get_metrics_as_bin(self):
+        size = c_size_t()
+        data = ket_error_warpper_addr(
+            self.ket_process_get_metrics_as_bin(self, size))
+        return bytearray(data[:size.value])
+
+    def set_quantum_result_from_json(self, result):
+        result = result.encode()
+        result_size = len(result)
+        result = (c_ubyte*result_size).from_buffer(bytearray(result))
+        ket_error_warpper(self.ket_process_set_quantum_result_from_json(
+            self, result, result_size))
+
+    def set_quantum_result_from_bin(self, result):
+        result_size = len(result)
+        result = (c_ubyte*result_size).from_buffer(bytearray(result))
+        ket_error_warpper(self.ket_process_set_quantum_result_from_bin(
+            self, result, result_size))
 
     def __repr__(self):
         return f"<Ket 'process' {(self.pid)}>"

@@ -5,14 +5,14 @@ wheelhouse:
     GIT_SUBMODULE_STRATEGY: recursive
   script:
     - yum install centos-release-scl -y
-    - yum install devtoolset-8-toolchain rh-python38 -y
-    - source scl_source enable devtoolset-8 || true
+    - yum install devtoolset-11-gcc rh-python38 -y
+    - source scl_source enable devtoolset-11 || true
     - source scl_source enable rh-python38 || true
-    - pip install auditwheel build cmake conan ninja patchelf setuptools -U
-    - mkdir build
-    - cd build
-    - cmake ../libket -GNinja -DCMAKE_BUILD_TYPE=Release -DCONAN_BOOST_ALL=1
-    - ninja 
+    - pip install build auditwheel setuptools patchelf -U
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    - source $HOME/.cargo/env
+    - cd libs
+    - cargo build --release
     - cd ..
     - python -m build
     - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang-*-py3-none-any.whl
