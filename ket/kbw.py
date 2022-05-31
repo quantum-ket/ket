@@ -119,12 +119,22 @@ def run_sparse_from_process(process):
 def run(process, get_q_code, get_metrics, is_json, set_result, func):
     q_code = get_q_code(process)
     q_code_size = len(q_code)
+    if 'KBW_QCODE' in environ:
+        with open(environ['KBW_QCODE']+str(process.pid)+('.json' if is_json else '.bin'), 'wb') as file:
+            file.write(q_code)
     q_code = (c_ubyte*q_code_size).from_buffer(bytearray(q_code))
     metrics = get_metrics(process)
     metrics_size = len(metrics)
+    if 'KBW_MTC' in environ:
+        with open(environ['KBW_MTC']+str(process.pid)+('.json' if is_json else '.bin'), 'wb') as file:
+            file.write(metrics)
     metrics = (c_ubyte*metrics_size).from_buffer(bytearray(metrics))
     result = Result(func(q_code, q_code_size,
                     metrics, metrics_size), is_json=is_json).get()
+    if 'KBW_RST' in environ:
+        with open(environ['KBW_RST']+str(process.pid)+('.json' if is_json else '.bin'), 'wb') as file:
+            file.write(result.encode() if is_json else result)
+
     set_result(process, result)
 
 

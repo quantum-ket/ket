@@ -82,8 +82,6 @@ positional arguments:
 options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
-  -o OUT, --out OUT     KQASM output file
-  -s SEED, --seed SEED  set RNG seed for quantum execution
 ```
 
 ## Installation
@@ -103,25 +101,22 @@ $ pip install ket-lang
 Installing latest Gitlab CI build:
 
 ```console
-$ pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-0.3.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
+$ pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-`wget -O- -q https://gitlab.com/quantum-ket/ket/-/raw/master/ket/__version__.py | awk -F\' '{print $2}'`-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
 ```
 
 ### Installing from source 
 
 Requirements:
 
-* C++ compiler
-* CMake
-* [Conan](https://pypi.org/project/conan)
+* [Rust](https://www.rust-lang.org/tools/install)
 
 To install from source runs:
 
 ```console
 $ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-$ mkdir ket/build
-$ cd ket/build
-$ cmake ../libket -DCMAKE_BUILD_TYPE=Release
-$ make -j8
+$ cd ket/libs
+$ cargo build --release
+$ cd ..
 $ python setup.py install
 ```
 

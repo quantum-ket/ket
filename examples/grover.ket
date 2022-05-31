@@ -1,36 +1,26 @@
 from math import sqrt, pi
 from typing import Callable
 
-def oracle(x : quant , y : quant):
-    """f(x) = 1 if x == 3 else 0
 
-    U|x⟩|y⟩ = |x⟩|f(x) ⊕ y⟩
-    """
-    with control(x, on_state=3):
-        X(y)
-
-def grover(size : int, oracle : Callable, outcomes : int = 1) -> int:
+def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
     """Grover's search algorithm"""
 
-    s = quant(size)
-    aux = X(quant())
-
-    H(s)
-    H(aux)
+    s = H(quant(size))
 
     steps = int((pi/4)*sqrt(2**size/outcomes))
     for _ in range(steps):
-        oracle(s, aux)
-        with around(X(H), s):
-            with control(s[1:]):
-                Z(s[0])
-
+        oracle(s)
+        with around(H, s):
+            phase_on(0, s)
+            
     return measure(s).value
-    
+
+
 if __name__ == '__main__':
-    size = 12
-    print(size+1, 'Qubits used')
+    size = 10
+    print(size, 'Qubits used')
+    
+    oracle = lambda q : phase_on(3, q)
 
     result = grover(size, oracle)
     print('Exprexted result = 3, measured:', result)
-

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4
+
+- Libket and KBW ported to Rust.
+- KBW now features two simulation modes, Dense and Sparse. The Dense mode is the default, but it may change in the future. Use the environment variable `KBW_MODE` to select the simulation algorithm.
+    - The Dense simulation uses the State Vector representation.
+    - The Sparse simulation uses the Bitwise representation.
+- Libket now supports two intermediary representation schemes, JSON and Binary. Since, now, it is the quantum execution target that selects the representation, Ket cannot output the quantum code as previously. Although, KBW offers the following environment variables that allow outputting intermediary representation data.
+    - `KBW_DATA`: must be set to `JSON` or `BIN`. The default is `DIRECT`, which does not generate any intermediary data.
+    - `KBW_QCODE`: path to output the quantum code.
+    - `KBW_MTC`: path to output the quantum execution metrics.
+    - `KBW_RST`: path to output the quantum execution result.
+- Added gates `flipc` and `phase_on`.
+
 ## 0.3.3
 
 - Added method `dump.sphere` that returns a Bloch sphere plot.
