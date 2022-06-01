@@ -93,7 +93,7 @@ def _ctrl(control: quant | [quant],
 
     control = reduce(add, control)
     if on_state is not None:
-        _flipc(control)
+        _flipc(on_state, control)
     ctrl_push(control)
 
     ret = []
@@ -106,7 +106,7 @@ def _ctrl(control: quant | [quant],
 
     ctrl_pop()
     if on_state is not None:
-        _flipc(control)
+        _flipc(on_state, control)
 
     return ret
 
