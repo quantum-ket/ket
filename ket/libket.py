@@ -116,11 +116,11 @@ class qubit:
 
     @property
     def allocated(self) -> bool:
-        return self.ket_qubit_allocated(self).value
+        return self.ket_qubit_allocated(self)
 
     @property
     def measured(self) -> bool:
-        return self.ket_qubit_measured(self).value
+        return self.ket_qubit_measured(self)
 
     def __repr__(self) -> str:
         return f"<Ket 'qubit' {(self.process_id, self.index)}>"
