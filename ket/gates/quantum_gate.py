@@ -1,12 +1,12 @@
 #  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
-# 
+#
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-# 
+#
 #      http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,8 @@
 
 from functools import reduce
 from operator import add
-from ..libket import quant
+from ..base import quant
+
 
 class quantum_gate:
     _gates_1 = []
@@ -28,7 +29,7 @@ class quantum_gate:
     def __doc__(cls):
         nl = '\n'
         return \
-f"""
+            f"""
 
 Single Qubit Gates
 ~~~~~~~~~~~~~~~~~~
@@ -72,15 +73,17 @@ Multiple Qubit Gates
     def __call__(self, *args):
         args_size = len(args)
         if args_size < self.c_args:
-            raise ValueError(f'{self.name} requirers {self.c_args} classical parameters, {args_size} provided')
+            raise ValueError(
+                f'{self.name} requirers {self.c_args} classical parameters, {args_size} provided')
         elif args_size == self.c_args:
             if any(isinstance(arg, quant) for arg in args):
-                raise ValueError(f'{self.name} requirers {self.c_args} classical parameters')
+                raise ValueError(
+                    f'{self.name} requirers {self.c_args} classical parameters')
 
             args_name = ', '.join(str(arg) for arg in args)
             return quantum_gate(
-                name=f'{self.name}({args_name})', 
-                gate=lambda *q_args : self.__call__(*args, *q_args),
+                name=f'{self.name}({args_name})',
+                gate=lambda *q_args: self.__call__(*args, *q_args),
                 q_args=self.q_args
             )
 
@@ -92,7 +95,8 @@ Multiple Qubit Gates
             for arg in q_args:
                 q_args_size += arg.q_args
             if q_args_size != self.q_args:
-                raise ValueError(f'{name} requirers {self.q_args} quantum parameters, {q_args_size} provided')
+                raise ValueError(
+                    f'{self.name} requirers {self.q_args} quantum parameters, {q_args_size} provided')
 
             def new_gate(*args):
                 args_ = args
@@ -103,17 +107,16 @@ Multiple Qubit Gates
 
             args_name = ', '.join(gate.name for gate in q_args)
             return quantum_gate(
-                name=f'{self.name}({args_name})', 
-                gate=new_gate, 
+                name=f'{self.name}({args_name})',
+                gate=new_gate,
                 q_args=self.q_args)
-        elif any(isinstance(args, quantum_gate) for arg in q_args):
+        elif any(isinstance(arg, quantum_gate) for arg in q_args):
             raise ValueError(f'Incomplete gate call')
 
-        reduced_q_args = tuple(map(lambda q : reduce(add, q), q_args))
+        reduced_q_args = tuple(
+            map(lambda q: reduce(add, q) if len(q) else q, q_args))
         self.gate(*c_args, *reduced_q_args)
         return reduced_q_args[0] if len(reduced_q_args) == 1 else reduced_q_args
 
     def __repr__(self):
-        return f'{self.name} Ket Quantum Gate'
-        
-    
+        return f"<Ket '{self.name} Gate'>"

@@ -14,12 +14,10 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..libket import X as _X, Y as _Y, Z as _Z, H as _H, S as _S, SD as _SD, T as _T, TD as _TD
-from ..libket import phase as _phase, RX as _RX, RY as _RY, RZ as _RZ
-from ..standard import ctrl, around
+from ..base import base_H, base_phase, base_RX, base_RY, base_RZ, base_S, base_SD, base_T, base_TD, base_X, base_Y, base_Z
 from .quantum_gate import quantum_gate
-from math import pi
-from .base_gates import _flipc, _phase_on
+from ..standard.ctrl import base_flipc
+from .base_gates import *
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX',
            'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ', 'flipc', 'phase_on']
@@ -36,7 +34,7 @@ I = quantum_gate(
 
 X = quantum_gate(
     name='Pauli-X',
-    gate=_X,
+    gate=base_X,
     doc={
         'func': '``X(q)``',
         'matrix': r":math:`\begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}`",
@@ -46,7 +44,7 @@ X = quantum_gate(
 
 Y = quantum_gate(
     name='Pauli-Y',
-    gate=_Y,
+    gate=base_Y,
     doc={
         'func': '``Y(q)``',
         'matrix': r":math:`\begin{bmatrix} 0 & -i \\ i & 0 \end{bmatrix}`",
@@ -56,7 +54,7 @@ Y = quantum_gate(
 
 Z = quantum_gate(
     name='Pauli-Z',
-    gate=_Z,
+    gate=base_Z,
     doc={
         'func': '``Z(q)``',
         'matrix': r":math:`\begin{bmatrix}  1 & 0 \\ 0 & -1 \end{bmatrix}`",
@@ -66,7 +64,7 @@ Z = quantum_gate(
 
 H = quantum_gate(
     name='Hadamard',
-    gate=_H,
+    gate=base_H,
     doc={
         'func': '``H(q)``',
         'matrix': r":math:`\frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}`",
@@ -76,7 +74,7 @@ H = quantum_gate(
 
 S = quantum_gate(
     name='S',
-    gate=_S,
+    gate=base_S,
     doc={
         'func': '``S(q)``',
         'matrix': r":math:`\begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}`",
@@ -86,7 +84,7 @@ S = quantum_gate(
 
 SD = quantum_gate(
     name='S Dagger',
-    gate=_SD,
+    gate=base_SD,
     doc={
         'func': '``SD(q)``',
         'matrix': r":math:`\begin{bmatrix} 1 & 0 \\ 0 & -i \end{bmatrix}`",
@@ -96,7 +94,7 @@ SD = quantum_gate(
 
 T = quantum_gate(
     name='T',
-    gate=_T,
+    gate=base_T,
     doc={
         'func': '``T(q)``',
         'matrix': r":math:`\begin{bmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{bmatrix}`",
@@ -107,7 +105,7 @@ T = quantum_gate(
 
 TD = quantum_gate(
     name='T Dagger',
-    gate=_TD,
+    gate=base_TD,
     doc={
         'func': '``TD(q)``',
         'matrix': r":math:`\begin{bmatrix} 1 & 0 \\ 0 & e^{-i\pi/4} \end{bmatrix}`",
@@ -117,7 +115,7 @@ TD = quantum_gate(
 
 phase = quantum_gate(
     name='Phase',
-    gate=_phase,
+    gate=base_phase,
     c_args=1,
     doc={
         'func': '``phase(λ, q)``',
@@ -128,7 +126,7 @@ phase = quantum_gate(
 
 RX = quantum_gate(
     name='X-axis Rotation',
-    gate=_RX,
+    gate=base_RX,
     c_args=1,
     doc={
         'func': '``RX(θ, q)``',
@@ -139,7 +137,7 @@ RX = quantum_gate(
 
 RY = quantum_gate(
     name='Y-axis Rotation',
-    gate=_RY,
+    gate=base_RY,
     c_args=1,
     doc={
         'func': '``RY(θ, q)``',
@@ -150,7 +148,7 @@ RY = quantum_gate(
 
 RZ = quantum_gate(
     name='Z-axis Rotation',
-    gate=_RZ,
+    gate=base_RZ,
     c_args=1,
     doc={
         'func': '``RZ(θ, q)``',
@@ -160,14 +158,9 @@ RZ = quantum_gate(
 )
 
 
-def _cnot(c, t):
-    for i, j in zip(c, t):
-        ctrl(i, X, j)
-
-
 cnot = quantum_gate(
     name='Controlled-NOT',
-    gate=_cnot,
+    gate=base_cnot,
     q_args=2,
     doc={
         'func': '``cnot(c, t)``',
@@ -176,16 +169,9 @@ cnot = quantum_gate(
 
 )
 
-
-def _swap(a, b):
-    _cnot(a, b)
-    _cnot(b, a)
-    _cnot(a, b)
-
-
 swap = quantum_gate(
     name='SWAP',
-    gate=_swap,
+    gate=base_swap,
     q_args=2,
     doc={
         'func': '``swap(a, b)``',
@@ -194,16 +180,9 @@ swap = quantum_gate(
 
 )
 
-
-def _RXX(theta, a, b):
-    for qa, qb in zip(a, b):
-        with around(cnot(H, H), qa, qb):
-            RZ(theta, qb)
-
-
 RXX = quantum_gate(
     name='XX-axis Rotation',
-    gate=_RXX,
+    gate=base_RXX,
     c_args=1,
     q_args=2,
     doc={
@@ -212,16 +191,9 @@ RXX = quantum_gate(
     }
 )
 
-
-def _RYY(theta, a, b):
-    for qa, qb in zip(a, b):
-        with around(cnot(RX(pi/2), RX(pi/2)), qa, qb):
-            RZ(theta, qb)
-
-
 RYY = quantum_gate(
     name='YY-axis Rotation',
-    gate=_RYY,
+    gate=base_RYY,
     c_args=1,
     q_args=2,
     doc={
@@ -230,16 +202,9 @@ RYY = quantum_gate(
     }
 )
 
-
-def _RZZ(theta, a, b):
-    for qa, qb in zip(a, b):
-        with around(cnot, qa, qb):
-            RZ(theta, qb)
-
-
 RZZ = quantum_gate(
     name='ZZ-axis Rotation',
-    gate=_RZZ,
+    gate=base_RZZ,
     c_args=1,
     q_args=2,
     doc={
@@ -250,7 +215,7 @@ RZZ = quantum_gate(
 
 flipc = quantum_gate(
     name='Flip to Control State',
-    gate=_flipc,
+    gate=base_flipc,
     c_args=1,
     q_args=None,
     doc={
@@ -261,7 +226,7 @@ flipc = quantum_gate(
 
 phase_on = quantum_gate(
     name='Phase on State',
-    gate=_phase_on,
+    gate=base_phase_on,
     c_args=1,
     q_args=None,
     doc={

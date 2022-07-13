@@ -15,18 +15,18 @@
 
 from .gates import *
 from .import_ket import *
-from .libket import *
+from .base import *
 from .standard import *
 from .gates import __all__ as all_gate
 from .import_ket import __all__ as all_import
-from .libket import __all__ as all_libket
+from .base import __all__ as all_base
 from .standard import __all__ as all_standard
 
-__all__ = all_gate+all_import+all_libket+all_standard
+__all__ = all_gate+all_import+all_base+all_standard
 
 from .import_ket import code_ket
 
-from .libket import set_quantum_execution_target, quantum_execution_target
-if quantum_execution_target is None:
-    from .kbw import execute
-    set_quantum_execution_target(execute)
+#from .libket import set_quantum_execution_target, quantum_execution_target
+# if quantum_execution_target is None:
+#    from .kbw import execute
+#    set_quantum_execution_target(execute)

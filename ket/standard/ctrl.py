@@ -14,11 +14,26 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..libket import ctrl_push, ctrl_pop, quant
-from ..gates.base_gates import _flipc
+from ..base import ctrl_push, ctrl_pop, quant, base_X
 from typing import Callable, Any
 from functools import reduce
 from operator import add
+
+
+def base_flipc(state, q):
+    length = len(q)
+    if hasattr(state, '__iter__'):
+        if len(state) != length:
+            raise ValueError(
+                f"'to' received a list of length {len(state)} to use on {length} qubits")
+    else:
+        if length < state.bit_length():
+            raise ValueError(
+                f"To flip with {state=} you need at least {state.bit_length()} qubits")
+        state = [int(i) for i in f"{{:0{length}b}}".format(state)]
+    for i, q in zip(state, q):
+        if i == 0:
+            base_X(q)
 
 
 class control:
@@ -69,31 +84,31 @@ class control:
         on_state: Change the control state. 
     """
 
-    def __init__(self, *ctr: quant, on_state: int | [int] | None = None):
+    def __init__(self, *ctr: quant, on_state: int | list[int] | None = None):
         self.ctr = reduce(add, ctr)
         self.on_state = on_state
 
     def __enter__(self):
         if self.on_state is not None:
-            _flipc(self.on_state, self.ctr)
+            base_flipc(self.on_state, self.ctr)
         ctrl_push(self.ctr)
 
     def __exit__(self, type, value, tb):
         ctrl_pop()
         if self.on_state is not None:
-            _flipc(self.on_state, self.ctr)
+            base_flipc(self.on_state, self.ctr)
 
 
-def _ctrl(control: quant | [quant],
-          func: Callable | [Callable],
+def _ctrl(control: quant | list[quant],
+          func: Callable | list[Callable],
           *args,
-          on_state: int | [int] | None = None,
+          on_state: int | list[int] | None = None,
           **kwargs) -> Any:
     """Call Callable with controll-qubits"""
 
     control = reduce(add, control)
     if on_state is not None:
-        _flipc(on_state, control)
+        base_flipc(on_state, control)
     ctrl_push(control)
 
     ret = []
@@ -106,12 +121,12 @@ def _ctrl(control: quant | [quant],
 
     ctrl_pop()
     if on_state is not None:
-        _flipc(on_state, control)
+        base_flipc(on_state, control)
 
     return ret
 
 
-def _qubit_for_ctrl(qubits: quant | [quant] | slice | int | [int]) -> tuple[Callable[[quant], quant] | quant, bool]:
+def _qubit_for_ctrl(qubits: quant | list[quant] | slice | int | list[int]) -> tuple[Callable[[quant], quant] | quant, bool]:
     """Get qubits for ctrl"""
 
     if any(isinstance(qubits, tp) for tp in [slice, int]):
@@ -124,10 +139,10 @@ def _qubit_for_ctrl(qubits: quant | [quant] | slice | int | [int]) -> tuple[Call
         return qubits, False
 
 
-def ctrl(control: quant | [quant] | slice | int | [int],
-         func: Callable | [Callable],
+def ctrl(control: quant | list[quant] | slice | int | list[int],
+         func: Callable | list[Callable],
          *args,
-         on_state: int | [int] | None = None,
+         on_state: int | list[int] | None = None,
          later_call: bool = False,
          **kwargs) -> Callable | Any:
     r"""Add controll-qubits to a Callable

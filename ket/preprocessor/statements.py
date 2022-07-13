@@ -14,7 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..libket import label, branch, jump, future
+from ..base import label, branch, jump, future
 
 __all__ = ['_ket_is_future', '_ket_if', '_ket_if_else','_ket_else', '_ket_next', '_ket_while', '_ket_while_else', '_ket_while_body', '_ket_loop', '_ket_goto']
 

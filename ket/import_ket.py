@@ -40,7 +40,7 @@ def _import_globals_ket(source : PathLike, globals):
 buildins = \
 """
 from ket import *
-from ket.libket import label, branch, jump
+from ket.base import label, branch, jump
 from ket.preprocessor import *
 """
  
@@ -61,7 +61,7 @@ def import_ket(source : PathLike) -> ModuleType:
     _import_globals_ket(source, module.__dict__)
     return module
 
-def from_import_ket(source : PathLike, *names : [str]) -> tuple:
+def from_import_ket(source : PathLike, *names : list[str]) -> tuple:
     """Import names from Ket file.
 
     Args:

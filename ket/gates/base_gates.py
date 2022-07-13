@@ -1,28 +1,37 @@
-from ..libket import ctrl_push, ctrl_pop, X, Z
-from functools import reduce
-from operator import add
+from ..base import base_H, base_RX, base_RZ, base_X, base_Z
+from ..standard import ctrl, around, base_flipc
+from math import pi
 
 
-def _flipc(state, q):
-    length = len(q)
-    if hasattr(state, '__iter__'):
-        if len(state) != length:
-            raise ValueError(
-                f"'to' received a list of length {len(state)} to use on {length} qubits")
-    else:
-        if length < state.bit_length():
-            raise ValueError(
-                f"To flip with {state=} you need at least {state.bit_length()} qubits")
-        state = [int(i) for i in f"{{:0{length}b}}".format(state)]
-    for i, q in zip(state, q):
-        if i == 0:
-            X(q)
+def base_cnot(c, t):
+    for i, j in zip(c, t):
+        ctrl(i, base_X, j)
 
 
-def _phase_on(state, q):
-    q = reduce(add, q)
-    _flipc(state, q)
-    ctrl_push(q[1:])
-    Z(q[0])
-    ctrl_pop()
-    _flipc(state, q)
+def base_swap(a, b):
+    base_cnot(a, b)
+    base_cnot(b, a)
+    base_cnot(a, b)
+
+
+def base_RXX(theta, a, b):
+    for qa, qb in zip(a, b):
+        with around([lambda a, b: base_H(a+b), base_cnot], qa, qb):
+            base_RZ(theta, qb)
+
+
+def base_RZZ(theta, a, b):
+    for qa, qb in zip(a, b):
+        with around(base_cnot, qa, qb):
+            base_RZ(theta, qb)
+
+
+def base_RYY(theta, a, b):
+    for qa, qb in zip(a, b):
+        with around([lambda a, b: base_RX(pi/2, a+b), base_cnot], qa, qb):
+            base_RZ(theta, qb)
+
+
+def base_phase_on(state, q):
+    with around(lambda q: base_flipc(state, q), q):
+        ctrl(q[1:], base_Z, q[0])
