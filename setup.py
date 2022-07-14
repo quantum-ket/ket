@@ -5,16 +5,17 @@ with open('README.md', 'r') as file:
     long_description = file.read()
 
 setup(
-    name            = 'ket-lang',
-    description     = 'Ket Quantum Programming Language interpreter and library.',
-    url             = 'https://quantumket.org',
-    version         = __version__,
-    author          = 'Evandro Chagas Ribeiro da Rosa',
-    author_email    = 'ev.crr97@gmail.com',
-    license         = 'Apache-2.0',
+    name='ket-lang',
+    description='Ket Quantum Programming Language interpreter and library.',
+    url='https://quantumket.org',
+    version=__version__,
+    author='Evandro Chagas Ribeiro da Rosa',
+    author_email='ev.crr97@gmail.com',
+    license='Apache-2.0',
     long_description=long_description,
     long_description_content_type='text/markdown',
     zip_safe=False,
+    include_package_data=True,
     packages=find_namespace_packages(include=['ket', 'ket.*']),
     python_requires='>=3.7',
     classifiers=[
