@@ -15,7 +15,7 @@
 
 from .import_ket import _import_globals_ket
 from . import *
-from .libket import libket_label, branch, jump
+from .base import label, branch, jump
 from .__version__ import __version__
 from .preprocessor import *
 

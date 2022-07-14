@@ -1,7 +1,8 @@
 from __future__ import annotations
 from math import pi
 import json
-from .libket import *
+from .clib.libket import *
+from .clib.wrapper import from_list_to_c_vector, from_u8_to_str
 
 __all__ = ['quant', 'future', 'dump', 'qc_int',
            'exec_quantum', 'quantum_metrics', 'quantum_code', 'quantum_exec_time', 'quantum_exec_timeout']
@@ -411,7 +412,7 @@ class dump:
         size = self.base.states_size().value
 
         for i in range(size):
-            state, state_size = self.base.dump_state(i)
+            state, state_size = self.base.state(i)
             yield int(''.join(f'{state[j]:064b}' for j in range(state_size.value)), 2)
 
     @property
@@ -607,28 +608,29 @@ class label:
         return f"<Ket 'label' {self.pid, self.index}>"
 
 
-process_count = 1
-process_stack = [process(0)]
+_process_count = 1
+_process_stack = [process(0)]
 
 
 def process_begin():
-    global process_count
-    global process_stack
-    process_stack.append(process(process_count))
-    process_count += 1
+    global _process_count
+    global _process_stack
+    _process_stack.append(process(_process_count))
+    _process_count += 1
 
 
 def process_end() -> process:
-    global process_stack
-    return process_stack.pop()
+    global _process_stack
+    return _process_stack.pop()
 
 
 def process_top() -> process:
-    global process_stack
-    return process_stack[-1]
+    global _process_stack
+    return _process_stack[-1]
 
 
 quantum_execution_target = None
+_exec_time = None
 
 
 def set_quantum_execution_target(func):
@@ -640,11 +642,14 @@ def exec_quantum():
     """Call the quantum execution"""
 
     global quantum_execution_target
+    global _exec_time
+
     process_top().prepare_for_execution()
 
     error = None
     try:
-        quantum_execution_target(process_end())
+        quantum_execution_target(process_top())
+        _exec_time = process_end().exec_time().value
     except Exception as e:
         error = e
     process_begin()
@@ -685,7 +690,8 @@ def plugin(name: str, args: str, qubits: quant):
         args: Plugin argument string.
         qubits: Affected qubits.
     """
-    process_top().apply_plugin(name, args, *from_list_to_c_vector(qubits.qubits))
+    process_top().apply_plugin(name.encode(), args.encode(),
+                               *from_list_to_c_vector(qubits.qubits))
 
 
 def ctrl_push(qubits: quant):
@@ -783,7 +789,7 @@ def quantum_code():
 
 
 def quantum_exec_time():
-    return process_top().exec_time().value
+    return _exec_time
 
 
 def quantum_exec_timeout(timeout: int):

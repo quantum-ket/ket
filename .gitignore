@@ -6,4 +6,4 @@ dist
 **/target
 **/test*
 wheelhouse
-libs/Cargo.lock
+libs/

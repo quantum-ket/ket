@@ -12,15 +12,24 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
         oracle(s)
         with around(H, s):
             phase_on(0, s)
-            
+
     return measure(s).value
 
 
 if __name__ == '__main__':
-    size = 10
-    print(size, 'Qubits used')
-    
-    oracle = lambda q : phase_on(3, q)
+    from ket import kbw
+    from random import randint
 
-    result = grover(size, oracle)
-    print('Exprexted result = 3, measured:', result)
+    size = 12
+    looking_for = randint(0, pow(2, size)-1)
+
+    print("looking for", looking_for, "using", size, "qubits")
+
+    kbw.use_dense()
+
+    print('Dense Simulation: measured ', grover(size, phase_on(looking_for)))
+    print('Execution time:', quantum_exec_time())
+
+    kbw.use_sparse()
+    print('Sparse Simulation: measured ', grover(size, phase_on(looking_for)))
+    print('Execution time:', quantum_exec_time())

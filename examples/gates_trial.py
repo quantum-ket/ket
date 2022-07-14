@@ -81,22 +81,45 @@ def test_param_gates(test, step=100):
     return not_fail
 
 
-if __name__ == '__main__':
+def test_all():
     print('GATES')
+    print('=====')
     done_gate = test_gates(lambda gate: is_equal(
         dump_matrix(gate), gate_matrix[gate]))
     print('PARAM GATES')
+    print('===========')
     done_param_gate = test_param_gates(lambda gate, param: is_equal(
         dump_matrix(gate(param)), param_gate_matrix[gate](param)))
     print('CTRL GATES')
+    print('==========')
     done_ctrl_gate = test_gates(lambda gate: is_equal(dump_matrix(
         ctrl(0, gate, 1), 2), make_ctrl_gate(gate_matrix[gate])))
     print('PARAM CTRL GATES')
+    print('================')
     done_param_ctrl_gate = test_param_gates(lambda gate, param: is_equal(dump_matrix(
         ctrl(0, gate(param), 1), 2), make_ctrl_gate(param_gate_matrix[gate](param))))
 
     if all([done_gate, done_param_gate, done_ctrl_gate, done_param_ctrl_gate]):
-        print('ALL OK')
+        print('\nALL OK\n')
 
     else:
-        print('FAIL!!!')
+        print('\nFAIL!!!\n')
+        exit(-1)
+
+
+if __name__ == '__main__':
+    from ket import kbw
+
+    print("#####")
+    print("Dense")
+    print("#####")
+
+    kbw.use_dense()
+    test_all()
+
+    print("######")
+    print('Sparse')
+    print("######")
+
+    kbw.use_sparse()
+    test_all()

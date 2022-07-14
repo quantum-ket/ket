@@ -2,6 +2,7 @@ from __future__ import annotations
 # Licensed under the Apache License, Version 2.0;
 # Copyright 2022 Evandro Chagas Ribeiro da Rosa
 from ctypes import *
+from .wrapper import load_lib
 import weakref
 
 EQ = 0
@@ -61,7 +62,7 @@ API_argtypes = {
     'ket_process_allocate_qubit': ([c_void_p, c_bool], [c_void_p]),
     'ket_process_free_qubit': ([c_void_p, c_void_p, c_bool], []),
     'ket_process_apply_gate': ([c_void_p, c_int32, c_double, c_void_p], []),
-    'ket_process_apply_plugin': ([c_void_p, c_char_p, c_char_p, POINTER(c_void_p), c_size_t], []),
+    'ket_process_apply_plugin': ([c_void_p, POINTER(c_char), POINTER(c_char), POINTER(c_void_p), c_size_t], []),
     'ket_process_measure': ([c_void_p, POINTER(c_void_p), c_size_t], [c_void_p]),
     'ket_process_ctrl_push': ([c_void_p, POINTER(c_void_p), c_size_t], []),
     'ket_process_ctrl_pop': ([c_void_p], []),
@@ -104,66 +105,20 @@ API_argtypes = {
     'ket_label_pid': ([c_void_p], [c_size_t]),
 }
 
-API = {}
 
-
-class libket_error(Exception):
-    def __init__(self, message, error_code):
-        self.message = message
-        self.error_code = error_code
-        super().__init__(self.message)
-
-
-def from_u8_to_str(data, size):
-    return bytearray(data[:size.value]).decode()
-
-
-class APIWrapper:
-    def __init__(self, call, output, ket_error_message):
-        self.call = call
-        self.output = output
-        self.ket_error_message = ket_error_message
-
-    def __call__(self, *args):
-        out = [c_type() for c_type in self.output]
-        error_code = self.call(*args, *out)
-        if error_code != SUCCESS:
-            size = c_size_t()
-            error_msg = self.ket_error_message(error_code, size)
-            raise libket_error(from_u8_to_str(error_msg, size), error_code)
-        elif len(out) == 1:
-            return out[0]
-        elif len(out) != 0:
-            return out
-
-
-def load_libket():
+def libket_path():
     from os import environ
     from os.path import dirname
-    global API
 
     if "LIBKET_PATH" in environ:
         libket_path = environ["LIBKET_PATH"]
     else:
-        libket_path = dirname(__file__)+"/lib/libket.so"
+        libket_path = dirname(__file__)+"/libs/libket.so"
 
-    lib = cdll.LoadLibrary(libket_path)
-    ket_error_message = lib.ket_error_message
-    ket_error_message.argtypes = [c_int32, POINTER(c_size_t)]
-    ket_error_message.restype = POINTER(c_uint8)
+    return libket_path
 
-    API = {}
-    for name in API_argtypes:
-        call = lib.__getattr__(name)
-        call.argtypes = [
-            *API_argtypes[name][0],
-            *[POINTER(t) for t in API_argtypes[name][1]]
-        ]
 
-        API[name] = APIWrapper(
-            call, API_argtypes[name][1],
-            ket_error_message
-        )
+API = load_lib('Libket', libket_path(), API_argtypes, 'ket_error_message')
 
 
 class process:
@@ -230,34 +185,3 @@ class libket_label:
 
     def __repr__(self) -> str:
         return f"<Libket 'label' {self.pid().value, self.index().value}>"
-
-
-def from_list_to_c_vector(data):
-    return (c_void_p*len(data))(*(d._as_parameter_ for d in data)), len(data)
-
-
-load_libket()
-
-if __name__ == '__main__':
-    from pprint import pprint
-    import json
-
-    PAULI_X = 0
-    HADAMARD = 3
-
-    p = process(1)
-
-    q0 = qubit(p.allocate_qubit(False))
-    q1 = qubit(p.allocate_qubit(False))
-
-    p.apply_gate(HADAMARD, 0.0, q0)
-    p.ctrl_push(*from_list_to_c_vector([q0]))
-    p.apply_gate(PAULI_X, 0.0, q1)
-    p.ctrl_pop()
-
-    p.prepare_for_execution()
-    p.serialize_metrics(JSON)
-    p.serialize_quantum_code(JSON)
-
-    pprint(json.loads(from_u8_to_str(*p.get_serialized_metrics()[:-1])))
-    pprint(json.loads(from_u8_to_str(*p.get_serialized_quantum_code()[:-1])))

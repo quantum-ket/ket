@@ -26,7 +26,7 @@ __all__ = all_gate+all_import+all_base+all_standard
 
 from .import_ket import code_ket
 
-#from .libket import set_quantum_execution_target, quantum_execution_target
-# if quantum_execution_target is None:
-#    from .kbw import execute
-#    set_quantum_execution_target(execute)
+from .base import set_quantum_execution_target, quantum_execution_target
+if quantum_execution_target is None:
+    from .clib.kbw import run_and_set_result
+    set_quantum_execution_target(run_and_set_result)
