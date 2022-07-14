@@ -113,10 +113,9 @@ Requirements:
 To install from source runs:
 
 ```console
-$ git clone --recurse-submodules https://gitlab.com/quantum-ket/ket.git
-$ cd ket/libs
-$ cargo build --release
-$ cd ..
+$ git clone https://gitlab.com/quantum-ket/ket.git
+$ cd ket
+$ ./util/make_libs.sh
 $ python setup.py install
 ```
 
