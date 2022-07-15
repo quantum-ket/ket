@@ -400,7 +400,15 @@ class dump:
     def __init__(self, qubits: quant):
         self.base = libket_dump(process_top().dump(
             *from_list_to_c_vector(qubits.qubits)))
-        self.size = len(qubits.qubits)
+        self.qubits = qubits
+        self._state = None
+
+    def get_quantum_state(self):
+        if self._state is None:
+            self._state = {
+                state: amp for state, amp in zip(self.states, self.amplitudes)
+            }
+        return self._state
 
     @property
     def states(self) -> list[int]:
@@ -576,16 +584,11 @@ class dump:
     def available(self) -> bool:
         return self.base.available().value
 
-    @property
-    def index(self) -> int:
-        return self.base.index().value
-
-    @property
-    def pid(self) -> int:
-        return self.base.pid().value
+    def __len__(self) -> int:
+        return len(self.qubits)
 
     def __repr__(self) -> str:
-        return f"<Ket 'dump' {self.pid, self.index}>"
+        return f"<Ket 'dump' ({repr(self.qubits)})>"
 
 
 class label:
