@@ -401,6 +401,7 @@ class dump:
         self.base = libket_dump(process_top().dump(
             *from_list_to_c_vector(qubits.qubits)))
         self.qubits = qubits
+        self.size = len(qubits)
         self._state = None
 
     def get_quantum_state(self):
@@ -585,7 +586,7 @@ class dump:
         return self.base.available().value
 
     def __len__(self) -> int:
-        return len(self.qubits)
+        return self.size
 
     def __repr__(self) -> str:
         return f"<Ket 'dump' ({repr(self.qubits)})>"
