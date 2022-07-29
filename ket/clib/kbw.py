@@ -1,6 +1,8 @@
 from ctypes import *
-from .wrapper import load_lib
+from .wrapper import load_lib, from_u8_to_str
 from os import environ
+from .libket import JSON
+import json
 
 DENSE = 0
 SPARSE = 1
@@ -57,3 +59,26 @@ def run_and_set_result(process):
         sim_mode = SPARSE
 
     API['kbw_run_and_set_result'](process, sim_mode)
+
+
+def run_json(quantum_code, metrics, sim_mode: str = 'sparse'):
+    quantum_code = json.dumps(quantum_code).encode()
+    quantum_code_size = len(quantum_code)
+    metrics = json.dumps(metrics).encode()
+    metrics_size = len(metrics)
+
+    sim_mode = {'SPARSE': SPARSE, 'DENSE': DENSE}[sim_mode.upper()]
+
+    result = API['kbw_run_serialized'](
+        (c_uint8*quantum_code_size)(*quantum_code),
+        quantum_code_size,
+        (c_uint8*metrics_size)(*metrics),
+        metrics_size,
+        JSON,
+        sim_mode
+    )
+
+    data = json.loads(from_u8_to_str(*API['kbw_result_get'](result)))
+    API['kbw_result_delete'](result)
+
+    return data

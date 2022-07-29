@@ -29,7 +29,7 @@ def base_flipc(state, q):
     else:
         if length < state.bit_length():
             raise ValueError(
-                f"To flip with {state=} you need at least {state.bit_length()} qubits")
+                f"To flip with state={state} you need at least {state.bit_length()} qubits")
         state = [int(i) for i in f"{{:0{length}b}}".format(state)]
     for i, q in zip(state, q):
         if i == 0:

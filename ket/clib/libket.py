@@ -83,7 +83,7 @@ API_argtypes = {
     'ket_process_serialize_quantum_code': ([c_void_p, c_int32], []),
     'ket_process_get_serialized_metrics': ([c_void_p], [POINTER(c_uint8), c_size_t, c_int32]),
     'ket_process_get_serialized_quantum_code': ([c_void_p], [POINTER(c_uint8), c_size_t, c_int32]),
-    'ket_process_set_serialized_result': ([c_void_p, POINTER(c_ubyte), c_size_t, c_int32], []),
+    'ket_process_set_serialized_result': ([c_void_p, POINTER(c_uint8), c_size_t, c_int32], []),
     'ket_qubit_delete': ([c_void_p], []),
     'ket_qubit_index': ([c_void_p], [c_size_t]),
     'ket_qubit_pid': ([c_void_p], [c_size_t]),
