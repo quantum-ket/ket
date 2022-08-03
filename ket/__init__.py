@@ -17,12 +17,15 @@ from .gates import *
 from .import_ket import *
 from .base import *
 from .standard import *
+from .process import *
 from .gates import __all__ as all_gate
 from .import_ket import __all__ as all_import
 from .base import __all__ as all_base
 from .standard import __all__ as all_standard
+from .process import __all__ as all_process
 
-__all__ = all_gate+all_import+all_base+all_standard
+
+__all__ = all_gate+all_import+all_base+all_standard+all_process
 
 from .import_ket import code_ket
 

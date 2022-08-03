@@ -1,0 +1,22 @@
+{
+	"name": "Ket Dev",
+	"build": {
+		"dockerfile": "../util/Dockerfile"
+	},
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Set *default* container specific settings.json values on container create.
+			"settings": {
+				"python.defaultInterpreterPath": "/opt/rh/rh-python38/root/usr/bin/python",
+				"editor.minimap.size": "fit"
+			},
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-python.python",
+				"streetsidesoftware.code-spell-checker"
+			]
+		}
+	}
+}

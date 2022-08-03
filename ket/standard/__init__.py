@@ -14,15 +14,15 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..base import base_measure, process_begin, process_end, quant, future, exec_quantum, qc_int, base_X
+from ..base import base_measure, quant, future, qc_int, base_X
 from ..preprocessor import _ket_if, _ket_next
 from .ctrl import *
 from .adj import *
 from functools import reduce
 from operator import add
 
-__all__ = ['run', 'inverse', 'control', 'ctrl', 'adj',
-           'around', 'measure', 'exec_quantum', 'qc_int']
+__all__ = ['inverse', 'control', 'ctrl',
+           'adj', 'around', 'measure', 'qc_int']
 
 
 def measure(q: quant | list[quant], free: bool = False) -> future | list[future]:
@@ -49,24 +49,3 @@ def measure(q: quant | list[quant], free: bool = False) -> future | list[future]
             _ket_next(end)
         q.free()
     return ret
-
-
-class run:
-    """Execute in a new process
-
-    Run the quantum operations in a new separated process.
-
-    :Usage:
-
-    .. code-block:: ket
-
-        with run():
-            ...
-
-    """
-
-    def __enter__(self):
-        process_begin()
-
-    def __exit__(self, type, value, tb):
-        process_end()

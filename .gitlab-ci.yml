@@ -6,16 +6,9 @@ stages:
 
 wheelhouse:
   stage: build
-  variables:
-    GIT_SUBMODULE_STRATEGY: recursive
   script:
-    - source scl_source enable devtoolset-11 || true
-    - source scl_source enable rh-python38 || true
-    - source scl_source enable rh-git227 || true
-    - source /root/.cargo/env
     - ./util/make_libs.sh
-    - python -m build
-    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang-*-py3-none-any.whl
+    - ./util/make_wheel.sh
   artifacts:
     paths:
       - wheelhouse
@@ -23,7 +16,6 @@ wheelhouse:
 PyPI:
   stage: deploy
   script:
-    - source scl_source enable rh-python38 || true
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi wheelhouse/*
   only:
     - master

@@ -1,11 +1,9 @@
 from __future__ import annotations
 from math import pi
-import json
 from .clib.libket import *
 from .clib.wrapper import from_list_to_c_vector, from_u8_to_str
 
-__all__ = ['quant', 'future', 'dump', 'qc_int',
-           'exec_quantum', 'quantum_metrics', 'quantum_code', 'quantum_exec_time', 'quantum_exec_timeout']
+__all__ = ['quant', 'future', 'dump']
 
 
 class quant:
@@ -24,27 +22,27 @@ class quant:
 
     .. code-block:: ket
 
-        a = H(quant()) 
+        a = H(quant())
         b = X(quant())
-        with quant() as aux: 
+        with quant() as aux:
             with around(H, aux):
                 with control(aux):
                     swap(a, b)
             result = measure(aux)
             if result == 1:
-                X(aux) 
-            aux.free() 
+                X(aux)
+            aux.free()
 
     :Qubit Indexing:
 
     Use brackets to index qubits as in a ``list`` and use ``+`` to concatenate
-    two :class:`~ket.libket.quant`.
+    two :class:`~ket.base.quant`.
 
     Example:
 
     .. code-block:: ket
 
-        q = quant(20)        
+        q = quant(20)
         head, tail = q[0], q[1:]
         init, last = q[:-1], q[-1]
         even = q[::2]
@@ -52,7 +50,7 @@ class quant:
         reverse = reversed(q) # invert qubits order
 
         a, b = quant(2) # |a⟩, |b⟩
-        c = a+b         # |c⟩ = |a⟩|b⟩ 
+        c = a+b         # |c⟩ = |a⟩|b⟩
 
     Args:
         size: The number of qubits to allocate.
@@ -73,14 +71,14 @@ class quant:
     def at(self, index: list[int]) -> quant:
         r"""Return qubits at ``index``
 
-        Create a new :class:`~ket.libket.quant` with the qubit references at the
+        Create a new :class:`~ket.base.quant` with the qubit references at the
         position defined by the ``index`` list.
 
         :Example:
 
         .. code-block:: ket
 
-            q = quant(20)        
+            q = quant(20)
             odd = q.at(range(1, len(q), 2)) # = q[1::2]
 
         Args:
@@ -95,7 +93,7 @@ class quant:
         All qubits must be at the state :math:`\left|0\right>` before the call,
         otherwise set the ``dirty`` param to ``True``.
 
-        Warning: 
+        Warning:
             No check is applied to see if the qubits are at state
             :math:`\left|0\right>`.
 
@@ -152,22 +150,21 @@ class quant:
 class future:
     """64-bits integer on the quantum computer
 
-    Store a reference to a 64-bits integer available in the quantum computer. 
+    Store a reference to a 64-bits integer available in the quantum computer.
 
     The integer value are available to the classical computer only after the
     quantum execution.
 
     The following binary operations are available between
-    :class:`~ket.libket.future` variables and ``int``: 
+    :class:`~ket.base.future` variables and ``int``:
 
         ``==``, ``!=``, ``<``, ``<=``,
         ``>``, ``>=``, ``+``, ``-``, ``*``, ``/``, ``<<``, ``>>``, ``and``,
         ``xor``, and ``or``.
 
-    A new :class:`~ket.libket.future` variable is created with a quantum
-    :func:`~ket.standard.measure` (1) , binary operation with a
-    :class:`~ket.libket.future` (2), or directly initialization with a ``int``
-    (2).
+    A new :class:`~ket.base.future` variable is created with a (1) quantum
+    :func:`~ket.standard.measure`; (2) binary operation with a
+    :class:`~ket.base.future`; or (3) directly initialization with a ``int``.
 
     .. code-block:: ket
 
@@ -178,9 +175,9 @@ class future:
 
 
 
-    Writing to the attribute ``value`` of a :class:`~ket.libket.future` variable
-    passes the information to the quantum computer. 
-    Reading the attribute ``value`` triggers the quantum execution. 
+    Writing to the attribute ``value`` of a :class:`~ket.base.future` variable
+    passes the information to the quantum computer.
+    Reading the attribute ``value`` triggers the quantum execution.
 
     If the test expression of an ``if-then-else`` or ``while`` is type future,
     Ket passes the statement to the quantum computer.
@@ -192,7 +189,7 @@ class future:
         q = quant(2)
         with quant() as aux:
             # Create variable done on the quantum computer
-            done = qc_int(False) 
+            done = qc_int(False)
             while done != True:
                 H(q)
                 ctrl(q, X, aux)
@@ -205,7 +202,7 @@ class future:
             aux.free()
         # Get the measurement from the quantum computer
         # triggering the quantum execution
-        result = measure(q).value 
+        result = measure(q).value
 
     """
 
@@ -367,9 +364,9 @@ class future:
 
 
 class dump:
-    """Create a snapshot with the current quantum state of ``qubits``.
+    """Create a snapshot with the current quantum state of ``qubits``
 
-    Gathering any information from a :class:`~ket.libket.dump` triggers the quantum execution.
+    Gathering any information from a :class:`~ket.base.dump` triggers the quantum execution.
 
     :Example:
 
@@ -383,16 +380,16 @@ class dump:
 
         print('inside:')
         print(inside.show())
-        #inside:
-        #|01⟩    (50.00%)
-        #         -0.707107i     ≅     -i/√2
-        #|10⟩    (50.00%)
-        #          0.707107i     ≅      i/√2
+        # inside:
+        # |01⟩    (50.00%)
+        #          -0.707107i     ≅     -i/√2
+        # |10⟩    (50.00%)
+        #           0.707107i     ≅      i/√2
         print('outside:')
         print(outside.show())
-        #outside:
-        #|11⟩    (100.00%)
-        #         -1.000000i     ≅     -i/√1
+        # outside:
+        # |11⟩    (100.00%)
+        #          -1.000000i     ≅     -i/√1
 
     :param qubits: Qubits to dump.
     """
@@ -404,7 +401,26 @@ class dump:
         self.size = len(qubits)
         self._state = None
 
-    def get_quantum_state(self):
+    def get_quantum_state(self) -> dict[int, complex]:
+        """Get the quantum state
+
+        This function returns a ``dict`` that maps base states to probability amplitude.
+
+        Note:
+            Don't use this function if your goal is just to iterate over the basis states.
+            Use the attributes :attr:`~ket.base.states`, :attr:`~ket.base.amplitudes`, and :attr:`~ket.base.probability` instead.
+
+        :Example:
+
+        .. code-block:: ket
+
+            q = quant(2)
+            cnot(H(q[0]), q[1])
+            print(dump(q).get_quantum_state())
+            # {3: (0.7071067811865476+0j), 0: (0.7071067811865476+0j)}
+
+        """
+
         if self._state is None:
             self._state = {
                 state: amp for state, amp in zip(self.states, self.amplitudes)
@@ -464,25 +480,25 @@ class dump:
             d = dump(q)
 
             print(d.show('i'))
-            #|87381⟩ (50.00%)
-            # 0.707107               ≅      1/√2
-            #|436906⟩        (50.00%)
-            # 0.707107               ≅      1/√2
+            # |87381⟩ (50.00%)
+            #  0.707107               ≅      1/√2
+            # |436906⟩        (50.00%)
+            #  0.707107               ≅      1/√2
             print(d.show('b'))
-            #|0010101010101010101⟩   (50.00%)
-            # 0.707107               ≅      1/√2
-            #|1101010101010101010⟩   (50.00%)
-            # 0.707107               ≅      1/√2
+            # |0010101010101010101⟩   (50.00%)
+            #  0.707107               ≅      1/√2
+            # |1101010101010101010⟩   (50.00%)
+            #  0.707107               ≅      1/√2
             print(d.show('i4'))
-            #|2⟩|101010101010101⟩    (50.00%)
-            # 0.707107               ≅      1/√2
-            #|13⟩|010101010101010⟩   (50.00%)
-            # 0.707107               ≅      1/√2
+            # |2⟩|101010101010101⟩    (50.00%)
+            #  0.707107               ≅      1/√2
+            # |13⟩|010101010101010⟩   (50.00%)
+            #  0.707107               ≅      1/√2
             print(d.show('b5:i4'))
-            #|00101⟩|5⟩|0101010101⟩  (50.00%)
-            # 0.707107               ≅      1/√2
-            #|11010⟩|10⟩|1010101010⟩ (50.00%)
-            # 0.707107               ≅      1/√2
+            # |00101⟩|5⟩|0101010101⟩  (50.00%)
+            #  0.707107               ≅      1/√2
+            # |11010⟩|10⟩|1010101010⟩ (50.00%)
+            #  0.707107               ≅      1/√2
 
         Args:
             format: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
@@ -539,7 +555,7 @@ class dump:
         return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes), key=lambda k: k[0]))
 
     @property
-    def expected_values(self):
+    def expected_values(self) -> tuple[float, float, float]:
         """X, Y, and Z expected values for one qubit"""
 
         if self.size != 1:
@@ -562,12 +578,12 @@ class dump:
                 alpha = a
             else:
                 beta = a
-        return [exp_x(alpha, beta), exp_y(alpha, beta), exp_z(alpha, beta)]
+        return exp_x(alpha, beta), exp_y(alpha, beta), exp_z(alpha, beta)
 
     def sphere(self):
         """Result a Bloch sphere
 
-        QuTiP and Matplotlib are needed to generate and plot the sphere.
+        QuTiP and Matplotlib are required for generating and plotting the sphere.
         """
         try:
             import qutip
@@ -614,6 +630,7 @@ class label:
 
 _process_count = 1
 _process_stack = [process(0)]
+_process_last = None
 
 
 def process_begin():
@@ -625,7 +642,9 @@ def process_begin():
 
 def process_end() -> process:
     global _process_stack
-    return _process_stack.pop()
+    global _process_last
+    _process_last = _process_stack.pop()
+    return _process_last
 
 
 def process_top() -> process:
@@ -780,21 +799,3 @@ def base_RY(theta, q: quant):
 def base_RZ(theta, q: quant):
     for qubit in q.qubits:
         process_top().apply_gate(RZ, theta, qubit)
-
-
-def quantum_metrics():
-    process_top().serialize_metrics(JSON)
-    return json.loads(from_u8_to_str(*process_top().get_serialized_metrics()[:-1]))
-
-
-def quantum_code():
-    process_top().serialize_quantum_code(JSON)
-    return json.loads(from_u8_to_str(*process_top().get_serialized_quantum_code()[:-1]))
-
-
-def quantum_exec_time():
-    return _exec_time
-
-
-def quantum_exec_timeout(timeout: int):
-    return process_top().set_timeout(timeout)
