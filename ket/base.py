@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from math import pi
 from .clib.libket import *
-from .clib.wrapper import from_list_to_c_vector, from_u8_to_str
+from .clib.wrapper import from_list_to_c_vector
 
 __all__ = ['quant', 'future', 'dump']
 
@@ -666,9 +666,12 @@ def process_top() -> process:
     global _process_stack
     return _process_stack[-1]
 
+def process_last() -> process:
+    global _process_last
+    return _process_last
+
 
 quantum_execution_target = None
-_exec_time = None
 
 
 def set_quantum_execution_target(func):
@@ -680,14 +683,12 @@ def exec_quantum():
     """Call the quantum execution"""
 
     global quantum_execution_target
-    global _exec_time
 
     process_top().prepare_for_execution()
 
     error = None
     try:
-        quantum_execution_target(process_top())
-        _exec_time = process_end().exec_time().value
+        quantum_execution_target(process_end())
     except Exception as e:
         error = e
     process_begin()

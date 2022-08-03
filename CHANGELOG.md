@@ -4,10 +4,10 @@
 
 - Libket and KBW ported to Rust.
 - KBW now features two simulation modes, Dense and Sparse. The Sparse mode is the default, but it may change in the future. Use the environment variable `KBW_MODE` or the functions `ket.kbw.use_sparse()` and `ket.kbw.use_dense` to select the simulation algorithm.
-    - The Dense simulation uses the State Vector representation.
-    - The Sparse simulation uses the Bitwise representation.
+  - The Dense simulation uses the State Vector representation.
+  - The Sparse simulation uses the Bitwise representation.
 - Libket now supports two intermediary representation schemes, JSON and Binary.
-- Added functions `quantum_metrics`, `quantum_code`, `quantum_exec_time`, and `quantum_exec_timeout`.
+- Added functions `quantum_metrics`, `quantum_metrics_last`, `quantum_code`, `quantum_code_last`, `quantum_exec_time`, and `quantum_exec_timeout`.
 - Added gates `flipc` and `phase_on`.
 
 ## 0.3.3
@@ -33,18 +33,18 @@
 
 ## 0.2.1
 
-- Libket updated to fix segfault when the execution server returns an error. 
+- Libket updated to fix segfault when the execution server returns an error.
 - Libket updated to unstack process with execution error, allowing further quantum executions.
 - Fixed sqrt approximation in `dump.show`.
-- Changed `measure` to accept `list[quant]`. 
+- Changed `measure` to accept `list[quant]`.
 
 ## 0.2
 
 - Added SSH authentication support for the quantum execution.
 - Changed quantum gates to the `quantum_gate` class, allowing composition of quantum gates.
-- `dump.show` reimplemented in Python to fix error in Jupyter Notebook.   
+- `dump.show` reimplemented in Python to fix error in Jupyter Notebook.
 - Fixed lib.dump_matrix.
 
 ## 0.1.1
 
-- Changed from Boost.Program_options (Libket, C++) to argparse (Python) to fix segmentation fault with flag `-h`. 
+- Changed from Boost.Program_options (Libket, C++) to argparse (Python) to fix segmentation fault with flag `-h`.

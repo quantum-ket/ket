@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from ket.base import process_begin, process_end, process_top, _process_last, _exec_time, exec_quantum
+from ket.base import process_begin, process_end, process_top, process_last, exec_quantum
 from ket.clib.libket import JSON
 from ket.clib.wrapper import from_u8_to_str
 
@@ -55,8 +55,8 @@ def quantum_metrics_last() -> dict[str, Any] | None:
     See https://gitlab.com/quantum-ket/libket/-/blob/main/src/ir.rs for more details.
     """
 
-    _process_last.serialize_metrics(JSON)
-    return json.loads(from_u8_to_str(*_process_last.get_serialized_metrics()[:-1]))
+    process_last().serialize_metrics(JSON)
+    return json.loads(from_u8_to_str(*process_last().get_serialized_metrics()[:-1]))
 
 
 def quantum_code_last() -> list[dict] | None:
@@ -75,7 +75,8 @@ def quantum_exec_time() -> float | None:
 
     If no processes have been run, this function returns `None`.
     """
-    return _exec_time
+    if process_last() is not None:
+        return process_last().exec_time().value
 
 
 def quantum_exec_timeout(timeout: int):

@@ -52,30 +52,31 @@ def factors(N):
     if a != N:
         return a, N//a, 'POWER'
 
-    # 3. Randomly choose x in the range 1 to N −1.
-    # If gcd(x, N ) > 1 then return the factor gcd(x, N).
-    x = randint(2, N-1)
+    for _ in range(N.bit_length()):
+        # 3. Randomly choose x in the range 1 to N −1.
+        # If gcd(x, N ) > 1 then return the factor gcd(x, N).
+        x = randint(2, N-1)
 
-    gcd_x_N = gcd(x, N)
-    if gcd_x_N > 1:
-        return gcd_x_N, N//gcd_x_N, 'LUCK'
+        gcd_x_N = gcd(x, N)
+        if gcd_x_N > 1:
+            return gcd_x_N, N//gcd_x_N, 'LUCK'
 
-    # 4. Use the order-finding subroutine to find the order r of x modulo N.
-    r = order_find(x, N)
+        # 4. Use the order-finding subroutine to find the order r of x modulo N.
+        r = order_find(x, N)
 
-    # 5. If r is even and x**(r/2) = − 1(mod N ) then compute gcd(x**(r/2) − 1, N )
-    # and gcd(x**(r/2) + 1, N ), and test to see if one of these is a non-trivial
-    # factor, returning that factor if so. Otherwise, the algorithm fails.
-    if r % 2 == 0 and pow(x, r//2) != -1 % N:
-        p = gcd(x**(r//2)-1, N)
-        Np = N//p
-        if p != 1 and Np != 1 and p*Np == N:
-            return p, Np, 'QUANTUM'
+        # 5. If r is even and x**(r/2) = − 1(mod N ) then compute gcd(x**(r/2) − 1, N )
+        # and gcd(x**(r/2) + 1, N ), and test to see if one of these is a non-trivial
+        # factor, returning that factor if so. Otherwise, the algorithm fails.
+        if r % 2 == 0 and pow(x, r//2) != -1 % N:
+            p = gcd(x**(r//2)-1, N)
+            Np = N//p
+            if p != 1 and Np != 1 and p*Np == N:
+                return p, Np, 'QUANTUM'
 
-        q = gcd(x**(r//2)+1, N)
-        Nq = N//q
-        if q != 1 and Nq != 1 and q*Nq == N:
-            return q, Nq, 'QUANTUM'
+            q = gcd(x**(r//2)+1, N)
+            Nq = N//q
+            if q != 1 and Nq != 1 and q*Nq == N:
+                return q, Nq, 'QUANTUM'
 
     raise RuntimeError('Algorithm fails')
 
