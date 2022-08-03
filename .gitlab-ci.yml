@@ -7,6 +7,10 @@ stages:
 wheelhouse:
   stage: build
   script:
+    - source scl_source enable devtoolset-10 || true
+    - source scl_source enable rh-python38 || true
+    - source scl_source enable rh-git227 || true
+    - source /root/.cargo/env
     - ./util/make_libs.sh
     - ./util/make_wheel.sh
   artifacts:

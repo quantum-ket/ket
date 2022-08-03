@@ -54,7 +54,7 @@ def qft(q: quant, invert: bool = True) -> quant:
 
 
 def dump_matrix(u: Callable | list[Callable], size: int = 1) -> list[list[complex]]:
-    """Get the matrix of a quantum operation.
+    """Get the matrix of a quantum operation
 
     Args:
         u: Quantum operation.
@@ -146,7 +146,7 @@ def ghz(qubits: quant | int) -> quant:
 
 
 def w(qubits: quant | int) -> quant:
-    r"""W state preparation"
+    r"""W state preparation
 
     Return qubits on the state:
 
@@ -174,7 +174,7 @@ def w(qubits: quant | int) -> quant:
 
 
 def pauli(basis: Callable, q: quant, state: int = +1) -> quant:
-    """Prepare in the +1 or -1 eigenstate of a given Pauli operator.
+    """Prepare in the +1 or -1 eigenstate of a given Pauli operator
 
     Args:
         basis: Pauli operator :func:`~ket.gates.X`, :func:`~ket.gates.Y`, or :func:`~ket.gates.Z`.

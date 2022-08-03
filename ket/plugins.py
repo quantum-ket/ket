@@ -20,7 +20,7 @@ __all__ = ['plugin', 'pown']
 
 
 def pown(a: int, x: quant, N: int) -> quant:
-    r"""Apply a modular exponentiation in a superposition.
+    r"""Apply a modular exponentiation in a superposition
 
     .. math::
 
@@ -35,7 +35,7 @@ def pown(a: int, x: quant, N: int) -> quant:
         x: :math:`x`.
         N: :math:`N`.
 
-    :return: :class:`~ket.libket.quant` with the operation result.
+    :return: :class:`~ket.base.quant` with the operation result.
     """
 
     ret = quant(N.bit_length())
