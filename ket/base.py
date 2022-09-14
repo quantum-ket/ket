@@ -124,7 +124,7 @@ class quant:
         return all(not qubit.allocated().value for qubit in self.qubits)
 
     def __reversed__(self):
-        return quant(qubits=reversed(self.qubits))
+        return quant(qubits=list(reversed(self.qubits)))
 
     def __getitem__(self, key):
         qubits = self.qubits.__getitem__(key)

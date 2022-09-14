@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- Reduced wheel size.
+- Fixed `reversed` for `quant`.
+
 ## 0.4
 
 - Libket and KBW ported to Rust.
