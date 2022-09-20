@@ -4,6 +4,7 @@
 
 - Reduced wheel size.
 - Fixed `reversed` for `quant`.
+- Fixed `quantum_code_last`.
 
 ## 0.4
 

@@ -66,8 +66,8 @@ def quantum_code_last() -> list[dict] | None:
     See https://gitlab.com/quantum-ket/libket/-/blob/main/src/code_block.rs for more details.
     """
 
-    _process_last.serialize_quantum_code(JSON)
-    return json.loads(from_u8_to_str(*_process_last.get_serialized_quantum_code()[:-1]))
+    process_last().serialize_quantum_code(JSON)
+    return json.loads(from_u8_to_str(*process_last().get_serialized_quantum_code()[:-1]))
 
 
 def quantum_exec_time() -> float | None:
