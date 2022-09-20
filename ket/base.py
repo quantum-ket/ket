@@ -231,7 +231,8 @@ class future:
     def __getattr__(self, name):
         if name == "value":
             if self._value is None:
-                exec_quantum()
+                if not self.available:
+                    exec_quantum()
                 self._value = self.base.value().value
             return self._value
         else:
@@ -665,6 +666,7 @@ def process_end() -> process:
 def process_top() -> process:
     global _process_stack
     return _process_stack[-1]
+
 
 def process_last() -> process:
     global _process_last

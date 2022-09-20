@@ -5,6 +5,7 @@
 - Reduced wheel size.
 - Fixed `reversed` for `quant`.
 - Fixed `quantum_code_last`.
+- Fixed triggering empty quantum execution when reading `future.value`.
 
 ## 0.4
 
