@@ -31,10 +31,13 @@ API_argtypes = {
 
 
 def kbw_path():
+    from os import name
     from os.path import dirname
 
     if "KBW_PATH" in environ:
         kbw_path = environ["KBW_PATH"]
+    elif name == "nt":
+        kbw_path = dirname(__file__)+"/libs/kbw.dll"
     else:
         kbw_path = dirname(__file__)+"/libs/libkbw.so"
 

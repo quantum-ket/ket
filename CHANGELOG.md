@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1.post1
+
+- Added Windows support.
+
 ## 0.4.1
 
 - Reduced wheel size.

@@ -120,11 +120,13 @@ API_argtypes = {
 
 
 def libket_path():
-    from os import environ
+    from os import environ, name
     from os.path import dirname
 
     if "LIBKET_PATH" in environ:
         libket_path = environ["LIBKET_PATH"]
+    elif name == "nt":
+        libket_path = dirname(__file__)+"/libs/ket.dll"
     else:
         libket_path = dirname(__file__)+"/libs/libket.so"
 

@@ -1,3 +1,2 @@
 include LICENSE
-include ket/clib/libs/libket.so
-include ket/clib/libs/libkbw.so
+recursive-include ket/clib/libs *
