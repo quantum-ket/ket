@@ -19,10 +19,14 @@ from .clib.kbw import run_and_set_result, set_sim_mode_dense, set_sim_mode_spars
 
 
 def use_sparse():
+    """Set KBW Sparse as quantum execution target"""
+
     set_sim_mode_sparse()
     set_quantum_execution_target(run_and_set_result)
 
 
 def use_dense():
+    """Set KBW Dense as quantum execution target"""
+
     set_sim_mode_dense()
     set_quantum_execution_target(run_and_set_result)

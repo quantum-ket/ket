@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2
+
+- Fixed calling the inverse of a inverse quantum gate.
+
 ## 0.4.1.post1
 
 - Added Windows support.

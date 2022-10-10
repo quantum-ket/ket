@@ -104,7 +104,7 @@ def _ctrl(control: quant | list[quant],
           *args,
           on_state: int | list[int] | None = None,
           **kwargs) -> Any:
-    """Call Callable with controll-qubits"""
+    """Call Callable with control-qubits"""
 
     control = reduce(add, control)
     if on_state is not None:
@@ -145,7 +145,7 @@ def ctrl(control: quant | list[quant] | slice | int | list[int],
          on_state: int | list[int] | None = None,
          later_call: bool = False,
          **kwargs) -> Callable | Any:
-    r"""Add controll-qubits to a Callable
+    r"""Add control-qubits to a Callable
 
     :Call with control qubits:
 

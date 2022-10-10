@@ -10,3 +10,6 @@ cargo build --release
 cd ../kbw
 cargo build --release
 cd ../..
+
+mkdir -p ket/clib/libs
+cp libs/libket/target/release/libket.so libs/kbw/target/release/libkbw.so ket/clib/libs
