@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 from ctypes import *
-from .wrapper import load_lib, from_u8_to_str
+from .wrapper import load_lib, from_u8_to_str, os_lib_name
 from os import environ
 from .libket import JSON
 import json
@@ -31,15 +31,12 @@ API_argtypes = {
 
 
 def kbw_path():
-    from os import name
     from os.path import dirname
 
     if "KBW_PATH" in environ:
         kbw_path = environ["KBW_PATH"]
-    elif name == "nt":
-        kbw_path = dirname(__file__)+"/libs/kbw.dll"
     else:
-        kbw_path = dirname(__file__)+"/libs/libkbw.so"
+        kbw_path = f'{dirname(__file__)}/libs/{os_lib_name("kbw")}'
 
     return kbw_path
 

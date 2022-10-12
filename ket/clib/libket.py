@@ -15,7 +15,7 @@ from __future__ import annotations
 #  limitations under the License.
 
 from ctypes import *
-from .wrapper import load_lib
+from .wrapper import load_lib, os_lib_name
 import weakref
 
 EQ = 0
@@ -125,10 +125,8 @@ def libket_path():
 
     if "LIBKET_PATH" in environ:
         libket_path = environ["LIBKET_PATH"]
-    elif name == "nt":
-        libket_path = dirname(__file__)+"/libs/ket.dll"
     else:
-        libket_path = dirname(__file__)+"/libs/libket.so"
+        libket_path = f'{dirname(__file__)}/libs/{os_lib_name("ket")}'
 
     return libket_path
 

@@ -14,6 +14,17 @@
 #  limitations under the License.
 
 from ctypes import *
+import os
+
+
+def os_lib_name(lib):
+    if os.uname().sysname == 'Linux':
+        return f'lib{lib}.so'
+    if os.name == 'nt':
+        return f'lib{lib}.dll'
+    if os.os.uname().sysname == 'Darwin':
+        return f'lib{lib}.dylib'
+    raise OSError('unsupported operational system')
 
 
 def from_u8_to_str(data, size):

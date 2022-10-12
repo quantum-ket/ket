@@ -4,10 +4,13 @@ import shutil
 
 
 def libs():
+    if os.uname().sysname == 'Linux':
+        return [('libket', 'libket.so'), ('kbw', 'libkbw.so')]
     if os.name == 'nt':
         return [('libket', 'ket.dll'), ('kbw', 'kbw.dll')]
-    else:
-        return [('libket', 'libket.so'), ('kbw', 'libkbw.so')]
+    if os.os.uname().sysname == 'Darwin':
+        return [('libket', 'libket.dylib'), ('kbw', 'libkbw.dylib')]
+    raise OSError('unsupported operational system')
 
 
 def make_libs():

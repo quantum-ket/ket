@@ -15,7 +15,7 @@ Ket's goal is to streamline the development of hardware-independent classical qu
 
 ## Installation :arrow_down:
 
-Ket requires [Python](https://www.python.org/downloads/) 3.7 or newer and is available on Linux (`manylinux2014_x86_64`) and Windows (`win_amd64`). 
+Ket requires [Python](https://www.python.org/downloads/) 3.7 or newer and is available on Linux and Windows (x86_64). 
 You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To do so, copy and paste the following command into your terminal:
 
 ```shell
@@ -228,7 +228,7 @@ If you are using [VS Code](https://code.visualstudio.com/), Ket has a [Dev Conta
 * :package: Full quantum algorithm implementations must be packaged with  Ket as a dependency.
 * :x: Low-level quantum control, like pulse programming, is out of Ket's scope.
 
-# Cite Ket :book:
+## Cite Ket :book:
 
 When using Ket for research projects, please cite:
 
