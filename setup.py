@@ -8,7 +8,7 @@ def libs():
         return [('libket', 'libket.so'), ('kbw', 'libkbw.so')]
     if os.name == 'nt':
         return [('libket', 'ket.dll'), ('kbw', 'kbw.dll')]
-    if os.os.uname().sysname == 'Darwin':
+    if os.uname().sysname == 'Darwin':
         return [('libket', 'libket.dylib'), ('kbw', 'libkbw.dylib')]
     raise OSError('unsupported operational system')
 
