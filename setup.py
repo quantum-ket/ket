@@ -4,10 +4,10 @@ import shutil
 
 
 def libs():
-    if os.uname().sysname == 'Linux':
-        return [('libket', 'libket.so'), ('kbw', 'libkbw.so')]
     if os.name == 'nt':
         return [('libket', 'ket.dll'), ('kbw', 'kbw.dll')]
+    if os.uname().sysname == 'Linux':
+        return [('libket', 'libket.so'), ('kbw', 'libkbw.so')]
     if os.uname().sysname == 'Darwin':
         return [('libket', 'libket.dylib'), ('kbw', 'libkbw.dylib')]
     raise OSError('unsupported operational system')
@@ -76,4 +76,5 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
     ],
     entry_points={'console_scripts': ['ket = ket.__main__:__ket__']},
+    setup_requires=['wheel'],
 )

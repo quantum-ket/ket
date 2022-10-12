@@ -1,36 +1,33 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 image: registry.gitlab.com/quantum-ket/ket
+
 stages:
-- build
-- deploy
-- test
+  - build
+  - deploy
+  - test
+
 wheelhouse:
   stage: build
   script:
-  - source scl_source enable devtoolset-10 || true
-  - source scl_source enable rh-python38 || true
-  - source scl_source enable rh-git227 || true
-  - source /home/code/.cargo/env
-  - "./util/make_wheel.sh"
+    - source scl_source enable devtoolset-10 || true
+    - source scl_source enable rh-python38 || true
+    - source scl_source enable rh-git227 || true
+    - source /home/code/.cargo/env
+    - ./util/make_wheel.sh
   artifacts:
     paths:
-    - wheelhouse
-PyPI:
-  stage: deploy
-  script:
-  - source scl_source enable rh-python38 || true
-  - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine
-    upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi
-    wheelhouse/*
-  only:
-  - master
+      - wheelhouse
+
+#PyPI:
+#  stage: deploy
+#  script:
+#    - source scl_source enable rh-python38 || true
+#    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine
+#      upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi
+#      wheelhouse/*
+#  only:
+#    - master
+
 sast:
   stage: test
 include:
-- template: Security/SAST.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
