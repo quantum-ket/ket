@@ -12,20 +12,21 @@ wheelhouse:
     - source scl_source enable rh-python38 || true
     - source scl_source enable rh-git227 || true
     - source /home/code/.cargo/env
-    - ./util/make_wheel.sh
+    - python -m build
+    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang-`cat ket/__version__.py | awk -F\' '{print $2}'`-py3-none-any.whl
   artifacts:
     paths:
-      - wheelhouse
+      - wheelhouse/ket_lang*.whl
+      - dist/ket-lang*.tar.gz
 
-#PyPI:
-#  stage: deploy
-#  script:
-#    - source scl_source enable rh-python38 || true
-#    - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine
-#      upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi
-#      wheelhouse/*
-#  only:
-#    - master
+PyPI:
+  stage: deploy
+  script:
+    - source scl_source enable rh-python38 || true
+    - python -m twine upload wheelhouse/*
+    - python -m twine upload dist/ket-lang*.tar.gz
+  only:
+    - master
 
 sast:
   stage: test
