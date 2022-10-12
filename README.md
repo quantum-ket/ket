@@ -227,3 +227,30 @@ If you are using [VS Code](https://code.visualstudio.com/), Ket has a [Dev Conta
 * :zap: We plan to expand the [quantum library](https://quantumket.org/ket#quantum-library) with quantum algorithm building blocks like the [`qft`](https://quantumket.org/ket#ket.lib.qft).  
 * :package: Full quantum algorithm implementations must be packaged with  Ket as a dependency.
 * :x: Low-level quantum control, like pulse programming, is out of Ket's scope.
+
+# Cite Ket :book:
+
+When using Ket for research projects, please cite:
+
+> Evandro Chagas Ribeiro da Rosa and Rafael de Santiago. 2021. Ket Quantum Programming. J. Emerg. Technol. Comput. Syst. 18, 1, Article 12 (January 2022), 25 pages. DOI: [10.1145/3474224](https://doi.org/10.1145/3474224)
+
+```bibtex
+@article{ket,
+   author = {Evandro Chagas Ribeiro da Rosa and Rafael de Santiago},
+   title = {Ket Quantum Programming},
+   year = {2021},
+   issue_date = {January 2022},
+   publisher = {Association for Computing Machinery},
+   address = {New York, NY, USA},
+   volume = {18},
+   number = {1},
+   issn = {1550-4832},
+   url = {https://doi.org/10.1145/3474224},
+   doi = {10.1145/3474224},
+   journal = {J. Emerg. Technol. Comput. Syst.},
+   month = oct,
+   articleno = {12},
+   numpages = {25},
+   keywords = {Quantum programming, cloud quantum computation, qubit simulation}
+}
+```
