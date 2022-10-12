@@ -2,126 +2,228 @@
 [![AppImage](https://gitlab.com/quantum-ket/ket/badges/master/pipeline.svg)](https://gitlab.com/quantum-ket/ket/-/jobs)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
+# Ket Quantum Programming
 
-# Ket Quantum Programming Language
+[[_TOC_]]
 
-Ket is a Python-embedded language for hybridity classical-quantum  programming.
+Ket is an embedded programming language that introduces the ease of Python to quantum programming, letting anyone quickly prototype and test a quantum application.
 
-### Table of contents:
+Python is the most widely used programming language for machine learning and data science and has been the language of choice for quantum programming. Ket is a Python-embedded language, but many can use it as a Python library in most cases. So you can use Ket together with NumPy, ScyPy, Pandas, and other popular Python libraries.
 
-* [Code examples](#code-examples)
-* [Usage](#usage)
-* [Installation](#installation)
 
-## Code examples
+Ket's goal is to streamline the development of hardware-independent classical quantum applications by providing transparent interaction of classical and quantum data. See https://quantumket.org to learn more about Ket.
 
-### Random Number Generation
+## Installation :arrow_down:
 
-```python
-# random.ket
-def random(n_bits):
-  with run():
-     q = quant(n_bits)
-     H(q)
-     return measure(q).value
+Ket requires [Python](https://www.python.org/downloads/) 3.7 or newer and is available on Linux (`manylinux2014_x86_64`) and Windows (`win_amd64`). 
+You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To do so, copy and paste the following command into your terminal:
 
-n_bits = 32
-print(n_bits, 'bits random number:', random(n_bits))
+```shell
+pip install ket-lang
 ```
 
-```console
-$ ket random.ket
-32 bits random number: 3830764503
+### Alternative Methods
+
+:warning: The following installation methods are not intended for general use.
+
+* [:penguin: **Linux only**] Install the latest development release from Gitlab CI:
+
+  ```shell
+  pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-`wget -O- -q https://gitlab.com/quantum-ket/ket/-/raw/master/ket/__version__.py | awk -F\' '{print $2}'`-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
+  ```
+* Install from git:
+  
+  Before proceeding, you must have [Rust](https://www.rust-lang.org/tools/install) and [Git](https://git-scm.com/) installed.  
+
+  ```shell
+  pip install git+https://gitlab.com/quantum-ket/ket.git
+  ```
+
+  :pencil: This installation method may work on unsupported architectures.
+
+## Documentation :scroll:
+
+Documentation available at https://quantumket.org.
+
+## Examples :bulb:
+
+### Grover's Algorithm
+
+```py
+from ket import *
+from math import sqrt, pi
+
+
+def grover(n: int, oracle) -> int:
+    qubits = H(quant(n))
+    steps = int((pi/4)*sqrt(2**n))
+    for _ in range(steps):
+        oracle(qubits)
+        with around(H, qubits):
+            phase_on(0, qubits)
+    return measure(qubits).value
+
+
+n = 8
+looking_for = 13
+print(grover(n, phase_on(looking_for)))
+# 13
 ```
 
-### Quantum Teleportation:
+### Shor's Algorithm 
 
-```python
-# teleport.ket
-def teleport(alice : quant) -> quant:
-    alice_b, bob_b = quant(2)
-    ctrl(H(alice_b), X, bob_b)
+```py
+from ket import *
+from ket.lib import qft
+from ket.plugins import pown
+from random import randint
+from functools import reduce
+from math import log2, gcd
 
-    ctrl(alice, X, alice_b)
-    H(alice)
 
-    m0 = measure(alice)
-    m1 = measure(alice_b)
+def quantum_subroutine(N, x):
+    n = N.bit_length()
 
-    if m1 == 1:
-        X(bob_b)
-    if m0 == 1:
-        Z(bob_b)
+    def subroutine():
+        reg1 = H(quant(n))
+        reg2 = pown(x, reg1, N)
+        measure(reg2)
+        adj(qft, reg1)
+        return measure(reg1).value
 
-    return bob_b
+    r = reduce(gcd, [subroutine() for _ in range(n)])
+    return 2**n//r
 
-alice = quant(1)         # alice = |0⟩
-H(alice)                 # alice = |+⟩
-Z(alice)                 # alice = |–⟩
-bob = teleport(alice)    # bob  <- alice
-H(bob)                   # bob   = |1⟩
-bob_m = measure(bob)
 
-print('Expected measure 1, result =', bob_m.value)
+def shor(N: int) -> int:
+    if N % 2 == 0:
+        return 2
+    n = N.bit_length()
+    y = int(log2(N))
+    for b in range(2, n+1):
+        x = y/b
+        u1 = int(2**x)
+        u2 = u1+1
+        if u1**b == N:
+            return u1
+        elif u2**b == N:
+            return u2
+
+    for _ in range(N.bit_length()):
+        x = randint(2, N-1)
+        gcd_x_N = gcd(x, N)
+        if gcd_x_N > 1:
+            return gcd_x_N
+
+        r = quantum_subroutine(N, x)
+
+        if r % 2 == 0 and pow(x, r//2) != -1 % N:
+            p = gcd(x**(r//2)-1, N)
+            if p != 1 and p != N and p*N//p == N:
+                factor = p
+                break
+
+            q = gcd(x**(r//2)+1, N)
+            if q != 1 and q != N and q*N//q == N:
+                factor = q
+                break
+
+    if factor is not None:
+        return factor
+    else:
+        raise RuntimeError(f"fails to factor {N}")
+
+N = 4063
+p = shor(N)
+q = N//p
+print(f'{N}={p}x{q}')
+# 4063=17x239
 ```
 
-```console
-$ ket teleport.ket
-Expected measure 1, result = 1
+### Quantum Teleportation
+
+```py
+from ket import *
+from ket import code_ket
+
+
+def entangle(a: quant, b: quant):
+    return cnot(H(a), b)
+
+
+def teleport(quantum_message: quant, entangled_qubit: quant):
+    adj(entangle, quantum_message, entangled_qubit)
+    return measure(entangled_qubit), measure(quantum_message)
+
+
+@code_ket
+def decode(classical_message: tuple[int, int], qubit: quant):
+    if classical_message[0] == 1:
+        X(qubit)
+
+    if classical_message[1] == 1:
+        Z(qubit)
+
+
+if __name__ == '__main__':
+    from math import pi
+
+    alice_message = phase(pi/4, H(quant()))
+
+    alice_message_dump = dump(alice_message)
+
+    alice_qubit, bob_qubit = entangle(*quant(2))
+
+    classical_message = teleport(
+        quantum_message=alice_message,
+        entangled_qubit=alice_qubit
+    )
+
+    decode(classical_message, bob_qubit)
+
+    bob_qubit_dump = dump(bob_qubit)
+
+    print('Alice Message:')
+    print(alice_message_dump.show())
+
+    print('Bob Qubit:')
+    print(bob_qubit_dump.show())
+# Alice Message:
+# |0⟩     (50.00%)
+#  0.707107               ≅      1/√2
+# |1⟩     (50.00%)
+#  0.500000+0.500000i     ≅  (1+i)/√4
+# Bob Qubit:
+# |0⟩     (50.00%)
+#  0.707107               ≅      1/√2
+# |1⟩     (50.00%)
+#  0.500000+0.500000i     ≅  (1+i)/√4
 ```
 
-## Usage 
+## Ket Development :hammer:
 
-```console
-$ ket -h
-usage: ket [-h] [--version] [-o OUT] [-s SEED] .ket
+Setup for Ket development:
 
-Ket interpreter
-
-positional arguments:
-  .ket                  source code
-
-options:
-  -h, --help            show this help message and exit
-  --version             show program's version number and exit
+```shell
+git clone https://gitlab.com/quantum-ket/ket.git
+cd ket
+python setup.py build
 ```
 
-## Installation
+If you are using [VS Code](https://code.visualstudio.com/), Ket has a [Dev Container](https://code.visualstudio.com/docs/remote/containers) :whale:.
 
-Available installation methods:
+## Roadmap :notebook_with_decorative_cover:
 
-* [pip](#installing-with-pip)
-* [Source](#installing-from-source)
-
-### Installing with pip
-
-Installing from PyPI:
-
-```console
-$ pip install ket-lang
-```
-Installing latest Gitlab CI build:
-
-```console
-$ pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-`wget -O- -q https://gitlab.com/quantum-ket/ket/-/raw/master/ket/__version__.py | awk -F\' '{print $2}'`-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
-```
-
-### Installing from source 
-
-Requirements:
-
-* [Rust](https://www.rust-lang.org/tools/install)
-
-To install from source runs:
-
-```console
-$ git clone https://gitlab.com/quantum-ket/ket.git
-$ cd ket
-$ ./util/make_libs.sh
-$ python setup.py install
-```
-
------------
-
-This project is part of the Ket Quantum Programming, see the documentation for
-more information https://quantumket.org.
+* [ ] Sample shots from dump variable.
+* [ ] Create dump from quantum execution shots.
+* [ ] Allow disabling some Ket features to verify quantum execution restriction at the classical runtime.
+  * [ ] Use qubit after measurement.
+  * [ ] Dump in the middle of the execution.
+  * [ ] Classical control flow and binary operations.
+* [ ] Quantum gate decomposition.
+* [ ] Quantum code optimization.
+* [ ] Quantum circuit visualization.
+  
+* :zap: We plan to expand the [quantum library](https://quantumket.org/ket#quantum-library) with quantum algorithm building blocks like the [`qft`](https://quantumket.org/ket#ket.lib.qft).  
+* :package: Full quantum algorithm implementations must be packaged with  Ket as a dependency.
+* :x: Low-level quantum control, like pulse programming, is out of Ket's scope.
