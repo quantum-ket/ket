@@ -1,5 +1,4 @@
 [![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
-[![AppImage](https://gitlab.com/quantum-ket/ket/badges/master/pipeline.svg)](https://gitlab.com/quantum-ket/ket/-/jobs)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 # Ket Quantum Programming
@@ -15,7 +14,8 @@ Ket's goal is to streamline the development of hardware-independent classical qu
 
 ## Installation :arrow_down:
 
-Ket requires [Python](https://www.python.org/downloads/) 3.7 or newer and is available on Linux and Windows (x86_64). 
+Ket requires Python 3.7 or newer and is available for Linux, Windows, and macOS. If you are not using x86_64 (example ARM), you must install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
+
 You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To do so, copy and paste the following command into your terminal:
 
 ```shell

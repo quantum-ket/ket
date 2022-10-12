@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.3
+
+- Added macOS support.
+
 ## 0.4.2
 
 - Fixed calling the inverse of a inverse quantum gate.
