@@ -22,7 +22,7 @@ def os_lib_name(lib):
         return f'lib{lib}.so'
     if os.name == 'nt':
         return f'lib{lib}.dll'
-    if os.os.uname().sysname == 'Darwin':
+    if os.uname().sysname == 'Darwin':
         return f'lib{lib}.dylib'
     raise OSError('unsupported operational system')
 
