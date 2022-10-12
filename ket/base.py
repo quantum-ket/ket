@@ -15,10 +15,17 @@ from __future__ import annotations
 #  limitations under the License.
 
 from math import pi
-from .clib.libket import *
+from .clib.libket import libket_dump, libket_future, libket_label, libket_qubit, process
+from .clib.libket import (EQ, NEQ, GT, GEQ, LT, LEQ, ADD, SUB, MUL, DIV,
+                          SLL, SRL, AND, OR, XOR, PAULI_X, PAULI_Y,
+                          PAULI_Z, HADAMARD, PHASE, RX, RY, RZ)
+
+
 from .clib.wrapper import from_list_to_c_vector
 
 __all__ = ['quant', 'future', 'dump']
+
+# pylint: disable=global-statement, missing-function-docstring, invalid-name
 
 
 class quant:
@@ -73,11 +80,15 @@ class quant:
         qubits: Initialize the qubit list without allocating. Intended for internal use.
     """
 
-    def __init__(self, size: int = 1, dirty: bool = False, *, qubits: list[qubit] | None = None):
+    def __init__(self,
+                 size: int = 1,
+                 dirty: bool = False,
+                 *,
+                 qubits: list[libket_qubit] | None = None):
         if qubits is not None:
             self.qubits = qubits
         else:
-            self.qubits = [qubit(process_top().allocate_qubit(dirty))
+            self.qubits = [libket_qubit(process_top().allocate_qubit(dirty))
                            for _ in range(size)]
 
     def __add__(self, other: quant) -> quant:
@@ -131,6 +142,8 @@ class quant:
         return quant(qubits=qubits if isinstance(qubits, list) else [qubits])
 
     class iter:
+        """Qubits iterator"""
+
         def __init__(self, q):
             self.q = q
             self.idx = -1
@@ -151,7 +164,7 @@ class quant:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type, value, tb):  # pylint: disable=redefined-builtin, invalid-name
         if not self.is_free():
             raise RuntimeError('non-free quant at the end of scope')
 
@@ -235,8 +248,7 @@ class future:
                     exec_quantum()
                 self._value = self.base.value().value
             return self._value
-        else:
-            return super().__getattribute__(name)
+        return super().__getattribute__(name)
 
     def __setattr__(self, name, value):
         if name == "value":
@@ -424,7 +436,8 @@ class dump:
 
         Note:
             Don't use this function if your goal is just to iterate over the basis states.
-            Use the attributes :attr:`~ket.base.states`, :attr:`~ket.base.amplitudes`, and :attr:`~ket.base.probability` instead.
+            Use the attributes :attr:`~ket.base.states`, :attr:`~ket.base.amplitudes`,
+            and :attr:`~ket.base.probability` instead.
 
         :Example:
 
@@ -438,9 +451,7 @@ class dump:
         """
 
         if self._state is None:
-            self._state = {
-                state: amp for state, amp in zip(self.states, self.amplitudes)
-            }
+            self._state = dict(zip(self.states, self.amplitudes))
         return self._state
 
     @property
@@ -465,7 +476,7 @@ class dump:
 
         real, size = self.base.amplitudes_real()
         imag, _size = self.base.amplitudes_imag()
-        assert(size.value == _size.value)
+        assert size.value == _size.value
 
         for i in range(size.value):
             yield real[i]+imag[i]*1j
@@ -477,7 +488,7 @@ class dump:
         for amp in self.amplitudes:
             yield abs(amp)**2
 
-    def show(self, format: str | None = None) -> str:
+    def show(self, format_str: str | None = None) -> str:
         r"""Return the quantum state as a string
 
         Use the format starting to change the print format of the basis states:
@@ -520,12 +531,12 @@ class dump:
             format: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
         """
 
-        if format is not None:
-            if format == 'b' or format == 'i':
-                format += str(self.size)
+        if format_str is not None:
+            if format_str in ('b', 'i'):
+                format_str += str(self.size)
             fmt = []
             count = 0
-            for b, size in map(lambda f: (f[0], int(f[1:])), format.split(':')):
+            for b, size in map(lambda f: (f[0], int(f[1:])), format_str.split(':')):
                 fmt.append((b, count, count+size))
                 count += size
             if count < self.size:
@@ -568,7 +579,8 @@ class dump:
 
             return dump_str
 
-        return '\n'.join(state_amp_str(state, amp) for state, amp in sorted(zip(self.states, self.amplitudes), key=lambda k: k[0]))
+        return '\n'.join(state_amp_str(state, amp) for state, amp in
+                         sorted(zip(self.states, self.amplitudes), key=lambda k: k[0]))
 
     @property
     def expected_values(self) -> tuple[float, float, float]:
@@ -602,9 +614,9 @@ class dump:
         QuTiP and Matplotlib are required for generating and plotting the sphere.
         """
         try:
-            import qutip
+            import qutip  # pylint: disable=import-outside-toplevel
         except ImportError as e:
-            from sys import stderr
+            from sys import stderr  # pylint: disable=import-outside-toplevel
             print("Unable to import QuTiP, try installing:", file=stderr)
             print("\tpip install qutip", file=stderr)
             raise e
@@ -625,73 +637,72 @@ class dump:
 
 
 class label:
+    """Reference to a code block in the quantum code"""
 
     def __init__(self):
         self.base = libket_label(process_top().get_label())
 
     @property
     def index(self) -> int:
+        """Return label index"""
         return self.base.index().value
 
     @property
     def pid(self) -> int:
+        """Return process PID"""
         return self.base.pid().value
 
     def begin(self):
+        """Open the code block"""
+
         process_top().open_block(self.base)
 
     def __repr__(self) -> str:
         return f"<Ket 'label' {self.pid, self.index}>"
 
 
-_process_count = 1
-_process_stack = [process(0)]
-_process_last = None
+PROCESS_COUNT = 1
+PROCESS_STACK = [process(0)]
+PROCESS_LAST = None
 
 
 def process_begin():
-    global _process_count
-    global _process_stack
-    _process_stack.append(process(_process_count))
-    _process_count += 1
+    global PROCESS_COUNT
+    PROCESS_STACK.append(process(PROCESS_COUNT))
+    PROCESS_COUNT += 1
 
 
 def process_end() -> process:
-    global _process_stack
-    global _process_last
-    _process_last = _process_stack.pop()
-    return _process_last
+    global PROCESS_LAST
+    PROCESS_LAST = PROCESS_STACK.pop()
+    return PROCESS_LAST
 
 
 def process_top() -> process:
-    global _process_stack
-    return _process_stack[-1]
+    return PROCESS_STACK[-1]
 
 
 def process_last() -> process:
-    global _process_last
-    return _process_last
+    return PROCESS_LAST
 
 
-quantum_execution_target = None
+QUANTUM_EXECUTION_TARGET = None
 
 
 def set_quantum_execution_target(func):
-    global quantum_execution_target
-    quantum_execution_target = func
+    global QUANTUM_EXECUTION_TARGET
+    QUANTUM_EXECUTION_TARGET = func
 
 
 def exec_quantum():
     """Call the quantum execution"""
 
-    global quantum_execution_target
-
     process_top().prepare_for_execution()
 
     error = None
     try:
-        quantum_execution_target(process_end())
-    except Exception as e:
+        QUANTUM_EXECUTION_TARGET(process_end())
+    except Exception as e:  # pylint: disable=broad-except
         error = e
     process_begin()
     if error:
@@ -709,14 +720,18 @@ def qc_int(value: int) -> future:
 
 
 def base_measure(qubits: quant) -> future:
-    if not len(qubits):
+    if len(qubits) == 0:
         return None
 
     size = len(qubits)
     if size <= 64:
         return future(libket_future(process_top().measure(*from_list_to_c_vector(qubits.qubits))))
-    else:
-        return [future(libket_future(process_top().measure(*from_list_to_c_vector(qubits.qubits[i:min(i+63, size)])))) for i in reversed(range(0, size, 63))]
+    return [
+        future(libket_future(
+            process_top().measure(
+                *from_list_to_c_vector(qubits.qubits[i:min(i+63, size)]))
+        )) for i in reversed(range(0, size, 63))
+    ]
 
 
 def plugin(name: str, args: str, qubits: quant):
@@ -759,61 +774,61 @@ def branch(test: future, then: label, otherwise: label):
     return process_top().branch(test.base, then.base, otherwise.base)
 
 
-def base_X(q: quant):
-    for qubit in q.qubits:
+def base_X(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PAULI_X, 0.0, qubit)
 
 
-def base_Y(q: quant):
-    for qubit in q.qubits:
+def base_Y(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PAULI_Y, 0.0, qubit)
 
 
-def base_Z(q: quant):
-    for qubit in q.qubits:
+def base_Z(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PAULI_Z, 0.0, qubit)
 
 
-def base_H(q: quant):
-    for qubit in q.qubits:
+def base_H(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(HADAMARD, 0.0, qubit)
 
 
-def base_S(q: quant):
-    for qubit in q.qubits:
+def base_S(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PHASE, pi/2, qubit)
 
 
-def base_SD(q: quant):
-    for qubit in q.qubits:
+def base_SD(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PHASE, -pi/2, qubit)
 
 
-def base_T(q: quant):
-    for qubit in q.qubits:
+def base_T(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PHASE, pi/4, qubit)
 
 
-def base_TD(q: quant):
-    for qubit in q.qubits:
+def base_TD(qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PHASE, -pi/4, qubit)
 
 
-def base_phase(lambda_, q: quant):
-    for qubit in q.qubits:
+def base_phase(lambda_, qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(PHASE, lambda_, qubit)
 
 
-def base_RX(theta, q: quant):
-    for qubit in q.qubits:
+def base_RX(theta, qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(RX, theta, qubit)
 
 
-def base_RY(theta, q: quant):
-    for qubit in q.qubits:
+def base_RY(theta, qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(RY, theta, qubit)
 
 
-def base_RZ(theta, q: quant):
-    for qubit in q.qubits:
+def base_RZ(theta, qubits: quant):
+    for qubit in qubits.qubits:
         process_top().apply_gate(RZ, theta, qubit)

@@ -14,33 +14,35 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .preprocessor import ketpp
 from inspect import getsource
 from ast import fix_missing_locations, parse
 from os import path, PathLike
 from types import ModuleType
 from typing import Callable
+from .preprocessor import ketpp
 
 __all__ = ['import_ket', 'from_import_ket']
 
 
 def _import_ket(source: PathLike):
-    with open(source, 'r') as file:
+    with open(source, 'r', encoding="utf-8") as file:
         tree = parse(file.read(), source)
 
-    pp = ketpp()
+    preprocessor = ketpp()
 
-    pp.visit(tree)
+    preprocessor.visit(tree)
     fix_missing_locations(tree)
 
     return compile(tree, source, 'exec', optimize=2)
 
-
-def _import_globals_ket(source: PathLike, globals):
-    exec(_import_ket(source), globals)
+# pylint: disable=exec-used
 
 
-buildins = \
+def _import_globals_ket(source: PathLike, global_vars):
+    exec(_import_ket(source), global_vars)
+
+
+BUILDINS = \
     """
 from ket import *
 from ket.base import label, branch, jump
@@ -54,13 +56,13 @@ def import_ket(source: PathLike) -> ModuleType:
     Import a Ket source file as a Python module.
 
     Args:
-        source: Ket source file.  
+        source: Ket source file.
     """
 
     _, file_name = path.split(source)
     module = ModuleType(file_name[:-4])
 
-    obj = compile(buildins, '<ket build-in functions>', 'exec', optimize=2)
+    obj = compile(BUILDINS, '<ket build-in functions>', 'exec', optimize=2)
     exec(obj, module.__dict__)
 
     _import_globals_ket(source, module.__dict__)
@@ -71,7 +73,7 @@ def from_import_ket(source: PathLike, *names: list[str]) -> tuple:
     """Import names from Ket file
 
     Args:
-        source: Ket source file.  
+        source: Ket source file.
         names: Names to import from ``source``.
     """
 
@@ -86,7 +88,8 @@ def code_ket(func: Callable) -> Callable:
 
     Warning:
         * Do not use this decorator in a .ket file.
-        * This decorator do not work with function defined inside a Jupyter Notebook or the Python interpreter. 
+        * This decorator do not work with function defined inside
+          a Jupyter Notebook or the Python interpreter.
         * This decorator is not part of Ket's preamble.
 
     :Usage:
@@ -108,22 +111,22 @@ def code_ket(func: Callable) -> Callable:
     if '__in_ket__' in globals() and globals()['__in_ket__']:
         return func
 
-    in_ket = "__in_ket__{}__".format(func.__name__)
+    in_ket = f"__in_ket__{func.__name__}__"
     if in_ket in func.__globals__ and func.__globals__[in_ket]:
         return func
 
     doc = func.__doc__
     annotations = func.__annotations__
 
-    buildins_more = buildins+'\n'+in_ket+' = True\n'
+    buildins_more = BUILDINS+'\n'+in_ket+' = True\n'
     buildins_obj = compile(
         buildins_more, '<ket build-in functions>', 'exec', optimize=2)
     exec(buildins_obj, func.__globals__)
 
     tree = parse(getsource(func), '<function ' + func.__name__ + '>')
-    pp = ketpp()
+    preprocessor = ketpp()
 
-    pp.visit(tree)
+    preprocessor.visit(tree)
     fix_missing_locations(tree)
 
     obj = compile(tree, '<code_ket function ' +

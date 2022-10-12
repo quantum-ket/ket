@@ -19,7 +19,7 @@ from .base import plugin, quant, base_X
 __all__ = ['plugin', 'pown']
 
 
-def pown(a: int, x: quant, N: int) -> quant:
+def pown(a: int, x: quant, N: int) -> quant:  # pylint: disable=invalid-name
     r"""Apply a modular exponentiation in a superposition
 
     .. math::
@@ -36,7 +36,7 @@ def pown(a: int, x: quant, N: int) -> quant:
         N: :math:`N`.
 
     :return: :class:`~ket.base.quant` with the operation result.
-    """
+    """  # pylint: disable=line-too-long
 
     ret = quant(N.bit_length())
     base_X(ret[-1])

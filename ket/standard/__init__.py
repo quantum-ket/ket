@@ -14,18 +14,18 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..base import base_measure, quant, future, qc_int, base_X
-from ..preprocessor import _ket_if, _ket_next
-from .ctrl import *
-from .adj import *
 from functools import reduce
 from operator import add
+from ..base import base_measure, quant, future, qc_int, base_X
+from ..preprocessor import _ket_if, _ket_next  # pylint: disable=no-name-in-module
+from .ctrl import *
+from .adj import *
 
 __all__ = ['inverse', 'control', 'ctrl',
            'adj', 'around', 'measure', 'qc_int']
 
 
-def measure(q: quant | list[quant], free: bool = False) -> future | list[future]:
+def measure(qubits: quant | list[quant], free: bool = False) -> future | list[future]:
     """Quantum measurement
 
     Measure the qubits of a :class:`~ket.libket.quant` and return a
@@ -39,13 +39,13 @@ def measure(q: quant | list[quant], free: bool = False) -> future | list[future]
         q: Qubits to measure.
         free: If ``True``, free the qubits after the measurement.
     """
-    q = reduce(add, q) if len(q) else q
+    qubits = reduce(add, qubits) if len(qubits) else qubits
 
-    ret = base_measure(q)
+    ret = base_measure(qubits)
     if free:
-        for i in q:
+        for i in qubits:
             end = _ket_if(base_measure(i))
             base_X(i)
             _ket_next(end)
-        q.free()
+        qubits.free()
     return ret

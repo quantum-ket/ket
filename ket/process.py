@@ -77,6 +77,7 @@ def quantum_exec_time() -> float | None:
     """
     if process_last() is not None:
         return process_last().exec_time().value
+    return None
 
 
 def quantum_exec_timeout(timeout: int):
@@ -89,7 +90,7 @@ def quantum_exec_timeout(timeout: int):
     process_top().set_timeout(timeout)
 
 
-class run:
+class run:  # pylint: disable=invalid-name
     """Execute in a new process
 
     Run the quantum operations in a new separated process.
@@ -106,5 +107,5 @@ class run:
     def __enter__(self):
         process_begin()
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type, value, tb):  # pylint: disable=redefined-builtin, invalid-name
         process_end()

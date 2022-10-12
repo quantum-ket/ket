@@ -14,14 +14,14 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..base import ctrl_push, ctrl_pop, quant, base_X
 from typing import Callable, Any
 from functools import reduce
 from operator import add
+from ..base import ctrl_push, ctrl_pop, quant, base_X
 
 
-def base_flipc(state, q):
-    length = len(q)
+def base_flipc(state, qubits):  # pylint: disable=missing-function-docstring
+    length = len(qubits)
     if hasattr(state, '__iter__'):
         if len(state) != length:
             raise ValueError(
@@ -31,12 +31,12 @@ def base_flipc(state, q):
             raise ValueError(
                 f"To flip with state={state} you need at least {state.bit_length()} qubits")
         state = [int(i) for i in f"{{:0{length}b}}".format(state)]
-    for i, q in zip(state, q):
+    for i, qubit in zip(state, qubits):
         if i == 0:
-            base_X(q)
+            base_X(qubit)
 
 
-class control:
+class control:  # pylint: disable=invalid-name
     r"""Open a controlled-scope
 
     Inside a ``with control`` scope, the qubits of ``ctr`` control every
@@ -81,7 +81,7 @@ class control:
 
     Args:
         ctr: Control qubits.
-        on_state: Change the control state. 
+        on_state: Change the control state.
     """
 
     def __init__(self, *ctr: quant, on_state: int | list[int] | None = None):
@@ -93,53 +93,52 @@ class control:
             base_flipc(self.on_state, self.ctr)
         ctrl_push(self.ctr)
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type, value, tb):  # pylint: disable=redefined-builtin, invalid-name
         ctrl_pop()
         if self.on_state is not None:
             base_flipc(self.on_state, self.ctr)
 
 
-def _ctrl(control: quant | list[quant],
+def _ctrl(ctrl_qubits: quant | list[quant],
           func: Callable | list[Callable],
           *args,
           on_state: int | list[int] | None = None,
           **kwargs) -> Any:
     """Call Callable with control-qubits"""
 
-    control = reduce(add, control)
+    ctrl_qubits = reduce(add, ctrl_qubits)
     if on_state is not None:
-        base_flipc(on_state, control)
-    ctrl_push(control)
+        base_flipc(on_state, ctrl_qubits)
+    ctrl_push(ctrl_qubits)
 
     ret = []
 
     if hasattr(func, '__iter__'):
-        for f in func:
-            ret.append(f(*args, **kwargs))
+        for gate in func:
+            ret.append(gate(*args, **kwargs))
     else:
         ret = func(*args, **kwargs)
 
     ctrl_pop()
     if on_state is not None:
-        base_flipc(on_state, control)
+        base_flipc(on_state, ctrl_qubits)
 
     return ret
 
 
-def _qubit_for_ctrl(qubits: quant | list[quant] | slice | int | list[int]) -> tuple[Callable[[quant], quant] | quant, bool]:
+def _qubit_for_ctrl(qubits: quant | list[quant] | slice | int | list[int]) -> tuple[Callable[[quant], quant] | quant, bool]:  # pylint: disable=line-too-long
     """Get qubits for ctrl"""
 
     if any(isinstance(qubits, tp) for tp in [slice, int]):
         return lambda q: q[qubits], True
-    elif hasattr(qubits, '__iter__') and all(isinstance(i, int) for i in qubits):
+    if hasattr(qubits, '__iter__') and all(isinstance(i, int) for i in qubits):
         return lambda q: q.at(qubits), True
-    elif hasattr(qubits, '__iter__') and all(isinstance(i, quant) for i in qubits):
+    if hasattr(qubits, '__iter__') and all(isinstance(i, quant) for i in qubits):
         return reduce(add, qubits), False
-    else:
-        return qubits, False
+    return qubits, False
 
 
-def ctrl(control: quant | list[quant] | slice | int | list[int],
+def ctrl(ctrl_qubits: quant | list[quant] | slice | int | list[int],
          func: Callable | list[Callable],
          *args,
          on_state: int | list[int] | None = None,
@@ -212,7 +211,7 @@ def ctrl(control: quant | list[quant] | slice | int | list[int],
 
     .. code-block:: ket
 
-        with around(ctrl(0, X, slice(1, None)), q): # ctrl(q[0], X, q[1:]) 
+        with around(ctrl(0, X, slice(1, None)), q): # ctrl(q[0], X, q[1:])
             H(q[0])                                 # H(q[0])
                                                     # ctrl(q[0], X, q[1:])
 
@@ -221,20 +220,19 @@ def ctrl(control: quant | list[quant] | slice | int | list[int],
         func: Functions to add control.
         args: ``func`` arguments.
         kwargs: ``func`` keyword arguments.
-        on_state: Change the control state, same as for :class:`~ket.standard.control`. 
+        on_state: Change the control state, same as for :class:`~ket.standard.control`.
         later_call: If ``True``, do not execute and return a ``Callable[[], Any]``.
     """
 
-    control, create_gate = _qubit_for_ctrl(control)
+    ctrl_qubits, create_gate = _qubit_for_ctrl(ctrl_qubits)
     if create_gate:
         target, call_target = _qubit_for_ctrl(*args)
 
-        def _ctrl_gate(q: quant) -> quant:
-            _ctrl(control(q), func, target(q)
+        def _ctrl_gate(qubits: quant) -> quant:
+            _ctrl(ctrl_qubits(qubits), func, target(qubits)
                   if call_target else target, on_state=on_state)
-            return q
+            return qubits
         return _ctrl_gate
-    elif later_call:
-        return lambda: _ctrl(control, func, *args, on_state=on_state, **kwargs)
-    else:
-        return _ctrl(control, func, *args, on_state=on_state, **kwargs)
+    if later_call:
+        return lambda: _ctrl(ctrl_qubits, func, *args, on_state=on_state, **kwargs)
+    return _ctrl(ctrl_qubits, func, *args, on_state=on_state, **kwargs)

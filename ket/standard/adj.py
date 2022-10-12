@@ -14,13 +14,13 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..base import adj_begin, adj_end
 from typing import Callable, Any
 from inspect import signature
 from types import GeneratorType
+from ..base import adj_begin, adj_end
 
 
-class inverse:
+class inverse:  # pylint: disable=invalid-name
     r"""Open a inverse scope
 
     Inside a ``with inverse`` scope, the the quantum operations backwards.
@@ -37,7 +37,7 @@ class inverse:
     def __enter__(self):
         adj_begin()
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type, value, tb):  # pylint: disable=redefined-builtin, invalid-name
         adj_end()
 
 
@@ -49,8 +49,8 @@ def _adj(func: Callable | list[Callable],
     adj_begin()
     if hasattr(func, '__iter__'):
         ret = []
-        for f in func:
-            ret.append(f(*args, **kwargs))
+        for gate in func:
+            ret.append(gate(*args, **kwargs))
     else:
         ret = func(*args, **kwargs)
     adj_end()
@@ -115,19 +115,18 @@ def adj(func: Callable | list[Callable],
 
     if len(signature(func).parameters) != 0 and len(args) == len(kwargs) == 0:
         return lambda *args, **kwargs: _adj(func, *args, **kwargs)
-    elif later_call:
+    if later_call:
         return lambda: _adj(func, *args, **kwargs)
-    else:
-        return _adj(func, *args, **kwargs)
+    return _adj(func, *args, **kwargs)
 
 
-class around:
+class around:  # pylint: disable=invalid-name
     r"""Apply operation U around V and V inverse
 
     With the quantum operations U and V, execute VUV :math:`\!^\dagger`, where V
-    is defined as by ``func, *args, **kwargs`` and U is the open scope. 
+    is defined as by ``func, *args, **kwargs`` and U is the open scope.
 
-    * ``func`` must be a ``Callable`` or ``Iterable[Callable]``. 
+    * ``func`` must be a ``Callable`` or ``Iterable[Callable]``.
 
     .. code-block:: ket
 
@@ -165,5 +164,5 @@ class around:
         else:
             self.outer_func(*self.args, **self.kwargs)
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type, value, tb):  # pylint: disable=redefined-builtin, invalid-name
         adj(self.__enter__)

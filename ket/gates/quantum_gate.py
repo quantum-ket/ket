@@ -18,7 +18,7 @@ from operator import add
 from ..base import quant
 
 
-class quantum_gate:
+class QuantumGate:  # pylint: disable=missing-class-docstring
     _gates_1 = []
     _gates_m = []
     _matrix = {}
@@ -27,7 +27,7 @@ class quantum_gate:
     @classmethod
     @property
     def __doc__(cls):
-        nl = '\n'
+        new_line = '\n'
         return \
             f"""
 
@@ -38,7 +38,7 @@ Single Qubit Gates
     :delim: ;
     :header: Gate,  Function, Matrix, Effect
 
-{nl.join(f'    {gate}; {func}; {cls._matrix[gate]}; {cls._effect[gate]}' for gate, func in cls._gates_1)}
+{new_line.join(f'    {gate}; {func}; {cls._matrix[gate]}; {cls._effect[gate]}' for gate, func in cls._gates_1)}
 
 Multiple Qubit Gates
 ~~~~~~~~~~~~~~~~~~~~
@@ -47,11 +47,11 @@ Multiple Qubit Gates
     :delim: ;
     :header: Gate,  Function, Matrix
 
-{nl.join(f'    {gate}; {func}; {cls._matrix[gate]}' for gate, func in cls._gates_m)}
+{new_line.join(f'    {gate}; {func}; {cls._matrix[gate]}' for gate, func in cls._gates_m)}
 
-"""
+"""  # pylint: disable=line-too-long
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
         if 'doc' in kwargs:
             doc = kwargs['doc']
             name = kwargs['name']
@@ -64,7 +64,7 @@ Multiple Qubit Gates
 
         return super().__new__(cls)
 
-    def __init__(self, *, name, gate, c_args=0, q_args=1, **kwargs):
+    def __init__(self, *, name, gate, c_args=0, q_args=1, **kwargs):  # pylint: disable=unused-argument
         self.name = name
         self.gate = gate
         self.c_args = c_args
@@ -75,13 +75,13 @@ Multiple Qubit Gates
         if args_size < self.c_args:
             raise ValueError(
                 f'{self.name} requirers {self.c_args} classical parameters, {args_size} provided')
-        elif args_size == self.c_args:
+        if args_size == self.c_args:
             if any(isinstance(arg, quant) for arg in args):
                 raise ValueError(
                     f'{self.name} requirers {self.c_args} classical parameters')
 
             args_name = ', '.join(str(arg) for arg in args)
-            return quantum_gate(
+            return QuantumGate(
                 name=f'{self.name}({args_name})',
                 gate=lambda *q_args: self.__call__(*args, *q_args),
                 q_args=self.q_args
@@ -90,13 +90,13 @@ Multiple Qubit Gates
         c_args = args[:self.c_args]
         q_args = args[self.c_args:]
 
-        if all(isinstance(arg, quantum_gate) for arg in q_args):
+        if all(isinstance(arg, QuantumGate) for arg in q_args):
             q_args_size = 0
             for arg in q_args:
                 q_args_size += arg.q_args
             if q_args_size != self.q_args:
                 raise ValueError(
-                    f'{self.name} requirers {self.q_args} quantum parameters, {q_args_size} provided')
+                    f'{self.name} requirers {self.q_args} quantum parameters, {q_args_size} provided')  # pylint: disable=line-too-long
 
             def new_gate(*args):
                 args_ = args
@@ -106,12 +106,12 @@ Multiple Qubit Gates
                 return self.gate(*c_args, *args)
 
             args_name = ', '.join(gate.name for gate in q_args)
-            return quantum_gate(
+            return QuantumGate(
                 name=f'{self.name}({args_name})',
                 gate=new_gate,
                 q_args=self.q_args)
-        elif any(isinstance(arg, quantum_gate) for arg in q_args):
-            raise ValueError(f'Incomplete gate call')
+        if any(isinstance(arg, QuantumGate) for arg in q_args):
+            raise ValueError('Incomplete gate call')
 
         reduced_q_args = tuple(
             map(lambda q: reduce(add, q) if len(q) else q, q_args))

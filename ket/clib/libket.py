@@ -150,7 +150,7 @@ class process:
         return f"<Libket 'process' ({self.pid})>"
 
 
-class qubit:
+class libket_qubit:
     def __init__(self, addr: c_void_p):
         self._as_parameter_ = addr
         self._finalizer = weakref.finalize(

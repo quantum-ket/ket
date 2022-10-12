@@ -14,15 +14,18 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ..base import base_H, base_phase, base_RX, base_RY, base_RZ, base_S, base_SD, base_T, base_TD, base_X, base_Y, base_Z
-from .quantum_gate import quantum_gate
+from ..base import (base_H, base_phase, base_RX, base_RY, base_RZ,
+                    base_S, base_SD, base_T, base_TD, base_X, base_Y, base_Z)
+from .quantum_gate import QuantumGate
 from ..standard.ctrl import base_flipc
 from .base_gates import *
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX',
            'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ', 'flipc', 'phase_on']
 
-I = quantum_gate(
+# pylint: disable=line-too-long
+
+I = QuantumGate(
     name='Identity',
     gate=lambda q: q,
     doc={
@@ -32,7 +35,7 @@ I = quantum_gate(
     }
 )
 
-X = quantum_gate(
+X = QuantumGate(
     name='Pauli-X',
     gate=base_X,
     doc={
@@ -42,7 +45,7 @@ X = quantum_gate(
     }
 )
 
-Y = quantum_gate(
+Y = QuantumGate(
     name='Pauli-Y',
     gate=base_Y,
     doc={
@@ -52,7 +55,7 @@ Y = quantum_gate(
     }
 )
 
-Z = quantum_gate(
+Z = QuantumGate(
     name='Pauli-Z',
     gate=base_Z,
     doc={
@@ -62,7 +65,7 @@ Z = quantum_gate(
     }
 )
 
-H = quantum_gate(
+H = QuantumGate(
     name='Hadamard',
     gate=base_H,
     doc={
@@ -72,7 +75,7 @@ H = quantum_gate(
     }
 )
 
-S = quantum_gate(
+S = QuantumGate(
     name='S',
     gate=base_S,
     doc={
@@ -82,7 +85,7 @@ S = quantum_gate(
     }
 )
 
-SD = quantum_gate(
+SD = QuantumGate(
     name='S Dagger',
     gate=base_SD,
     doc={
@@ -92,7 +95,7 @@ SD = quantum_gate(
     }
 )
 
-T = quantum_gate(
+T = QuantumGate(
     name='T',
     gate=base_T,
     doc={
@@ -103,7 +106,7 @@ T = quantum_gate(
 )
 
 
-TD = quantum_gate(
+TD = QuantumGate(
     name='T Dagger',
     gate=base_TD,
     doc={
@@ -113,7 +116,7 @@ TD = quantum_gate(
     }
 )
 
-phase = quantum_gate(
+phase = QuantumGate(
     name='Phase',
     gate=base_phase,
     c_args=1,
@@ -124,7 +127,7 @@ phase = quantum_gate(
     }
 )
 
-RX = quantum_gate(
+RX = QuantumGate(
     name='X-axis Rotation',
     gate=base_RX,
     c_args=1,
@@ -135,7 +138,7 @@ RX = quantum_gate(
     }
 )
 
-RY = quantum_gate(
+RY = QuantumGate(
     name='Y-axis Rotation',
     gate=base_RY,
     c_args=1,
@@ -146,7 +149,7 @@ RY = quantum_gate(
     }
 )
 
-RZ = quantum_gate(
+RZ = QuantumGate(
     name='Z-axis Rotation',
     gate=base_RZ,
     c_args=1,
@@ -158,7 +161,7 @@ RZ = quantum_gate(
 )
 
 
-cnot = quantum_gate(
+cnot = QuantumGate(
     name='Controlled-NOT',
     gate=base_cnot,
     q_args=2,
@@ -169,7 +172,7 @@ cnot = quantum_gate(
 
 )
 
-swap = quantum_gate(
+swap = QuantumGate(
     name='SWAP',
     gate=base_swap,
     q_args=2,
@@ -180,7 +183,7 @@ swap = quantum_gate(
 
 )
 
-RXX = quantum_gate(
+RXX = QuantumGate(
     name='XX-axis Rotation',
     gate=base_RXX,
     c_args=1,
@@ -191,7 +194,7 @@ RXX = quantum_gate(
     }
 )
 
-RYY = quantum_gate(
+RYY = QuantumGate(
     name='YY-axis Rotation',
     gate=base_RYY,
     c_args=1,
@@ -202,7 +205,7 @@ RYY = quantum_gate(
     }
 )
 
-RZZ = quantum_gate(
+RZZ = QuantumGate(
     name='ZZ-axis Rotation',
     gate=base_RZZ,
     c_args=1,
@@ -213,7 +216,7 @@ RZZ = quantum_gate(
     }
 )
 
-flipc = quantum_gate(
+flipc = QuantumGate(
     name='Flip to Control State',
     gate=base_flipc,
     c_args=1,
@@ -224,7 +227,7 @@ flipc = quantum_gate(
     }
 )
 
-phase_on = quantum_gate(
+phase_on = QuantumGate(
     name='Phase on State',
     gate=base_phase_on,
     c_args=1,

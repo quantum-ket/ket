@@ -13,6 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# pylint: disable=unused-import, wildcard-import
+
 from .import_ket import _import_globals_ket
 from . import *
 from .base import label, branch, jump
@@ -21,8 +23,8 @@ from .preprocessor import *
 
 
 def __ket__():
-    import argparse
-    from os import path, getcwd
+    import argparse  # pylint: disable=import-outside-toplevel
+    import os  # pylint: disable=import-outside-toplevel
 
     parser = argparse.ArgumentParser(prog='ket', description='Ket interpreter')
     parser.add_argument('--version', action='version',
@@ -35,7 +37,7 @@ def __ket__():
 
     globals()['__name__'] = '__main__'
     globals()['__in_ket__'] = True
-    source = path.join(getcwd(), args.input)
+    source = os.path.join(os.getcwd(), args.input)
     _import_globals_ket(source, globals())
 
 
