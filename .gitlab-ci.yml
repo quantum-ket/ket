@@ -25,7 +25,7 @@ Test:
   script:
     - source scl_source enable rh-git227 || true
     - source scl_source enable rh-python38 || true
-    - pip install -e .
+    - pip install wheelhouse/ket_lang*.whl
     - flake8 ket
     - pylint --disable=C0114 ket
     - pytest
