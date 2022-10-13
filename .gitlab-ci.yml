@@ -19,13 +19,13 @@ Build:
     paths:
       - wheelhouse/ket_lang*.whl
       - dist/ket-lang*.tar.gz
+      - ket/clib/libs/*
 
 Test:
   stage: test
   script:
     - source scl_source enable rh-git227 || true
     - source scl_source enable rh-python38 || true
-    - pip install wheelhouse/ket_lang*.whl --user
     - flake8 ket
     - pylint --disable=C0114 ket
     - pytest
