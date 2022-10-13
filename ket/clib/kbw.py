@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import *
+from ctypes import c_uint8, c_void_p, c_size_t, POINTER, c_int32
 from .wrapper import load_lib, from_u8_to_str, os_lib_name
 from os import environ
 from .libket import JSON
@@ -85,9 +85,9 @@ def run_json(quantum_code, metrics, sim_mode: str = 'sparse'):
     sim_mode = {'SPARSE': SPARSE, 'DENSE': DENSE}[sim_mode.upper()]
 
     result = API['kbw_run_serialized'](
-        (c_uint8*quantum_code_size)(*quantum_code),
+        (c_uint8 * quantum_code_size)(*quantum_code),
         quantum_code_size,
-        (c_uint8*metrics_size)(*metrics),
+        (c_uint8 * metrics_size)(*metrics),
         metrics_size,
         JSON,
         sim_mode

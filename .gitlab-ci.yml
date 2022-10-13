@@ -2,10 +2,10 @@ image: registry.gitlab.com/quantum-ket/ket
 
 stages:
   - build
-  - deploy
   - test
+  - deploy
 
-wheelhouse:
+Build:
   stage: build
   script:
     - source scl_source enable devtoolset-10 || true
@@ -18,6 +18,15 @@ wheelhouse:
     paths:
       - wheelhouse/ket_lang*.whl
       - dist/ket-lang*.tar.gz
+
+Test:
+  stage: test
+  script:
+    - source scl_source enable rh-python38 || true
+    - pip install -e .
+    - flake8 ket
+    - pylint --disable=C0114 ket
+    - pytest
 
 PyPI:
   stage: deploy

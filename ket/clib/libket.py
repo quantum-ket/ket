@@ -14,7 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import *
+from ctypes import c_void_p, c_size_t, POINTER, c_bool, c_uint8, c_int32, c_uint64, c_int64, c_double, c_char
 from .wrapper import load_lib, os_lib_name
 import weakref
 
@@ -120,7 +120,7 @@ API_argtypes = {
 
 
 def libket_path():
-    from os import environ, name
+    from os import environ
     from os.path import dirname
 
     if "LIBKET_PATH" in environ:
@@ -142,7 +142,7 @@ class process:
             self, API['ket_process_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_process_'+name](self, *args)
+        return lambda *args: API['ket_process_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'process' ({self.pid})>"
@@ -155,7 +155,7 @@ class libket_qubit:
             self, API['ket_qubit_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_qubit_'+name](self, *args)
+        return lambda *args: API['ket_qubit_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'qubit' {self.pid().value, self.index().value}>"
@@ -168,7 +168,7 @@ class libket_dump:
             self, API['ket_dump_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_dump_'+name](self, *args)
+        return lambda *args: API['ket_dump_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'dump' {self.pid().value, self.index().value}>"
@@ -181,7 +181,7 @@ class libket_future:
             self, API['ket_future_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_future_'+name](self, *args)
+        return lambda *args: API['ket_future_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'future' {self.pid().value, self.index().value}>"
@@ -194,7 +194,7 @@ class libket_label:
             self, API['ket_label_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_label_'+name](self, *args)
+        return lambda *args: API['ket_label_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'label' {self.pid().value, self.index().value}>"

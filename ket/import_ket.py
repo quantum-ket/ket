@@ -19,7 +19,7 @@ from ast import fix_missing_locations, parse
 from os import path, PathLike
 from types import ModuleType
 from typing import Callable
-from .preprocessor import ketpp
+from .preprocessor.transformer import ketpp
 
 __all__ = ['import_ket', 'from_import_ket']
 
@@ -118,7 +118,7 @@ def code_ket(func: Callable) -> Callable:
     doc = func.__doc__
     annotations = func.__annotations__
 
-    buildins_more = BUILDINS+'\n'+in_ket+' = True\n'
+    buildins_more = BUILDINS + '\n' + in_ket + ' = True\n'
     buildins_obj = compile(
         buildins_more, '<ket build-in functions>', 'exec', optimize=2)
     exec(buildins_obj, func.__globals__)
@@ -129,8 +129,7 @@ def code_ket(func: Callable) -> Callable:
     preprocessor.visit(tree)
     fix_missing_locations(tree)
 
-    obj = compile(tree, '<code_ket function ' +
-                  func.__name__ + '>', 'exec', optimize=2)
+    obj = compile(tree, '<code_ket function ' + func.__name__ + '>', 'exec', optimize=2)
     exec(obj, func.__globals__)
     func.__globals__[func.__name__].__doc__ = doc
     func.__globals__[func.__name__].__annotations__ = annotations

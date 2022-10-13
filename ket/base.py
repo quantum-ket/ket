@@ -92,7 +92,7 @@ class quant:
                            for _ in range(size)]
 
     def __add__(self, other: quant) -> quant:
-        return quant(qubits=self.qubits+other.qubits)
+        return quant(qubits=self.qubits + other.qubits)
 
     def at(self, index: list[int]) -> quant:
         r"""Return qubits at ``index``
@@ -479,7 +479,7 @@ class dump:
         assert size.value == _size.value
 
         for i in range(size.value):
-            yield real[i]+imag[i]*1j
+            yield real[i] + imag[i] * 1j
 
     @property
     def probability(self) -> list[float]:
@@ -537,7 +537,7 @@ class dump:
             fmt = []
             count = 0
             for b, size in map(lambda f: (f[0], int(f[1:])), format_str.split(':')):
-                fmt.append((b, count, count+size))
+                fmt.append((b, count, count + size))
                 count += size
             if count < self.size:
                 fmt.append(('b', count, self.size))
@@ -557,8 +557,8 @@ class dump:
             imag = abs(amp.imag) > 1e-10
             imag_l0 = amp.imag < 0
 
-            sqrt_dem = 1/abs(amp)**2
-            use_sqrt = abs(round(sqrt_dem)-sqrt_dem) < .001
+            sqrt_dem = 1 / abs(amp)**2
+            use_sqrt = abs(round(sqrt_dem) - sqrt_dem) < .001
             sqrt_dem = f'/√{round(1/abs(amp)**2)}'
 
             if real and imag:
@@ -566,16 +566,16 @@ class dump:
                 sqrt_num = ('(-1' if real_l0 else ' (1') + \
                     ('-i' if imag_l0 else '+i')
                 sqrt_str = f'\t≅ {sqrt_num}){sqrt_dem}' if use_sqrt and (
-                    abs(amp.real)-abs(amp.real) < 1e-10) else ''
-                dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i"+sqrt_str
+                    abs(amp.real) - abs(amp.real) < 1e-10) else ''
+                dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i" + sqrt_str
             elif real:
                 sqrt_num = '  -1' if real_l0 else '   1'
                 sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}' if use_sqrt else ''
-                dump_str += f"{amp.real:9.6f}       "+sqrt_str
+                dump_str += f"{amp.real:9.6f}       " + sqrt_str
             else:
                 sqrt_num = '  -i' if imag_l0 else '   i'
                 sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}' if use_sqrt else ''
-                dump_str += f" {amp.imag:17.6f}i"+sqrt_str
+                dump_str += f" {amp.imag:17.6f}i" + sqrt_str
 
             return dump_str
 
@@ -591,13 +591,13 @@ class dump:
                 'Cannot calculate X, Y, and Z expected values from a dump with more than 1 qubit')
 
         def exp_x(alpha, beta):
-            return (beta.conjugate()*alpha+alpha.conjugate()*beta).real
+            return (beta.conjugate() * alpha + alpha.conjugate() * beta).real
 
         def exp_y(alpha, beta):
-            return (1j*beta.conjugate() * alpha-1j*alpha.conjugate()*beta).real
+            return (1j * beta.conjugate() * alpha - 1j * alpha.conjugate() * beta).real
 
         def exp_z(alpha, beta):
-            return pow(abs(alpha), 2)-pow(abs(beta), 2)
+            return pow(abs(alpha), 2) - pow(abs(beta), 2)
 
         alpha = 0
         beta = 0
@@ -729,7 +729,7 @@ def base_measure(qubits: quant) -> future:
     return [
         future(libket_future(
             process_top().measure(
-                *from_list_to_c_vector(qubits.qubits[i:min(i+63, size)]))
+                *from_list_to_c_vector(qubits.qubits[i:min(i + 63, size)]))
         )) for i in reversed(range(0, size, 63))
     ]
 
@@ -796,22 +796,22 @@ def base_H(qubits: quant):
 
 def base_S(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, pi/2, qubit)
+        process_top().apply_gate(PHASE, pi / 2, qubit)
 
 
 def base_SD(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, -pi/2, qubit)
+        process_top().apply_gate(PHASE, -pi / 2, qubit)
 
 
 def base_T(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, pi/4, qubit)
+        process_top().apply_gate(PHASE, pi / 4, qubit)
 
 
 def base_TD(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, -pi/4, qubit)
+        process_top().apply_gate(PHASE, -pi / 4, qubit)
 
 
 def base_phase(lambda_, qubits: quant):

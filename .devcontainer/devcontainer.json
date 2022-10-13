@@ -1,7 +1,7 @@
 {
 	"name": "Ket Dev",
 	"build": {
-		"dockerfile": "./Dockerfile"
+		"dockerfile": "../Dockerfile"
 	},
 	// Configure tool-specific properties.
 	"customizations": {
@@ -19,5 +19,9 @@
 			]
 		}
 	},
+	"workspaceMount": "",
+	"runArgs": [
+		"--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z"
+	],
 	"containerUser": "code"
 }

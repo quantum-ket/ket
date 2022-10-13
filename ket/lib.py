@@ -46,12 +46,12 @@ def qft(qubits: quant, invert: bool = True) -> quant:
         H(head)
         for i, ctrl_qubit in enumerate(tail):
             with control(ctrl_qubit):
-                phase(2*pi/2**(i+2), head)
+                phase(2 * pi / 2**(i + 2), head)
         qft(tail, invert=False)
 
     if invert:
-        for i in range(len(qubits)//2):
-            swap(qubits[i], qubits[len(qubits)-i-1])
+        for i in range(len(qubits) // 2):
+            swap(qubits[i], qubits[len(qubits) - i - 1])
         return qubits
     return reversed(qubits)
 
@@ -75,13 +75,13 @@ def dump_matrix(gate: Callable | list[Callable], size: int = 1) -> list[list[com
                 func(row)
         else:
             gate(row)
-        state = dump(column+row)
+        state = dump(column + row)
         exec_quantum()
 
     for state, amp in zip(state.states, state.amplitudes):
         column = state >> size
-        row = state & ((1 << size)-1)
-        mat[row][column] = amp*sqrt(2**size)
+        row = state & ((1 << size) - 1)
+        mat[row][column] = amp * sqrt(2**size)
 
     return mat
 
@@ -167,11 +167,11 @@ def w(qubits: quant | int) -> quant:  # pylint: disable=invalid-name
     size = len(qubits)
 
     X(qubits[0])
-    for i in range(size-1):
+    for i in range(size - 1):
         with control(qubits[i]):
             n = size - i  # pylint: disable=invalid-name
-            RY(2*asin(sqrt((n-1)/n)), qubits[i+1])
-        cnot(qubits[i+1], qubits[i])
+            RY(2 * asin(sqrt((n - 1) / n)), qubits[i + 1])
+        cnot(qubits[i + 1], qubits[i])
 
     return qubits
 

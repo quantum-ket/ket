@@ -15,7 +15,8 @@
 
 from math import pi
 from ..base import base_H, base_RX, base_RZ, base_X, base_Z
-from ..standard import ctrl, around, base_flipc
+from ..standard import ctrl, around
+from ..standard.ctrl import base_flipc
 
 # pylint: disable=missing-function-docstring, invalid-name
 
@@ -33,7 +34,7 @@ def base_swap(qubits_a, qubits_b):
 
 def base_RXX(theta, qubits_a, qubits_b):
     for qubit_a, qubit_b in zip(qubits_a, qubits_b):
-        with around([lambda a, b: base_H(a+b), base_cnot], qubit_a, qubit_b):
+        with around([lambda a, b: base_H(a + b), base_cnot], qubit_a, qubit_b):
             base_RZ(theta, qubit_b)
 
 
@@ -45,7 +46,7 @@ def base_RZZ(theta, qubits_a, qubits_b):
 
 def base_RYY(theta, qubits_a, qubits_b):
     for qubit_a, qubit_b in zip(qubits_a, qubits_b):
-        with around([lambda a, b: base_RX(pi/2, a+b), base_cnot], qubit_a, qubit_b):
+        with around([lambda a, b: base_RX(pi / 2, a + b), base_cnot], qubit_a, qubit_b):
             base_RZ(theta, qubit_b)
 
 

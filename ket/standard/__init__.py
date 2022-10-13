@@ -17,9 +17,9 @@ from __future__ import annotations
 from functools import reduce
 from operator import add
 from ..base import base_measure, quant, future, qc_int, base_X
-from ..preprocessor import _ket_if, _ket_next  # pylint: disable=no-name-in-module
-from .ctrl import *
-from .adj import *
+from ..preprocessor.statements import _ket_if, _ket_next  # pylint: disable=no-name-in-module
+from .ctrl import ctrl, control
+from .adj import around, adj, inverse
 
 __all__ = ['inverse', 'control', 'ctrl',
            'adj', 'around', 'measure', 'qc_int']

@@ -41,6 +41,6 @@ def pown(a: int, x: quant, N: int) -> quant:  # pylint: disable=invalid-name
     ret = quant(N.bit_length())
     base_X(ret[-1])
 
-    plugin('pown', f'{a} {N}', x+ret)
+    plugin('pown', f'{a} {N}', x + ret)
 
     return ret

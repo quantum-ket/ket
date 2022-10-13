@@ -24,8 +24,8 @@ from .base import __all__ as all_base
 from .standard import __all__ as all_standard
 from .process import __all__ as all_process
 
-
-__all__ = all_gate+all_import+all_base+all_standard+all_process
+__version__ = '0.4.4.dev0'
+__all__ = all_gate + all_import + all_base + all_standard + all_process
 
 from .import_ket import code_ket
 

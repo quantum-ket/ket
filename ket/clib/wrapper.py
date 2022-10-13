@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import *
+from ctypes import POINTER, c_uint8, c_size_t, c_int32, cdll, c_void_p
 import os
 
 
@@ -32,7 +32,7 @@ def from_u8_to_str(data, size):
 
 
 def from_list_to_c_vector(data):
-    return (c_void_p*len(data))(*(d._as_parameter_ for d in data)), len(data)
+    return (c_void_p * len(data))(*(d._as_parameter_ for d in data)), len(data)
 
 
 class clib_error(Exception):
@@ -56,7 +56,7 @@ class APIWrapper:
             size = c_size_t()
             error_msg = self.error_message(error_code, size)
             raise clib_error(
-                self.lib_name+': '+from_u8_to_str(error_msg, size), error_code)
+                self.lib_name + ': ' + from_u8_to_str(error_msg, size), error_code)
         elif len(out) == 1:
             return out[0]
         elif len(out) != 0:

@@ -18,14 +18,14 @@ from ..base import (base_H, base_phase, base_RX, base_RY, base_RZ,
                     base_S, base_SD, base_T, base_TD, base_X, base_Y, base_Z)
 from .quantum_gate import QuantumGate
 from ..standard.ctrl import base_flipc
-from .base_gates import *
+from .base_gates import base_cnot, base_phase_on, base_RXX, base_RZZ, base_RYY, base_swap
 
 __all__ = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SD', 'T', 'TD', 'phase', 'RX',
            'RY', 'RZ', 'cnot', 'swap', 'RXX', 'RYY', 'RZZ', 'flipc', 'phase_on']
 
 # pylint: disable=line-too-long
 
-I = QuantumGate(
+I = QuantumGate(  # noqa: E741
     name='Identity',
     gate=lambda q: q,
     doc={

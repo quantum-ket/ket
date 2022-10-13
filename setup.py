@@ -1,4 +1,4 @@
-from setuptools import setup, find_namespace_packages
+from setuptools import setup
 import os
 import shutil
 
@@ -43,38 +43,4 @@ def make_libs():
 
 make_libs()
 
-
-def long_description():
-    with open('README.md', 'r') as file:
-        return file.read()
-
-
-def version():
-    from ket.__version__ import __version__
-    return __version__
-
-
-setup(
-    name='ket-lang',
-    description='Ket Quantum Programming Language interpreter and library.',
-    url='https://quantumket.org',
-    version=version(),
-    author='Evandro Chagas Ribeiro da Rosa',
-    author_email='ev.crr97@gmail.com',
-    license='Apache-2.0',
-    long_description=long_description(),
-    long_description_content_type='text/markdown',
-    zip_safe=False,
-    include_package_data=True,
-    packages=find_namespace_packages(include=['ket', 'ket.*']),
-    python_requires='>=3.7',
-    classifiers=[
-        'Intended Audience :: Developers',
-        'Intended Audience :: Education',
-        'Intended Audience :: Science/Research',
-        'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3 :: Only',
-    ],
-    entry_points={'console_scripts': ['ket = ket.__main__:__ket__']},
-    setup_requires=['wheel'],
-)
+setup()
