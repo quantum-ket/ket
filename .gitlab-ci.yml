@@ -12,8 +12,9 @@ Build:
     - source scl_source enable rh-python38 || true
     - source scl_source enable rh-git227 || true
     - source /home/code/.cargo/env
-    - python -m build
-    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang-`cat ket/__version__.py | awk -F\' '{print $2}'`-py3-none-any.whl
+    - python setup.py sdist
+    - python setup.py bdist_wheel
+    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang*.whl
   artifacts:
     paths:
       - wheelhouse/ket_lang*.whl
