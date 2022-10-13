@@ -23,6 +23,7 @@ Build:
 Test:
   stage: test
   script:
+    - source scl_source enable rh-git227 || true
     - source scl_source enable rh-python38 || true
     - pip install -e .
     - flake8 ket
