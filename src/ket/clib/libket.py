@@ -14,9 +14,12 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import *
-from .wrapper import load_lib, os_lib_name
+from ctypes import (c_void_p, c_size_t, POINTER, c_bool, c_uint8,
+                    c_int32, c_uint64, c_int64, c_double, c_char)
 import weakref
+from os import environ
+from os.path import dirname
+from .wrapper import load_lib, os_lib_name
 
 EQ = 0
 NEQ = 1
@@ -75,7 +78,7 @@ API_argtypes = {
     'ket_process_allocate_qubit': ([c_void_p, c_bool], [c_void_p]),
     'ket_process_free_qubit': ([c_void_p, c_void_p, c_bool], []),
     'ket_process_apply_gate': ([c_void_p, c_int32, c_double, c_void_p], []),
-    'ket_process_apply_plugin': ([c_void_p, POINTER(c_char), POINTER(c_char), POINTER(c_void_p), c_size_t], []),
+    'ket_process_apply_plugin': ([c_void_p, POINTER(c_char), POINTER(c_char), POINTER(c_void_p), c_size_t], []),  # pylint: disable=C0301
     'ket_process_measure': ([c_void_p, POINTER(c_void_p), c_size_t], [c_void_p]),
     'ket_process_ctrl_push': ([c_void_p, POINTER(c_void_p), c_size_t], []),
     'ket_process_ctrl_pop': ([c_void_p], []),
@@ -120,21 +123,22 @@ API_argtypes = {
 
 
 def libket_path():
-    from os import environ, name
-    from os.path import dirname
+    """Get Libket path"""
 
     if "LIBKET_PATH" in environ:
-        libket_path = environ["LIBKET_PATH"]
+        path = environ["LIBKET_PATH"]
     else:
-        libket_path = f'{dirname(__file__)}/libs/{os_lib_name("ket")}'
+        path = f'{dirname(__file__)}/libs/{os_lib_name("ket")}'
 
-    return libket_path
+    return path
 
 
 API = load_lib('Libket', libket_path(), API_argtypes, 'ket_error_message')
 
 
-class process:
+class Process:
+    """Libket process"""
+
     def __init__(self, pid: int):
         self.pid = pid
         self._as_parameter_ = API['ket_process_new'](pid)
@@ -142,59 +146,67 @@ class process:
             self, API['ket_process_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_process_'+name](self, *args)
+        return lambda *args: API['ket_process_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'process' ({self.pid})>"
 
 
-class libket_qubit:
+class LibketQubit:
+    """Libket qubit type"""
+
     def __init__(self, addr: c_void_p):
         self._as_parameter_ = addr
         self._finalizer = weakref.finalize(
             self, API['ket_qubit_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_qubit_'+name](self, *args)
+        return lambda *args: API['ket_qubit_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'qubit' {self.pid().value, self.index().value}>"
 
 
-class libket_dump:
+class LibketDump:
+    """Libket dump type"""
+
     def __init__(self, addr: c_void_p):
         self._as_parameter_ = addr
         self._finalizer = weakref.finalize(
             self, API['ket_dump_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_dump_'+name](self, *args)
+        return lambda *args: API['ket_dump_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'dump' {self.pid().value, self.index().value}>"
 
 
-class libket_future:
+class LibketFuture:
+    """Libket future type"""
+
     def __init__(self, addr: c_void_p):
         self._as_parameter_ = addr
         self._finalizer = weakref.finalize(
             self, API['ket_future_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_future_'+name](self, *args)
+        return lambda *args: API['ket_future_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'future' {self.pid().value, self.index().value}>"
 
 
-class libket_label:
+class LibketLabel:
+    """Libket label type"""
+
     def __init__(self, addr: c_void_p):
         self._as_parameter_ = addr
         self._finalizer = weakref.finalize(
             self, API['ket_label_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_label_'+name](self, *args)
+        return lambda *args: API['ket_label_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'label' {self.pid().value, self.index().value}>"

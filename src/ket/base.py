@@ -15,7 +15,7 @@ from __future__ import annotations
 #  limitations under the License.
 
 from math import pi
-from .clib.libket import libket_dump, libket_future, libket_label, libket_qubit, process
+from .clib.libket import LibketDump, LibketFuture, LibketLabel, LibketQubit, Process
 from .clib.libket import (EQ, NEQ, GT, GEQ, LT, LEQ, ADD, SUB, MUL, DIV,
                           SLL, SRL, AND, OR, XOR, PAULI_X, PAULI_Y,
                           PAULI_Z, HADAMARD, PHASE, RX, RY, RZ)
@@ -84,15 +84,15 @@ class quant:
                  size: int = 1,
                  dirty: bool = False,
                  *,
-                 qubits: list[libket_qubit] | None = None):
+                 qubits: list[LibketQubit] | None = None):
         if qubits is not None:
             self.qubits = qubits
         else:
-            self.qubits = [libket_qubit(process_top().allocate_qubit(dirty))
+            self.qubits = [LibketQubit(process_top().allocate_qubit(dirty))
                            for _ in range(size)]
 
     def __add__(self, other: quant) -> quant:
-        return quant(qubits=self.qubits+other.qubits)
+        return quant(qubits=self.qubits + other.qubits)
 
     def at(self, index: list[int]) -> quant:
         r"""Return qubits at ``index``
@@ -234,7 +234,7 @@ class future:
 
     """
 
-    def __init__(self, value: int | libket_future):
+    def __init__(self, value: int | LibketFuture):
         if isinstance(value, int):
             self.base = qc_int(value).base
         else:
@@ -273,22 +273,22 @@ class future:
     def __add__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(ADD, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(ADD, self.base, other.base)))
 
     def __sub__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(SUB, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(SUB, self.base, other.base)))
 
     def __mul__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(MUL, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(MUL, self.base, other.base)))
 
     def __truediv__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(DIV, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(DIV, self.base, other.base)))
 
     def __floordiv__(self, other: future | int) -> future:
         return self.__truediv__(other)
@@ -296,96 +296,96 @@ class future:
     def __lshift__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(SLL, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(SLL, self.base, other.base)))
 
     def __rshift__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(SRL, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(SRL, self.base, other.base)))
 
     def __and__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(AND, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(AND, self.base, other.base)))
 
     def __xor__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(XOR, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(XOR, self.base, other.base)))
 
     def __or__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(OR, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(OR, self.base, other.base)))
 
     def __radd__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(ADD, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(ADD, other.base, self.base)))
 
     def __rsub__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(SUB, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(SUB, other.base, self.base)))
 
     def __rmul__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(MUL, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(MUL, other.base, self.base)))
 
     def __rtruediv__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(DIV, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(DIV, other.base, self.base)))
 
     def __rfloordiv__(self, other: future | int) -> future:
         return self.__rtruediv__(other)
 
     def __rlshift__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(SLL, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(SLL, other.base, self.base)))
 
     def __rrshift__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(SRL, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(SRL, other.base, self.base)))
 
     def __rand__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(AND, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(AND, other.base, self.base)))
 
     def __rxor__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(XOR, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(XOR, other.base, self.base)))
 
     def __ror__(self, other: future | int) -> future:
         other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(OR, other.base, self.base)))
+        return future(LibketFuture(process_top().add_int_op(OR, other.base, self.base)))
 
     def __lt__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(LT, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(LT, self.base, other.base)))
 
     def __le__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(LEQ, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(LEQ, self.base, other.base)))
 
     def __eq__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(EQ, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(EQ, self.base, other.base)))
 
     def __ne__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(NEQ, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(NEQ, self.base, other.base)))
 
     def __gt__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(GT, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(GT, self.base, other.base)))
 
     def __ge__(self, other: future | int) -> future:
         if not isinstance(other, future):
             other = qc_int(other)
-        return future(libket_future(process_top().add_int_op(GEQ, self.base, other.base)))
+        return future(LibketFuture(process_top().add_int_op(GEQ, self.base, other.base)))
 
     def __repr__(self):
         return f"<Ket 'future' {self.pid, self.index}>"
@@ -423,7 +423,7 @@ class dump:
     """
 
     def __init__(self, qubits: quant):
-        self.base = libket_dump(process_top().dump(
+        self.base = LibketDump(process_top().dump(
             *from_list_to_c_vector(qubits.qubits)))
         self.qubits = qubits
         self.size = len(qubits)
@@ -479,7 +479,7 @@ class dump:
         assert size.value == _size.value
 
         for i in range(size.value):
-            yield real[i]+imag[i]*1j
+            yield real[i] + imag[i] * 1j
 
     @property
     def probability(self) -> list[float]:
@@ -537,7 +537,7 @@ class dump:
             fmt = []
             count = 0
             for b, size in map(lambda f: (f[0], int(f[1:])), format_str.split(':')):
-                fmt.append((b, count, count+size))
+                fmt.append((b, count, count + size))
                 count += size
             if count < self.size:
                 fmt.append(('b', count, self.size))
@@ -557,8 +557,8 @@ class dump:
             imag = abs(amp.imag) > 1e-10
             imag_l0 = amp.imag < 0
 
-            sqrt_dem = 1/abs(amp)**2
-            use_sqrt = abs(round(sqrt_dem)-sqrt_dem) < .001
+            sqrt_dem = 1 / abs(amp)**2
+            use_sqrt = abs(round(sqrt_dem) - sqrt_dem) < .001
             sqrt_dem = f'/√{round(1/abs(amp)**2)}'
 
             if real and imag:
@@ -566,16 +566,16 @@ class dump:
                 sqrt_num = ('(-1' if real_l0 else ' (1') + \
                     ('-i' if imag_l0 else '+i')
                 sqrt_str = f'\t≅ {sqrt_num}){sqrt_dem}' if use_sqrt and (
-                    abs(amp.real)-abs(amp.real) < 1e-10) else ''
-                dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i"+sqrt_str
+                    abs(amp.real) - abs(amp.real) < 1e-10) else ''
+                dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i" + sqrt_str
             elif real:
                 sqrt_num = '  -1' if real_l0 else '   1'
                 sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}' if use_sqrt else ''
-                dump_str += f"{amp.real:9.6f}       "+sqrt_str
+                dump_str += f"{amp.real:9.6f}       " + sqrt_str
             else:
                 sqrt_num = '  -i' if imag_l0 else '   i'
                 sqrt_str = f'\t≅   {sqrt_num}{sqrt_dem}' if use_sqrt else ''
-                dump_str += f" {amp.imag:17.6f}i"+sqrt_str
+                dump_str += f" {amp.imag:17.6f}i" + sqrt_str
 
             return dump_str
 
@@ -591,13 +591,13 @@ class dump:
                 'Cannot calculate X, Y, and Z expected values from a dump with more than 1 qubit')
 
         def exp_x(alpha, beta):
-            return (beta.conjugate()*alpha+alpha.conjugate()*beta).real
+            return (beta.conjugate() * alpha + alpha.conjugate() * beta).real
 
         def exp_y(alpha, beta):
-            return (1j*beta.conjugate() * alpha-1j*alpha.conjugate()*beta).real
+            return (1j * beta.conjugate() * alpha - 1j * alpha.conjugate() * beta).real
 
         def exp_z(alpha, beta):
-            return pow(abs(alpha), 2)-pow(abs(beta), 2)
+            return pow(abs(alpha), 2) - pow(abs(beta), 2)
 
         alpha = 0
         beta = 0
@@ -640,7 +640,7 @@ class label:
     """Reference to a code block in the quantum code"""
 
     def __init__(self):
-        self.base = libket_label(process_top().get_label())
+        self.base = LibketLabel(process_top().get_label())
 
     @property
     def index(self) -> int:
@@ -662,27 +662,27 @@ class label:
 
 
 PROCESS_COUNT = 1
-PROCESS_STACK = [process(0)]
+PROCESS_STACK = [Process(0)]
 PROCESS_LAST = None
 
 
 def process_begin():
     global PROCESS_COUNT
-    PROCESS_STACK.append(process(PROCESS_COUNT))
+    PROCESS_STACK.append(Process(PROCESS_COUNT))
     PROCESS_COUNT += 1
 
 
-def process_end() -> process:
+def process_end() -> Process:
     global PROCESS_LAST
     PROCESS_LAST = PROCESS_STACK.pop()
     return PROCESS_LAST
 
 
-def process_top() -> process:
+def process_top() -> Process:
     return PROCESS_STACK[-1]
 
 
-def process_last() -> process:
+def process_last() -> Process:
     return PROCESS_LAST
 
 
@@ -716,7 +716,7 @@ def qc_int(value: int) -> future:
         value: Initial value.
     """
 
-    return future(libket_future(process_top().int_new(value)))
+    return future(LibketFuture(process_top().int_new(value)))
 
 
 def base_measure(qubits: quant) -> future:
@@ -725,11 +725,11 @@ def base_measure(qubits: quant) -> future:
 
     size = len(qubits)
     if size <= 64:
-        return future(libket_future(process_top().measure(*from_list_to_c_vector(qubits.qubits))))
+        return future(LibketFuture(process_top().measure(*from_list_to_c_vector(qubits.qubits))))
     return [
-        future(libket_future(
+        future(LibketFuture(
             process_top().measure(
-                *from_list_to_c_vector(qubits.qubits[i:min(i+63, size)]))
+                *from_list_to_c_vector(qubits.qubits[i:min(i + 63, size)]))
         )) for i in reversed(range(0, size, 63))
     ]
 
@@ -796,22 +796,22 @@ def base_H(qubits: quant):
 
 def base_S(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, pi/2, qubit)
+        process_top().apply_gate(PHASE, pi / 2, qubit)
 
 
 def base_SD(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, -pi/2, qubit)
+        process_top().apply_gate(PHASE, -pi / 2, qubit)
 
 
 def base_T(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, pi/4, qubit)
+        process_top().apply_gate(PHASE, pi / 4, qubit)
 
 
 def base_TD(qubits: quant):
     for qubit in qubits.qubits:
-        process_top().apply_gate(PHASE, -pi/4, qubit)
+        process_top().apply_gate(PHASE, -pi / 4, qubit)
 
 
 def base_phase(lambda_, qubits: quant):

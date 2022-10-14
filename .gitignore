@@ -4,6 +4,6 @@
 build
 dist
 **/target
-**/test*
 wheelhouse
 libs/
+.coverage

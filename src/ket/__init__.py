@@ -13,6 +13,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .statements import *
-from .statements import __all__
-from .transformer import ketpp
+from .gates import *
+from .import_ket import *
+from .base import *
+from .standard import *
+from .process import *
+from .gates import __all__ as all_gate
+from .import_ket import __all__ as all_import
+from .base import __all__ as all_base
+from .standard import __all__ as all_standard
+from .process import __all__ as all_process
+
+__version__ = '0.4.4.dev0'
+__all__ = all_gate + all_import + all_base + all_standard + all_process
+
+from .import_ket import code_ket
+
+from .base import set_quantum_execution_target, QUANTUM_EXECUTION_TARGET
+if QUANTUM_EXECUTION_TARGET is None:
+    from .clib.kbw import run_and_set_result
+    set_quantum_execution_target(run_and_set_result)

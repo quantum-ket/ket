@@ -22,25 +22,6 @@ You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To
 pip install ket-lang
 ```
 
-### Alternative Methods
-
-:warning: The following installation methods are not intended for general use.
-
-* [:penguin: **Linux only**] Install the latest development release from Gitlab CI:
-
-  ```shell
-  pip install "https://gitlab.com/quantum-ket/ket/-/jobs/artifacts/master/raw/wheelhouse/ket_lang-`wget -O- -q https://gitlab.com/quantum-ket/ket/-/raw/master/ket/__version__.py | awk -F\' '{print $2}'`-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl?job=wheelhouse"
-  ```
-* Install from git:
-  
-  Before proceeding, you must have [Rust](https://www.rust-lang.org/tools/install) and [Git](https://git-scm.com/) installed.  
-
-  ```shell
-  pip install git+https://gitlab.com/quantum-ket/ket.git
-  ```
-
-  :pencil: This installation method may work on unsupported architectures.
-
 ## Documentation :scroll:
 
 Documentation available at https://quantumket.org.
