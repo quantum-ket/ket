@@ -1,2 +1,2 @@
 include LICENSE
-recursive-include ket/clib/libs *
+recursive-include src/ket/clib/libs *

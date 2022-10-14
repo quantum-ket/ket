@@ -16,10 +16,10 @@
 # pylint: disable=unused-import, wildcard-import
 
 from .import_ket import _import_globals_ket
-from . import *
-from .base import label, branch, jump
-from .__version__ import __version__
-from .preprocessor import *
+from . import *  # noqa: F403, F401
+from . import __version__
+from .base import label, branch, jump  # noqa: F401
+from .preprocessor.statements import *  # noqa: F403, F401
 
 
 def __ket__():

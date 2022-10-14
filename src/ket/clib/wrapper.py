@@ -13,11 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import *
+from ctypes import POINTER, c_uint8, c_size_t, c_int32, cdll, c_void_p
 import os
 
 
 def os_lib_name(lib):
+    """Append the OS specific extensions to a lib name"""
+
     if os.name == 'nt':
         return f'{lib}.dll'
     if os.uname().sysname == 'Linux':
@@ -28,21 +30,29 @@ def os_lib_name(lib):
 
 
 def from_u8_to_str(data, size):
+    """Convert a unsigned char vector to a Python string"""
+
     return bytearray(data[:size.value]).decode()
 
 
 def from_list_to_c_vector(data):
-    return (c_void_p*len(data))(*(d._as_parameter_ for d in data)), len(data)
+    """Cast a Python list to a C vector"""
+
+    return (c_void_p * len(data))(*(d._as_parameter_ for d in data)), len(data)  # pylint: disable=W0212
 
 
-class clib_error(Exception):
+class CLibError(Exception):
+    """Error from C libs"""
+
     def __init__(self, message, error_code):
         self.error_code = error_code
         self.message = message
         super().__init__(self.message)
 
 
-class APIWrapper:
+class APIWrapper:  # pylint: disable=R0903
+    """C API wrapper"""
+
     def __init__(self, lib_name, c_call, output, error_message):
         self.lib_name = lib_name
         self.c_call = c_call
@@ -55,34 +65,36 @@ class APIWrapper:
         if error_code != 0:
             size = c_size_t()
             error_msg = self.error_message(error_code, size)
-            raise clib_error(
-                self.lib_name+': '+from_u8_to_str(error_msg, size), error_code)
-        elif len(out) == 1:
+            raise CLibError(
+                self.lib_name + ': ' + from_u8_to_str(error_msg, size), error_code)
+        if len(out) == 1:
             return out[0]
-        elif len(out) != 0:
+        if len(out) != 0:
             return out
+        return None
 
 
-def load_lib(lib_name, lib_path, API_argtypes, error_message):
+def load_lib(lib_name, lib_path, api_argtypes, error_message):
+    """Load clib"""
 
     lib = cdll.LoadLibrary(lib_path)
-    error_message = lib.__getattr__(error_message)
+    error_message = lib.__getattr__(error_message)  # pylint: disable=C2801
     error_message.argtypes = [c_int32, POINTER(c_size_t)]
     error_message.restype = POINTER(c_uint8)
 
-    API = {}
-    for name in API_argtypes:
-        c_call = lib.__getattr__(name)
+    api = {}
+    for name in api_argtypes:
+        c_call = lib.__getattr__(name)  # pylint: disable=C2801
         c_call.argtypes = [
-            *API_argtypes[name][0],
-            *[POINTER(t) for t in API_argtypes[name][1]]
+            *api_argtypes[name][0],
+            *[POINTER(t) for t in api_argtypes[name][1]]
         ]
 
-        API[name] = APIWrapper(
+        api[name] = APIWrapper(
             lib_name,
             c_call,
-            API_argtypes[name][1],
+            api_argtypes[name][1],
             error_message
         )
 
-    return API
+    return api

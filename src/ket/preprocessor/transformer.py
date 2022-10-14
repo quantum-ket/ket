@@ -35,13 +35,13 @@ class ketpp (ast.NodeTransformer):
         self.generic_visit(node)
         node_cp = copy.deepcopy(node)
 
-        _test_name = '_ket_temp_if_test'+str(if_id)
+        _test_name = '_ket_temp_if_test' + str(if_id)
         test_name = ast.Name(id=_test_name, ctx=ast.Load())
 
-        end_name = '_ket_tmp_if_end'+str(if_id)
+        end_name = '_ket_tmp_if_end' + str(if_id)
         else_name = None
         if node.orelse:
-            else_name = '_ket_tmp_if_else'+str(if_id)
+            else_name = '_ket_tmp_if_else' + str(if_id)
             if_begin = ast.Assign(
                 targets=[
                     ast.Tuple(
@@ -117,13 +117,13 @@ class ketpp (ast.NodeTransformer):
         while_id = self.id_count
         self.id_count += 1
 
-        begin_name = '_ket_tmp_while_begin'+str(while_id)
-        loop_name = '_ket_tmp_while_loop'+str(while_id)
-        end_name = '_ket_tmp_while_end'+str(while_id)
+        begin_name = '_ket_tmp_while_begin' + str(while_id)
+        loop_name = '_ket_tmp_while_loop' + str(while_id)
+        end_name = '_ket_tmp_while_end' + str(while_id)
         else_name = None
         self.while_end = end_name
         if node.orelse:
-            else_name = '_ket_tmp_while_else'+str(while_id)
+            else_name = '_ket_tmp_while_else' + str(while_id)
             while_begin = ast.Assign(
                 targets=[
                     ast.Tuple(
@@ -154,7 +154,7 @@ class ketpp (ast.NodeTransformer):
                 )
             )
 
-        test_name = '_ket_while_test'+str(while_id)
+        test_name = '_ket_while_test' + str(while_id)
         test_assing = ast.Assign(
             targets=[ast.Name(id=test_name, ctx=ast.Store())],
             value=node.test
@@ -201,7 +201,7 @@ class ketpp (ast.NodeTransformer):
 
         self.generic_visit(node_cp)
 
-        ndone_name = '_ket_tmp_while_ndone'+str(while_id)
+        ndone_name = '_ket_tmp_while_ndone' + str(while_id)
 
         if_not_future = ast.If(
             test=ast.Name(id=test_name, ctx=ast.Load()),

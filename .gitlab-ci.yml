@@ -2,22 +2,33 @@ image: registry.gitlab.com/quantum-ket/ket
 
 stages:
   - build
-  - deploy
   - test
+  - deploy
 
-wheelhouse:
+Build:
   stage: build
   script:
     - source scl_source enable devtoolset-10 || true
     - source scl_source enable rh-python38 || true
     - source scl_source enable rh-git227 || true
     - source /home/code/.cargo/env
-    - python -m build
-    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang-`cat ket/__version__.py | awk -F\' '{print $2}'`-py3-none-any.whl
+    - python setup.py sdist
+    - python setup.py bdist_wheel
+    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang*.whl
   artifacts:
     paths:
       - wheelhouse/ket_lang*.whl
       - dist/ket-lang*.tar.gz
+
+Test:
+  stage: test
+  script:
+    - source scl_source enable rh-git227 || true
+    - source scl_source enable rh-python38 || true
+    - pip install wheelhouse/ket_lang*.whl --user
+    - flake8 src/ket
+    - pylint --disable=C0114 src/ket
+    - pytest
 
 PyPI:
   stage: deploy
