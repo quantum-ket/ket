@@ -30,14 +30,13 @@ def make_libs():
 
     os.chdir("../..")
     try:
-        os.mkdir("ket/clib/libs")
+        os.mkdir("src/ket/clib/libs")
     except FileExistsError:
         pass
 
-    print(os.getcwd())
     for dir, lib in libs():
         src = f"libs/{dir}/target/release/{lib}"
-        dst = "ket/clib/libs/"+lib
+        dst = "src/ket/clib/libs/"+lib
         shutil.copy(src, dst)
 
 
