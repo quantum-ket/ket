@@ -235,3 +235,7 @@ When using Ket for research projects, please cite:
    keywords = {Quantum programming, cloud quantum computation, qubit simulation}
 }
 ```
+
+## Community :family:
+
+Join the conversation on our [Discord](https://discord.gg/XkXvwRQ9aa).
