@@ -78,7 +78,7 @@ def load_lib(lib_name, lib_path, api_argtypes, error_message):
     """Load clib"""
 
     lib = cdll.LoadLibrary(lib_path)
-    error_message = lib.error_message
+    error_message = lib.__getattr__('error_message')  # pylint: disable=C2801
     error_message.argtypes = [c_int32, POINTER(c_size_t)]
     error_message.restype = POINTER(c_uint8)
 
