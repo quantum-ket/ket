@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Added `set_process_features` function.
+- Libket updated: Dump types Probability and Shots added;
+
 ## 0.4.3
 
 - Added macOS support.

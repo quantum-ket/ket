@@ -15,7 +15,7 @@ from __future__ import annotations
 #  limitations under the License.
 
 from math import pi
-from .clib.libket import LibketDump, LibketFuture, LibketLabel, LibketQubit, Process
+from .clib.libket import LibketDump, LibketFuture, LibketLabel, LibketQubit, Process, Features
 from .clib.libket import (EQ, NEQ, GT, GEQ, LT, LEQ, ADD, SUB, MUL, DIV,
                           SLL, SRL, AND, OR, XOR, PAULI_X, PAULI_Y,
                           PAULI_Z, HADAMARD, PHASE, RX, RY, RZ)
@@ -665,10 +665,16 @@ PROCESS_COUNT = 1
 PROCESS_STACK = [Process(0)]
 PROCESS_LAST = None
 
+FEATURES = None
+
 
 def process_begin():
     global PROCESS_COUNT
     PROCESS_STACK.append(Process(PROCESS_COUNT))
+
+    if FEATURES != None:
+        process_top().set_features(FEATURES)
+
     PROCESS_COUNT += 1
 
 
@@ -684,6 +690,28 @@ def process_top() -> Process:
 
 def process_last() -> Process:
     return PROCESS_LAST
+
+
+def set_process_features(*, allow_dirty_qubits: bool = True,
+                         allow_free_qubits: bool = True,
+                         valid_after_measure: bool = True,
+                         classical_control_flow: bool = True,
+                         allow_dump: bool = True,
+                         continue_after_dump: bool = True):
+    """Disable and enable process features"""
+
+    global FEATURES
+
+    FEATURES = Features(
+        allow_dirty_qubits=allow_dirty_qubits,
+        allow_free_qubits=allow_free_qubits,
+        valid_after_measure=valid_after_measure,
+        classical_control_flow=classical_control_flow,
+        allow_dump=allow_dump,
+        continue_after_dump=continue_after_dump,
+    )
+
+    process_top().set_features(FEATURES)
 
 
 QUANTUM_EXECUTION_TARGET = None

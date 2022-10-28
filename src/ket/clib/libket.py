@@ -14,7 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import (c_void_p, c_size_t, POINTER, c_bool, c_uint8,
+from ctypes import (c_char_p, c_uint32, c_void_p, c_size_t, POINTER, c_bool, c_uint8,
                     c_int32, c_uint64, c_int64, c_double, c_char)
 import weakref
 from os import environ
@@ -66,7 +66,12 @@ UNDEFINED_DATA_TYPE = 15
 UNDEFINED_GATE = 16
 UNEXPECTED_RESULT_DATA = 17
 UNMATCHED_PID = 18
-UNDEFINED_ERROR = 19
+DIRTY_NOT_ALLOWED = 19
+DUMP_NOT_ALLOWED = 20
+FREE_NOT_ALLOWED = 21
+PLUGIN_NOT_REGISTERED = 22
+CONTROL_FLOW_NOT_ALLOWED = 23
+UNDEFINED_ERROR = 24
 
 JSON = 0
 BIN = 1
@@ -75,6 +80,7 @@ API_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
     'ket_process_new': ([c_size_t], [c_void_p]),
     'ket_process_delete': ([c_void_p], []),
+    'ket_process_set_features': ([c_void_p, c_void_p], []),
     'ket_process_allocate_qubit': ([c_void_p, c_bool], [c_void_p]),
     'ket_process_free_qubit': ([c_void_p, c_void_p, c_bool], []),
     'ket_process_apply_gate': ([c_void_p, c_int32, c_double, c_void_p], []),
@@ -100,6 +106,11 @@ API_argtypes = {
     'ket_process_get_serialized_metrics': ([c_void_p], [POINTER(c_uint8), c_size_t, c_int32]),
     'ket_process_get_serialized_quantum_code': ([c_void_p], [POINTER(c_uint8), c_size_t, c_int32]),
     'ket_process_set_serialized_result': ([c_void_p, POINTER(c_uint8), c_size_t, c_int32], []),
+    'ket_features_new': ([c_bool, c_bool, c_bool, c_bool, c_bool, c_bool], [c_void_p]),
+    'ket_features_delete': ([c_void_p], []),
+    'ket_features_all': ([], [c_void_p]),
+    'ket_features_none': ([], [c_void_p]),
+    'ket_features_register_plugin': ([c_void_p, POINTER(c_char)], []),
     'ket_qubit_delete': ([c_void_p], []),
     'ket_qubit_index': ([c_void_p], [c_size_t]),
     'ket_qubit_pid': ([c_void_p], [c_size_t]),
@@ -110,6 +121,11 @@ API_argtypes = {
     'ket_dump_state': ([c_void_p, c_size_t], [POINTER(c_uint64), c_size_t]),
     'ket_dump_amplitudes_real': ([c_void_p], [POINTER(c_double), c_size_t]),
     'ket_dump_amplitudes_imag': ([c_void_p], [POINTER(c_double), c_size_t]),
+    'ket_dump_probabilities': ([c_void_p], [POINTER(c_double), c_size_t]),
+    'ket_dump_count': ([c_void_p], [POINTER(c_uint32), c_size_t]),
+    'ket_dump_count': ([c_void_p], [POINTER(c_uint32), c_size_t]),
+    'ket_dump_total': ([c_void_p], [c_uint64]),
+    'ket_dump_type': ([c_void_p], [c_uint32]),
     'ket_dump_available': ([c_void_p], [c_bool]),
     'ket_future_delete': ([c_void_p], []),
     'ket_future_value': ([c_void_p], [c_int64]),
@@ -150,6 +166,34 @@ class Process:
 
     def __repr__(self) -> str:
         return f"<Libket 'process' ({self.pid})>"
+
+
+class Features:
+    """Libket features"""
+
+    def __init__(self, *,
+                 allow_dirty_qubits: bool = True,
+                 allow_free_qubits: bool = True,
+                 valid_after_measure: bool = True,
+                 classical_control_flow: bool = True,
+                 allow_dump: bool = True,
+                 continue_after_dump: bool = True):
+        self._as_parameter_ = API['ket_features_new'](
+            allow_dirty_qubits,
+            allow_free_qubits,
+            valid_after_measure,
+            classical_control_flow,
+            allow_dump,
+            continue_after_dump
+        )
+        self._finalizer = weakref.finalize(
+            self, API['ket_features_delete'], self._as_parameter_)
+
+    def __getattr__(self, name: str):
+        return lambda *args: API['ket_process_' + name](self, *args)
+
+    def __repr__(self) -> str:
+        return f"<Libket 'features'>"
 
 
 class LibketQubit:
