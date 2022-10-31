@@ -14,7 +14,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .base import set_quantum_execution_target
+from .base import set_quantum_execution_target, set_process_features
 from .clib.kbw import run_and_set_result, set_sim_mode_dense, set_sim_mode_sparse
 
 
@@ -22,6 +22,7 @@ def use_sparse():
     """Set KBW Sparse as quantum execution target"""
 
     set_sim_mode_sparse()
+    set_process_features(plugins=['pown'])
     set_quantum_execution_target(run_and_set_result)
 
 
@@ -29,4 +30,5 @@ def use_dense():
     """Set KBW Dense as quantum execution target"""
 
     set_sim_mode_dense()
+    set_process_features(plugins=['pown'])
     set_quantum_execution_target(run_and_set_result)

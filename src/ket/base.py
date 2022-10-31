@@ -14,11 +14,12 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from math import pi
+from math import pi, sqrt
+from random import Random
 from .clib.libket import LibketDump, LibketFuture, LibketLabel, LibketQubit, Process, Features
 from .clib.libket import (EQ, NEQ, GT, GEQ, LT, LEQ, ADD, SUB, MUL, DIV,
                           SLL, SRL, AND, OR, XOR, PAULI_X, PAULI_Y,
-                          PAULI_Z, HADAMARD, PHASE, RX, RY, RZ)
+                          PAULI_Z, HADAMARD, PHASE, RX, RY, RZ, DUMP_SHOTS, DUMP_VECTOR, DUMP_PROBABILITY)
 
 
 from .clib.wrapper import from_list_to_c_vector
@@ -428,6 +429,12 @@ class dump:
         self.qubits = qubits
         self.size = len(qubits)
         self._state = None
+        self._type = None
+
+    def _exec(self):
+        if not self.available:
+            exec_quantum()
+        self._type = self.base.type().value
 
     def get_quantum_state(self) -> dict[int, complex]:
         """Get the quantum state
@@ -458,8 +465,7 @@ class dump:
     def states(self) -> list[int]:
         """List of basis states"""
 
-        if not self.base.available().value:
-            exec_quantum()
+        self._exec()
 
         size = self.base.states_size().value
 
@@ -471,22 +477,65 @@ class dump:
     def amplitudes(self) -> list[complex]:
         """List of probability amplitudes"""
 
-        if not self.available:
-            exec_quantum()
+        self._exec()
 
-        real, size = self.base.amplitudes_real()
-        imag, _size = self.base.amplitudes_imag()
-        assert size.value == _size.value
+        if self._type == DUMP_VECTOR:
+            real, size = self.base.amplitudes_real()
+            imag, _size = self.base.amplitudes_imag()
+            assert size.value == _size.value
 
-        for i in range(size.value):
-            yield real[i] + imag[i] * 1j
+            for i in range(size.value):
+                yield real[i] + imag[i] * 1j
+        else:
+            for prob in self.probabilities:
+                yield complex(sqrt(prob))
 
     @property
-    def probability(self) -> list[float]:
-        """List of measurement probability"""
+    def probabilities(self) -> list[float]:
+        """List of measurement probabilities"""
 
-        for amp in self.amplitudes:
-            yield abs(amp)**2
+        self._exec()
+
+        if self._type == DUMP_PROBABILITY:
+            prob, size = self.base.probabilities()
+            for i in range(size.value):
+                yield prob[i]
+        elif self._type == DUMP_VECTOR:
+            for amp in self.amplitudes:
+                yield abs(amp**2)
+        elif self._type == DUMP_SHOTS:
+            total = self.base.total().value
+            count, size = self.base.count()
+            for i in range(size.value):
+                yield count[i] / total
+
+    def get_shots(self, shots=4096, seed=None) -> dict[int, int]:
+        """Get the quantum execution shots
+
+        If the dump variable does not hold the result of shots execution,
+        the parameters `shots` and `seed` are used to generate the sample.
+
+        Args:
+            shots: Number of shots (used if the dump does not store the result of shots execution)
+            seed: Seed for the RNG (used if the dump does not store the result of shots execution)
+        """
+        self._exec()
+
+        if self._type == DUMP_SHOTS:
+            count, _ = self.base.count()
+            return {state: count[i] for i, state in enumerate(self.states)}
+
+        rng = Random(seed)
+        shots = rng.choices(list(self.states), list(self.probabilities), k=shots)
+        result = {}
+        for state in shots:
+            if state not in result:
+                result[state] = 1
+            else:
+                result[state] += 1
+        return result
+
+    shots = property(get_shots)
 
     def show(self, format_str: str | None = None) -> str:
         r"""Return the quantum state as a string
@@ -697,7 +746,8 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
                          valid_after_measure: bool = True,
                          classical_control_flow: bool = True,
                          allow_dump: bool = True,
-                         continue_after_dump: bool = True):
+                         continue_after_dump: bool = True,
+                         plugins=[]):
     """Disable and enable process features"""
 
     global FEATURES
@@ -710,6 +760,9 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
         allow_dump=allow_dump,
         continue_after_dump=continue_after_dump,
     )
+
+    for plugin in plugins:
+        FEATURES.register_plugin(plugin.encode())
 
     process_top().set_features(FEATURES)
 

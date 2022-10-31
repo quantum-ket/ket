@@ -76,6 +76,10 @@ UNDEFINED_ERROR = 24
 JSON = 0
 BIN = 1
 
+DUMP_VECTOR = 0
+DUMP_PROBABILITY = 1
+DUMP_SHOTS = 2
+
 API_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
     'ket_process_new': ([c_size_t], [c_void_p]),
@@ -122,7 +126,6 @@ API_argtypes = {
     'ket_dump_amplitudes_real': ([c_void_p], [POINTER(c_double), c_size_t]),
     'ket_dump_amplitudes_imag': ([c_void_p], [POINTER(c_double), c_size_t]),
     'ket_dump_probabilities': ([c_void_p], [POINTER(c_double), c_size_t]),
-    'ket_dump_count': ([c_void_p], [POINTER(c_uint32), c_size_t]),
     'ket_dump_count': ([c_void_p], [POINTER(c_uint32), c_size_t]),
     'ket_dump_total': ([c_void_p], [c_uint64]),
     'ket_dump_type': ([c_void_p], [c_uint32]),
@@ -190,7 +193,7 @@ class Features:
             self, API['ket_features_delete'], self._as_parameter_)
 
     def __getattr__(self, name: str):
-        return lambda *args: API['ket_process_' + name](self, *args)
+        return lambda *args: API['ket_features_' + name](self, *args)
 
     def __repr__(self) -> str:
         return f"<Libket 'features'>"

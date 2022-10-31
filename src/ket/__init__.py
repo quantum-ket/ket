@@ -29,7 +29,7 @@ __all__ = all_gate + all_import + all_base + all_standard + all_process
 
 from .import_ket import code_ket
 
-from .base import set_quantum_execution_target, QUANTUM_EXECUTION_TARGET
+from .base import QUANTUM_EXECUTION_TARGET
 if QUANTUM_EXECUTION_TARGET is None:
-    from .clib.kbw import run_and_set_result
-    set_quantum_execution_target(run_and_set_result)
+    from .kbw import use_sparse
+    use_sparse()
