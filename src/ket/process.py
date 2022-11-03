@@ -16,12 +16,14 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from ket.base import process_begin, process_end, process_top, process_last, exec_quantum, set_process_features
+from ket.base import (process_begin, process_end, process_top,
+                      process_last, exec_quantum, set_process_features)
 from ket.clib.libket import JSON
 from ket.clib.wrapper import from_u8_to_str
 
-__all__ = ['run', 'quantum_metrics', 'quantum_metrics_last', 'quantum_code_last',
-           'quantum_code', 'quantum_exec_time', 'quantum_exec_timeout', 'exec_quantum', 'set_process_features']
+__all__ = ['run', 'quantum_metrics', 'quantum_metrics_last',
+           'quantum_code_last', 'quantum_code', 'quantum_exec_time',
+           'quantum_exec_timeout', 'exec_quantum', 'set_process_features']
 
 
 def quantum_metrics() -> dict[str, Any]:

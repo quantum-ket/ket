@@ -14,7 +14,7 @@ from __future__ import annotations
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from ctypes import (c_char_p, c_uint32, c_void_p, c_size_t, POINTER, c_bool, c_uint8,
+from ctypes import (c_uint32, c_void_p, c_size_t, POINTER, c_bool, c_uint8,
                     c_int32, c_uint64, c_int64, c_double, c_char)
 import weakref
 from os import environ
@@ -198,7 +198,7 @@ class Features:
         return lambda *args: API['ket_features_' + name](self, *args)
 
     def __repr__(self) -> str:
-        return f"<Libket 'features'>"
+        return "<Libket 'features'>"
 
 
 class LibketQubit:

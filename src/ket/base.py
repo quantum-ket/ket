@@ -19,7 +19,8 @@ from random import Random
 from .clib.libket import LibketDump, LibketFuture, LibketLabel, LibketQubit, Process, Features
 from .clib.libket import (EQ, NEQ, GT, GEQ, LT, LEQ, ADD, SUB, MUL, DIV,
                           SLL, SRL, AND, OR, XOR, PAULI_X, PAULI_Y,
-                          PAULI_Z, HADAMARD, PHASE, RX, RY, RZ, DUMP_SHOTS, DUMP_VECTOR, DUMP_PROBABILITY)
+                          PAULI_Z, HADAMARD, PHASE, RX, RY, RZ,
+                          DUMP_SHOTS, DUMP_VECTOR, DUMP_PROBABILITY)
 
 
 from .clib.wrapper import from_list_to_c_vector
@@ -721,7 +722,7 @@ def process_begin():
     global PROCESS_COUNT
     PROCESS_STACK.append(Process(PROCESS_COUNT))
 
-    if FEATURES != None:
+    if FEATURES is not None:
         process_top().set_features(FEATURES)
 
     PROCESS_COUNT += 1
@@ -748,7 +749,7 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
                          allow_dump: bool = True,
                          allow_measure: bool = True,
                          continue_after_dump: bool = True,
-                         plugins=[]):
+                         plugins: list[str] | None = None):
     """Disable and enable process features"""
 
     global FEATURES
@@ -763,8 +764,9 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
         continue_after_dump=continue_after_dump,
     )
 
-    for plugin in plugins:
-        FEATURES.register_plugin(plugin.encode())
+    if plugins is not None:
+        for name in plugins:
+            FEATURES.register_plugin(name.encode())
 
     process_top().set_features(FEATURES)
 
