@@ -46,7 +46,7 @@ BUILDINS = \
     """
 from ket import *
 from ket.base import label, branch, jump
-from ket.preprocessor import *
+from ket.preprocessor.statements import *
 """
 
 

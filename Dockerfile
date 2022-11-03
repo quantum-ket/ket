@@ -9,7 +9,7 @@ COPY requirements_dev.txt .
 RUN yum install centos-release-scl -y
 RUN yum install devtoolset-10-gcc rh-python38 rh-git227 sudo zsh -y
 RUN source scl_source enable rh-python38 && \
-    pip install auditwheel patchelf && \
+    pip install auditwheel patchelf setuptools -U && \
     pip install -r requirements_dev.txt
 RUN echo "#!/bin/bash" > /etc/profile.d/enable_scl_all.sh && \
     echo "source scl_source enable devtoolset-10" >> /etc/profile.d/enable_scl_all.sh && \

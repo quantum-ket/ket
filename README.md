@@ -188,19 +188,13 @@ Setup for Ket development:
 ```shell
 git clone https://gitlab.com/quantum-ket/ket.git
 cd ket
-python setup.py build
+pip install -e . --user
 ```
 
 If you are using [VS Code](https://code.visualstudio.com/), Ket has a [Dev Container](https://code.visualstudio.com/docs/remote/containers) :whale:.
 
 ## Roadmap :notebook_with_decorative_cover:
 
-* [ ] Sample shots from dump variable.
-* [ ] Create dump from quantum execution shots.
-* [ ] Allow disabling some Ket features to verify quantum execution restriction at the classical runtime.
-  * [ ] Use qubit after measurement.
-  * [ ] Dump in the middle of the execution.
-  * [ ] Classical control flow and binary operations.
 * [ ] Quantum gate decomposition.
 * [ ] Quantum code optimization.
 * [ ] Quantum circuit visualization.

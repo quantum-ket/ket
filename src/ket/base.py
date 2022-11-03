@@ -746,6 +746,7 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
                          valid_after_measure: bool = True,
                          classical_control_flow: bool = True,
                          allow_dump: bool = True,
+                         allow_measure: bool = True,
                          continue_after_dump: bool = True,
                          plugins=[]):
     """Disable and enable process features"""
@@ -758,6 +759,7 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
         valid_after_measure=valid_after_measure,
         classical_control_flow=classical_control_flow,
         allow_dump=allow_dump,
+        allow_measure=allow_measure,
         continue_after_dump=continue_after_dump,
     )
 
