@@ -11,7 +11,7 @@ Build:
     - source scl_source enable devtoolset-7 || true
     - source scl_source enable rh-python38 || true
     - source scl_source enable rh-git227 || true
-    - source /home/code/.cargo/env
+    - source /home/quantum/.cargo/env
     - python setup.py sdist
     - python setup.py bdist_wheel
     - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang*.whl
