@@ -1,4 +1,4 @@
-image: registry.gitlab.com/quantum-ket/ket
+image: registry.gitlab.com/quantum-ket/devcontainer
 
 stages:
   - build
@@ -8,7 +8,7 @@ stages:
 Build:
   stage: build
   script:
-    - source scl_source enable devtoolset-10 || true
+    - source scl_source enable devtoolset-7 || true
     - source scl_source enable rh-python38 || true
     - source scl_source enable rh-git227 || true
     - source /home/code/.cargo/env

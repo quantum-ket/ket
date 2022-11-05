@@ -1,8 +1,6 @@
 {
 	"name": "Ket Dev",
-	"build": {
-		"dockerfile": "../Dockerfile"
-	},
+	"image": "registry.gitlab.com/quantum-ket/devcontainer",
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.
@@ -25,5 +23,5 @@
 	"runArgs": [
 		"--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z"
 	],
-	"containerUser": "code"
+	"containerUser": "quantum"
 }
