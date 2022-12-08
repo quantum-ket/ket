@@ -44,18 +44,18 @@ def qft(qubits: quant, invert: bool = True) -> quant:
     else:
         *head, tail = qubits
         H(tail)
-        for i, c in enumerate(reversed(head)):
-            with control(c):
+        for i, ctrl_qubit in enumerate(reversed(head)):
+            with control(ctrl_qubit):
                 phase(-pi / 2**(i + 1), tail)
         qft(head, invert=False)
 
     if invert:
-        n = len(qubits)
-        for i in range(n // 2):
-            swap(qubits[i], qubits[n - i - 1])
+        size = len(qubits)
+        for i in range(size // 2):
+            swap(qubits[i], qubits[size - i - 1])
         return qubits
-    else:
-        return reversed(qubits)
+
+    return reversed(qubits)
 
 
 def dump_matrix(gate: Callable | list[Callable], size: int = 1) -> list[list[complex]]:
