@@ -1,5 +1,5 @@
 from __future__ import annotations
-#  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
+#  Copyright 2020, 2023 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -608,7 +608,8 @@ class dump:
             imag_l0 = amp.imag < 0
 
             sqrt_dem = 1 / abs(amp)**2
-            use_sqrt = abs(round(sqrt_dem) - sqrt_dem) < .001
+            use_sqrt = ((abs(round(sqrt_dem) - sqrt_dem) < .001)
+                        and ((abs(abs(amp.real) - abs(amp.imag)) < 1e-6) or (real != imag)))
             sqrt_dem = f'/√{round(1/abs(amp)**2)}'
 
             if real and imag:

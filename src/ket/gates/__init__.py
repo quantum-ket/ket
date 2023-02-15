@@ -1,5 +1,5 @@
 from __future__ import annotations
-#  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
+#  Copyright 2020, 2023 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
