@@ -1,4 +1,5 @@
-#  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
+from __future__ import annotations
+#  Copyright 2020, 2023 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +17,7 @@
 from ctypes import c_uint8, c_void_p, c_size_t, POINTER, c_int32
 from os import environ
 from os.path import dirname
+from random import Random
 import json
 from .libket import JSON
 from .wrapper import load_lib, from_u8_to_str, os_lib_name
@@ -46,6 +48,8 @@ API = load_lib('KBW', kbw_path(), API_argtypes, 'kbw_error_message')
 
 SIM_MODE = None
 
+RNG = Random()
+
 
 def set_sim_mode_dense():
     """Set simulator mode to DENSE"""
@@ -61,8 +65,33 @@ def set_sim_mode_sparse():
     SIM_MODE = SPARSE
 
 
+def set_seed(seed):
+    """Initialize the simulator RNG"""
+
+    global RNG  # pylint: disable=W0603
+    RNG = Random(seed)
+
+
+def set_dump_type(dump_type: str, shots: int | None = None):
+    """Set the simulator dump type
+
+    Args:
+        dump_type: must be "vector", "probability", or "shots"
+        shots: select the number of shots if `dump_type` is "shots"
+    """
+
+    if dump_type not in ["vector", "probability", "shots"]:
+        raise ValueError('parameter "dump_type" must be "vector", "probability", or "shots"')
+
+    environ['KBW_DUMP_TYPE'] = dump_type
+    if shots is not None:
+        environ['KBW_SHOTS'] = str(int(shots))
+
+
 def run_and_set_result(process):
     """Execute quantum code from process"""
+
+    environ['KBW_SEED'] = str(RNG.randint(0, (1 << 64) - 1))
 
     if SIM_MODE is None and 'KBW_MODE' in environ:
         sim_mode = environ['KBW_MODE'].upper()

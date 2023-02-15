@@ -1,9 +1,17 @@
 # Changelog
 
+## 0.5.1
+
+- KBW updated: Dump type selection and RNG seed added.
+
+## 0.5.0.1
+
+- Fixed `lib.qft`.
+
 ## 0.5.0
 
 - Added `set_process_features` function.
-- Libket updated: Dump types Probability and Shots added;
+- Libket updated: Dump types Probability and Shots added.
 
 ## 0.4.3
 
@@ -72,3 +80,9 @@
 ## 0.1.1
 
 - Changed from Boost.Program_options (Libket, C++) to argparse (Python) to fix segmentation fault with flag `-h`.
+
+## 0.1
+
+- First release. For more information on the design of the Kit see:
+  - <https://doi.org/10.1145/3474224>
+  - <https://repositorio.ufsc.br/handle/123456789/229874>

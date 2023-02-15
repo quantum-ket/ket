@@ -1,5 +1,5 @@
 
-#  Copyright 2020, 2021 Evandro Chagas Ribeiro da Rosa <evandro.crr@posgrad.ufsc.br>
+#  Copyright 2020, 2023 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,10 @@
 #  limitations under the License.
 
 from .base import set_quantum_execution_target, set_process_features
-from .clib.kbw import run_and_set_result, set_sim_mode_dense, set_sim_mode_sparse
+from .clib.kbw import (run_and_set_result, set_sim_mode_dense,
+                       set_sim_mode_sparse, set_seed, set_dump_type)
+
+__all__ = ['use_sparse', 'use_dense', 'set_seed', 'set_dump_type']
 
 
 def use_sparse():
