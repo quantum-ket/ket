@@ -46,7 +46,7 @@ def qft(qubits: quant, invert: bool = True) -> quant:
         H(tail)
         for i, ctrl_qubit in enumerate(reversed(head)):
             with control(ctrl_qubit):
-                phase(-pi / 2**(i + 1), tail)
+                phase(pi / 2**(i + 1), tail)
         qft(head, invert=False)
 
     if invert:
