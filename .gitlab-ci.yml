@@ -1,11 +1,10 @@
-image: registry.gitlab.com/quantum-ket/devcontainer
-
 stages:
   - build
   - test
   - deploy
 
 Build:
+  image: registry.gitlab.com/quantum-ket/devcontainer
   stage: build
   script:
     - source scl_source enable devtoolset-7 || true
@@ -21,19 +20,19 @@ Build:
       - dist/ket-lang*.tar.gz
 
 Test:
+  image: python:3.7
   stage: test
   script:
-    - source scl_source enable rh-git227 || true
-    - source scl_source enable rh-python38 || true
-    - pip install wheelhouse/ket_lang*.whl --user
+    - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest --user
     - flake8 src/ket
     - pylint --disable=C0114 src/ket
     - pytest
 
 PyPI:
+  image: python:3
   stage: deploy
   script:
-    - source scl_source enable rh-python38 || true
+    - pip install twine
     - python -m twine upload wheelhouse/*
     - python -m twine upload dist/ket-lang*.tar.gz
   only:
