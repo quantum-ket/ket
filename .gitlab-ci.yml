@@ -23,7 +23,7 @@ Test:
   image: python:3.7
   stage: test
   script:
-    - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest --user
+    - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest
     - flake8 src/ket
     - pylint --disable=C0114 src/ket
     - pytest

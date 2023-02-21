@@ -77,7 +77,7 @@ def set_dump_type(dump_type: str, shots: int | None = None):
 
     Args:
         dump_type: must be "vector", "probability", or "shots"
-        shots: select the number of shots if `dump_type` is "shots"
+        shots: select the number of shots if ``dump_type`` is "shots"
     """
 
     if dump_type not in ["vector", "probability", "shots"]:
