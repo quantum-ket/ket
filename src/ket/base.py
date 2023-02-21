@@ -608,7 +608,7 @@ class dump:
             imag_l0 = amp.imag < 0
 
             sqrt_dem = 1 / abs(amp)**2
-            use_sqrt = (abs(round(sqrt_dem) - sqrt_dem) < .001)
+            use_sqrt = abs(round(sqrt_dem) - sqrt_dem) < .001
             use_sqrt = use_sqrt and ((abs(abs(amp.real) - abs(amp.imag)) < 1e-6) or (real != imag))
             sqrt_dem = f'/√{round(1/abs(amp)**2)}'
 
