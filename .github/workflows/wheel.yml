@@ -21,12 +21,10 @@ jobs:
         run: |
           cargo build --release --manifest-path src\ket\clib\libs\libket\Cargo.toml
           cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
-          copy src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
-          copy src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\kbw.dll
-          Get-ChildItem -Path src\ket\clib\libs\libket -Recurse | Remove-Item -force -recurse
-          Remove-Item src\ket\clib\libs\libket -Force
-          Get-ChildItem -Path src\ket\clib\libs\kbw -Recurse | Remove-Item -force -recurse
-          Remove-Item src\ket\clib\libs\kbw -Force 
+          cp src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
+          cp src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\kbw.dll
+          rm src\ket\clib\libs\libket -r
+          rm src\ket\clib\libs\kbw -r
       - name: Install Python Dependencies
         run: py -m pip install wheel twine
       - name: Build Wheel
