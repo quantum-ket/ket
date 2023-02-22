@@ -23,8 +23,8 @@ jobs:
           cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
           cp src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
           cp src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\kbw.dll
-          rm src\ket\clib\libs\libket -rf
-          rm src\ket\clib\libs\kbw -rf
+          rm src\ket\clib\libs\libket -r -f
+          rm src\ket\clib\libs\kbw -r -f
       - name: Install Python Dependencies
         run: py -m pip install wheel twine
       - name: Build Wheel
