@@ -15,6 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Checkout Submodules
+        run: git submodule update --init --recursive
       - name: Compile Libket
         run: cargo build --release --manifest-path src\ket\clib\libs\libket\Cargo.toml
       - name: Compile KBW
@@ -45,6 +47,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Checkout Submodules
+        run: git submodule update --init --recursive
       - name: Compile Libket
         run: cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
       - name: Compile KBW
