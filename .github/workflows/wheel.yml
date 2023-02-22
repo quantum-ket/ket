@@ -15,7 +15,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Install dependencies
+      - name: Compile Libket
+        run: cargo build --release --manifest-path src\ket\clib\libs\libket\Cargo.toml
+      - name: Compile KBW
+        run: cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
+      - name: Copy Rust Libs
+        run: copy src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\
+      - name: Remove Libket Source Code
+        run: rmdir /s /q \ket\clib\libs\libket\
+      - name: Remove KBW Source Code
+        run: rmdir /s /q \ket\clib\libs\kbw\
+      - name: Install Python Dependencies
         run: py -m pip install wheel twine
       - name: Build wheel
         run: py setup.py bdist_wheel -p win-amd64
@@ -35,10 +45,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Install dependencies
-        run: python3 -m pip install twine
+      - name: Compile Libket
+        run: cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
+      - name: Compile KBW
+        run: cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+      - name: Move Rust Libs
+        run: mv src/ket/clib/libs/libket/target/release/ket.dll src/ket/clib/libs/kbw/target/release/kbw.dll src/ket/clib/libs/
+      - name: Remove Rust Source Code
+        run: rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
+      - name: Install Python Dependencies
+        run: py -m pip install wheel twine
       - name: Build wheel
-        run: python3 setup.py bdist_wheel -p macosx_10_7_x86_64
+        run: py setup.py bdist_wheel -p macosx_10_7_x86_64
       - name: Archive wheel
         uses: actions/upload-artifact@v3
         with:
