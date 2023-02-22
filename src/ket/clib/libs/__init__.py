@@ -13,6 +13,7 @@
 #  limitations under the License.
 import os
 import shutil
+import warnings
 
 
 def libs():
@@ -32,6 +33,9 @@ def make_libs():
 
     if all(os.path.isfile(f"{dirname}/{lib}") for _, lib in libs()):
         return
+
+    warnings.warn("Compiling Libket and KBW... may take a while. \
+If it fails, check if Rust is installed https://www.rust-lang.org/tools/install.")
 
     os.chdir(f"{dirname}/libket")
     os.system("cargo build --release --quiet")
