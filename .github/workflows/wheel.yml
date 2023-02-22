@@ -23,8 +23,10 @@ jobs:
           cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
           copy src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
           copy src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\kbw.dll
-          rmdir /s src\ket\clib\libs\libket
-          rmdir /s src\ket\clib\libs\kbw
+          Get-ChildItem -Path src\ket\clib\libs\libket -Recurse | Remove-Item -force -recurse
+          Remove-Item src\ket\clib\libs\libket -Force
+          Get-ChildItem -Path src\ket\clib\libs\kbw -Recurse | Remove-Item -force -recurse
+          Remove-Item src\ket\clib\libs\kbw -Force 
       - name: Install Python Dependencies
         run: py -m pip install wheel twine
       - name: Build Wheel
@@ -54,9 +56,9 @@ jobs:
           mv src/ket/clib/libs/libket/target/release/libket.dylib src/ket/clib/libs/kbw/target/release/libkbw.dylib src/ket/clib/libs/
           rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
       - name: Install Python Dependencies
-        run: python -m pip install wheel twine
+        run: python3 -m pip install wheel twine
       - name: Build Wheel
-        run: python setup.py bdist_wheel -p macosx_10_7_x86_64
+        run: python3 setup.py bdist_wheel -p macosx_10_7_x86_64
       - name: Archive Wheel
         uses: actions/upload-artifact@v3
         with:

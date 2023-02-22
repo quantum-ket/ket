@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 #  Copyright 2020, 2023 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #  Copyright 2020, 2021 Rafael de Santiago <r.santiago@ufsc.br>
