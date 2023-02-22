@@ -14,18 +14,18 @@ Compile Rust Libs:
     - cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
     - cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
     - mv src/ket/clib/libs/libket/target/release/libket.so src/ket/clib/libs/libket.so
-    - mv src/ket/clib/libs/kbw/target/release/kbw.so src/ket/clib/libs/kbw.so
+    - mv src/ket/clib/libs/kbw/target/release/libkbw.so src/ket/clib/libs/libkbw.so
   artifacts:
     paths:
       - src/ket/clib/libs/libket.so
-      - src/ket/clib/libs/kbw.so
+      - src/ket/clib/libs/libkbw.so
 
 Package Source Code:
   image: python:3-slim
   stage: build
   script:
     - pip install build
-    - build -s
+    - python -m build -s
   artifacts:
     paths:
       - dist/ket-lang*.tar.gz
@@ -36,8 +36,8 @@ Package Wheel:
   script:
     - pip install build auditwheel patchelf
     - rm -rf src/ket/clib/libs/libket src/ket/clib/libs/kbw.so
-    - build -w
-    - auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
+    - python -m build -w
+    - python -m auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
   artifacts:
     paths:
       - wheelhouse/ket_lang*.whl
@@ -47,9 +47,9 @@ Test Wheel:
   stage: test
   script:
     - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest pytest-cov
-    - flake8 src/ket
-    - pylint --disable=C0114 src/ket
-    - pytest
+    - python -m flake8 src/ket
+    - python -m pylint --disable=C0114 src/ket
+    - python -m pytest
 
 PyPI Upload:
   image: python:alpine3.16

@@ -17,16 +17,14 @@ jobs:
       - uses: actions/checkout@v3
       - name: Checkout Submodules
         run: git submodule update --init --recursive
-      - name: Compile Libket
-        run: cargo build --release --manifest-path src\ket\clib\libs\libket\Cargo.toml
-      - name: Compile KBW
-        run: cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
-      - name: Copy Rust Libs
-        run: copy src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\
-      - name: Remove Libket Source Code
-        run: rmdir /s /q \ket\clib\libs\libket\
-      - name: Remove KBW Source Code
-        run: rmdir /s /q \ket\clib\libs\kbw\
+      - name: Compile Rust Libs
+        run: |
+          cargo build --release --manifest-path src\ket\clib\libs\libket\Cargo.toml
+          cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
+          copy src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
+          copy src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\kbw.dll
+          rmdir /s /q \ket\clib\libs\libket\
+          rmdir /s /q \ket\clib\libs\kbw\
       - name: Install Python Dependencies
         run: py -m pip install wheel twine
       - name: Build wheel
@@ -49,14 +47,12 @@ jobs:
       - uses: actions/checkout@v3
       - name: Checkout Submodules
         run: git submodule update --init --recursive
-      - name: Compile Libket
-        run: cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
-      - name: Compile KBW
-        run: cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
-      - name: Move Rust Libs
-        run: mv src/ket/clib/libs/libket/target/release/ket.dll src/ket/clib/libs/kbw/target/release/kbw.dll src/ket/clib/libs/
-      - name: Remove Rust Source Code
-        run: rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
+      - name: Compile Rust Libs
+        run: |
+          cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
+          cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+          mv src/ket/clib/libs/libket/target/release/libket.dylib src/ket/clib/libs/kbw/target/release/libkbw.dylib src/ket/clib/libs/
+          rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
       - name: Install Python Dependencies
         run: py -m pip install wheel twine
       - name: Build wheel
