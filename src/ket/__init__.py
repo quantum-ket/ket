@@ -13,9 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .clib.libs import make_libs
-make_libs()
-
+from .clib import libs
 from .gates import *
 from .import_ket import *
 from .base import *

@@ -16,6 +16,7 @@ import shutil
 
 
 def libs():
+    """Name Rust libs"""
     if os.name == 'nt':
         return [('libket', 'ket.dll'), ('kbw', 'kbw.dll')]
     if os.uname().sysname == 'Linux':
@@ -26,6 +27,7 @@ def libs():
 
 
 def make_libs():
+    """Make Rust libs if missing"""
     dirname = os.path.dirname(__file__)
 
     if all(os.path.isfile(f"{dirname}/{lib}") for _, lib in libs()):
@@ -36,7 +38,10 @@ def make_libs():
     os.chdir("../kbw")
     os.system("cargo build --release --quiet")
 
-    for dir, lib in libs():
-        src = f"{dirname}/{dir}/target/release/{lib}"
+    for dirlib, lib in libs():
+        src = f"{dirname}/{dirlib}/target/release/{lib}"
         dst = f"{dirname}/{lib}"
         shutil.move(src, dst)
+
+
+make_libs()
