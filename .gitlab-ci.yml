@@ -1,35 +1,58 @@
 stages:
   - build
+  - audit
   - test
   - deploy
 
-Build:
-  image: registry.gitlab.com/quantum-ket/devcontainer
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+Compile Rust Libs:
+  image: rust:1.65-slim-buster
   stage: build
   script:
-    - source scl_source enable devtoolset-7 || true
-    - source scl_source enable rh-python38 || true
-    - source scl_source enable rh-git227 || true
-    - source /home/quantum/.cargo/env
-    - python setup.py sdist
-    - python setup.py bdist_wheel
-    - auditwheel repair --plat manylinux_2_17_x86_64 dist/ket_lang*.whl
+    - cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
+    - cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+    - mv src/ket/clib/libs/libket/target/release/libket.so src/ket/clib/libs/libket.so
+    - mv src/ket/clib/libs/libket/target/release/kbw.so src/ket/clib/libs/kbw.so
+  artifacts:
+    paths:
+      - src/ket/clib/libs/libket.so
+      - src/ket/clib/libs/kbw.so
+
+Package Source Code:
+  image: python:alpine3.16
+  stage: build
+  script:
+    - pip install build
+    - build -s
+  artifacts:
+    paths:
+      - dist/ket-lang*.tar.gz
+
+Package Wheel:
+  image: python:3-slim
+  stage: audit
+  script:
+    - pip install build auditwheel patchelf
+    - rm -rf src/ket/clib/libs/libket src/ket/clib/libs/kbw.so
+    - build -w
+    - auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
   artifacts:
     paths:
       - wheelhouse/ket_lang*.whl
-      - dist/ket-lang*.tar.gz
 
-Test:
-  image: python:3.7
+Test Wheel:
+  image: python:3.7-slim
   stage: test
   script:
-    - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest
+    - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest pytest-cov
     - flake8 src/ket
     - pylint --disable=C0114 src/ket
     - pytest
 
-PyPI:
-  image: python:3
+PyPI Upload:
+  image: python:alpine3.16
   stage: deploy
   script:
     - pip install twine

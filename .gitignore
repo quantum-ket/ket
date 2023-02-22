@@ -5,5 +5,5 @@ build
 dist
 **/target
 wheelhouse
-libs/
+*.so
 .coverage
