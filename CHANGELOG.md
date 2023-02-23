@@ -3,6 +3,8 @@
 ## 0.5.1
 
 - KBW updated: Dump type selection and RNG seed added.
+- Update Linux wheel from manylinux2014 to manylinux_2_28.
+- Source distribution now packages Libket and KBW source code.
 
 ## 0.5.0.1
 
