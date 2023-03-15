@@ -10,7 +10,7 @@ Build Wheels:
   image: docker
   stage: build
   script:
-    - scripts/make.sh
+    - ./scripts/make_wheel.sh
   artifacts:
     paths:
       - wheelhouse/*.whl
