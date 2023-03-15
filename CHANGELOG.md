@@ -1,9 +1,13 @@
 # Changelog
 
+## 0.5.2
+
+- Added support for `manylinux_2_28_aarch64` wheel.
+
 ## 0.5.1
 
 - KBW updated: Dump type selection and RNG seed added.
-- Update Linux wheel from manylinux2014 to manylinux_2_28.
+- Update Linux wheel from `manylinux2014` to `manylinux_2_28`.
 - Source distribution now packages Libket and KBW source code.
 
 ## 0.5.0.1
