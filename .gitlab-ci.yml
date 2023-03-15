@@ -7,8 +7,10 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 Build Wheels:
-  image: docker
+  image: docker:latest
   stage: build
+  services:
+    - docker:dind
   script:
     - ./scripts/make_wheel.sh
   artifacts:
