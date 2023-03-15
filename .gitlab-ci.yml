@@ -1,24 +1,19 @@
 stages:
   - build
-  - audit
   - test
   - deploy
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-Compile Rust Libs:
-  image: rust:1.65-slim-buster
+Build Wheels:
+  image: docker
   stage: build
   script:
-    - cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
-    - cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
-    - mv src/ket/clib/libs/libket/target/release/libket.so src/ket/clib/libs/libket.so
-    - mv src/ket/clib/libs/kbw/target/release/libkbw.so src/ket/clib/libs/libkbw.so
+    - scripts/make.sh
   artifacts:
     paths:
-      - src/ket/clib/libs/libket.so
-      - src/ket/clib/libs/libkbw.so
+      - wheelhouse/*.whl
 
 Package Source Code:
   image: python:3-slim
@@ -30,23 +25,11 @@ Package Source Code:
     paths:
       - dist/ket-lang*.tar.gz
 
-Package Wheel:
-  image: python:3-slim
-  stage: audit
-  script:
-    - pip install build auditwheel patchelf
-    - rm -rf src/ket/clib/libs/libket src/ket/clib/libs/kbw
-    - python -m build -w
-    - python -m auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
-  artifacts:
-    paths:
-      - wheelhouse/ket_lang*.whl
-
 Test Wheel:
   image: python:3.7-slim
   stage: test
   script:
-    - pip install wheelhouse/ket_lang*.whl flake8 pylint pytest pytest-cov
+    - pip install wheelhouse/ket*x86_64.whl flake8 pylint pytest pytest-cov
     - python -m flake8 src/ket
     - python -m pylint --disable=C0114 src/ket
     - python -m pytest
@@ -56,8 +39,7 @@ PyPI Upload:
   stage: deploy
   script:
     - pip install twine
-    - python -m twine upload wheelhouse/*
-    - python -m twine upload dist/ket-lang*.tar.gz
+    - python -m twine upload dist/* wheelhouse/*
   only:
     - master
 
