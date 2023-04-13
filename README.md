@@ -9,10 +9,9 @@ Ket is an embedded programming language that introduces the ease of Python to qu
 
 Python is the most widely used programming language for machine learning and data science and has been the language of choice for quantum programming. Ket is a Python-embedded language, but many can use it as a Python library in most cases. So you can use Ket together with NumPy, ScyPy, Pandas, and other popular Python libraries.
 
+Ket's goal is to streamline the development of hardware-independent classical quantum applications by providing transparent interaction of classical and quantum data. See <https://quantumket.org> to learn more about Ket.
 
-Ket's goal is to streamline the development of hardware-independent classical quantum applications by providing transparent interaction of classical and quantum data. See https://quantumket.org to learn more about Ket.
-
-## Installation :arrow_down:
+## Installation :arrow_down
 
 Ket requires Python 3.7 or newer and is available for Linux, Windows, and macOS. If you are not using x86_64 (example ARM), you must install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
 
@@ -22,11 +21,11 @@ You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To
 pip install ket-lang
 ```
 
-## Documentation :scroll:
+## Documentation :scroll
 
-Documentation available at https://quantumket.org.
+Documentation available at <https://quantumket.org>.
 
-## Examples :bulb:
+## Examples :bulb
 
 ### Grover's Algorithm
 
@@ -51,7 +50,7 @@ print(grover(n, phase_on(looking_for)))
 # 13
 ```
 
-### Shor's Algorithm 
+### Shor's Algorithm
 
 ```py
 from ket import *
@@ -181,7 +180,7 @@ if __name__ == '__main__':
 #  0.500000+0.500000i     ≅  (1+i)/√4
 ```
 
-## Ket Development :hammer:
+## Ket Development :hammer
 
 Setup for Ket development:
 
@@ -193,7 +192,7 @@ pip install -e . --user
 
 If you are using [VS Code](https://code.visualstudio.com/), Ket has a [Dev Container](https://code.visualstudio.com/docs/remote/containers) :whale:.
 
-## Roadmap :notebook_with_decorative_cover:
+## Roadmap :notebook_with_decorative_cover
 
 * [ ] Quantum gate decomposition.
 * [ ] Quantum code optimization.
@@ -203,7 +202,7 @@ If you are using [VS Code](https://code.visualstudio.com/), Ket has a [Dev Conta
 * :package: Full quantum algorithm implementations must be packaged with  Ket as a dependency.
 * :x: Low-level quantum control, like pulse programming, is out of Ket's scope.
 
-## Cite Ket :book:
+## Cite Ket :book
 
 When using Ket for research projects, please cite:
 
@@ -230,6 +229,6 @@ When using Ket for research projects, please cite:
 }
 ```
 
-## Community :family:
+## Community :family
 
 Join the conversation on our [Discord](https://discord.gg/XkXvwRQ9aa).

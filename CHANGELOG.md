@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3
+
+- Updated Libket to 0.2.3.
+- Updated KBW to 0.1.5.
+
 ## 0.5.2
 
 - Added support for `manylinux_2_28_aarch64` wheel.
