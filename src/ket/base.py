@@ -750,6 +750,8 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
                          allow_dump: bool = True,
                          allow_measure: bool = True,
                          continue_after_dump: bool = True,
+                         decompose: bool = False,
+                         use_rz_as_phase: bool = False,
                          plugins: list[str] | None = None):
     """Disable and enable process features"""
 
@@ -763,6 +765,8 @@ def set_process_features(*, allow_dirty_qubits: bool = True,
         allow_dump=allow_dump,
         allow_measure=allow_measure,
         continue_after_dump=continue_after_dump,
+        decompose=decompose,
+        use_rz_as_phase=use_rz_as_phase,
     )
 
     if plugins is not None:

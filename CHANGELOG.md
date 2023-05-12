@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6
+
+- Added multi-controlled quantum gate decomposition.
+- Updated Libket to 0.3.0.
+- Updated KBW to 0.1.6.
+- Update Linux CI Rust version to 1.69.
+
 ## 0.5.3
 
 - Updated Libket to 0.2.3.

@@ -110,7 +110,7 @@ API_argtypes = {
     'ket_process_get_serialized_metrics': ([c_void_p], [POINTER(c_uint8), c_size_t, c_int32]),
     'ket_process_get_serialized_quantum_code': ([c_void_p], [POINTER(c_uint8), c_size_t, c_int32]),
     'ket_process_set_serialized_result': ([c_void_p, POINTER(c_uint8), c_size_t, c_int32], []),
-    'ket_features_new': ([c_bool, c_bool, c_bool, c_bool, c_bool, c_bool, c_bool], [c_void_p]),
+    'ket_features_new': ([c_bool, c_bool, c_bool, c_bool, c_bool, c_bool, c_bool, c_bool, c_bool], [c_void_p]),  # pylint: disable=C0301
     'ket_features_delete': ([c_void_p], []),
     'ket_features_all': ([], [c_void_p]),
     'ket_features_none': ([], [c_void_p]),
@@ -181,7 +181,9 @@ class Features:
                  classical_control_flow: bool = True,
                  allow_dump: bool = True,
                  allow_measure: bool = True,
-                 continue_after_dump: bool = True):
+                 continue_after_dump: bool = True,
+                 decompose: bool = False,
+                 use_rz_as_phase: bool = False):
         self._as_parameter_ = API['ket_features_new'](
             allow_dirty_qubits,
             allow_free_qubits,
@@ -189,7 +191,9 @@ class Features:
             classical_control_flow,
             allow_dump,
             allow_measure,
-            continue_after_dump
+            continue_after_dump,
+            decompose,
+            use_rz_as_phase,
         )
         self._finalizer = weakref.finalize(
             self, API['ket_features_delete'], self._as_parameter_)

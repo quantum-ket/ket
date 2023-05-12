@@ -1,21 +1,25 @@
-FROM rust:1.65-slim-buster AS build_libket_amd64
+FROM rust:1.69-slim-buster AS build_libket_amd64
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 COPY src/ket/clib/libs/libket/ .
 RUN cargo build --release
 
-FROM rust:1.65-slim-buster AS build_libket_aarch64
-COPY src/ket/clib/libs/libket/ .
+FROM rust:1.69-slim-buster AS build_libket_aarch64
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN apt update && apt install -y gcc-aarch64-linux-gnu
 RUN rustup target add aarch64-unknown-linux-gnu
+COPY src/ket/clib/libs/libket/ .
 RUN CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --target aarch64-unknown-linux-gnu --release
 
-FROM rust:1.65-slim-buster AS build_kbw_amd64
+FROM rust:1.69-slim-buster AS build_kbw_amd64
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 COPY src/ket/clib/libs/kbw/ .
 RUN cargo build --release
 
-FROM rust:1.65-slim-buster AS build_kbw_aarch64
-COPY src/ket/clib/libs/kbw/ .
+FROM rust:1.69-slim-buster AS build_kbw_aarch64
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN apt update && apt install -y gcc-aarch64-linux-gnu
 RUN rustup target add aarch64-unknown-linux-gnu
+COPY src/ket/clib/libs/kbw/ .
 RUN CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --target aarch64-unknown-linux-gnu --release
 
 FROM python:3-slim AS package_amd64
@@ -40,6 +44,6 @@ COPY --from=build_kbw_aarch64 target/aarch64-unknown-linux-gnu/release/libkbw.so
 RUN python -m build -w
 RUN python -m auditwheel repair --plat manylinux_2_28_aarch64 dist/ket_lang*.whl
 
-FROM ubuntu
+FROM busybox
 COPY --from=package_amd64 /workdir/wheelhouse/* .
 COPY --from=package_aarch64 /workdir/wheelhouse/* .
