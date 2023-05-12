@@ -28,10 +28,10 @@ Package Source Code:
       - dist/ket-lang*.tar.gz
 
 Test Wheel:
-  image: python:3.7-slim
+  image: python:3.8-slim
   stage: test
   script:
-    - pip install wheelhouse/ket*x86_64.whl flake8 pylint pytest pytest-cov
+    - pip install wheelhouse/ket*x86_64.whl flake8 pylint pytest pytest-cov numpy
     - python -m flake8 src/ket
     - python -m pylint --disable=C0114 src/ket
     - python -m pytest
