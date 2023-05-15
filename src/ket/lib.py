@@ -18,44 +18,10 @@ from math import pi, sqrt, asin
 from typing import Callable
 
 from .base import quant, dump, future
-from .gates import H, phase, swap, cnot, X, Y, Z, S, RY
+from .gates import H, cnot, X, Y, Z, S, RY
 from .standard import control, ctrl
 from .process import run, exec_quantum
 from .preprocessor.statements import _ket_if, _ket_next
-
-
-def qft(qubits: quant, invert: bool = True) -> quant:
-    """Quantum Fourier Transformation
-
-    Apply a QFT_ on the qubits of q.
-
-    .. _QFT: https://en.wikipedia.org/wiki/Quantum_Fourier_transform
-
-    Args:
-        q: input qubits
-        invert: if ``True``, invert qubits with swap gates
-
-    return:
-        Qubits in the reserved order
-    """
-
-    if len(qubits) == 1:
-        H(qubits)
-    else:
-        *head, tail = qubits
-        H(tail)
-        for i, ctrl_qubit in enumerate(reversed(head)):
-            with control(ctrl_qubit):
-                phase(pi / 2**(i + 1), tail)
-        qft(head, invert=False)
-
-    if invert:
-        size = len(qubits)
-        for i in range(size // 2):
-            swap(qubits[i], qubits[size - i - 1])
-        return qubits
-
-    return reversed(qubits)
 
 
 def dump_matrix(gate: Callable | list[Callable], size: int = 1) -> list[list[complex]]:
