@@ -5,6 +5,7 @@
 ### Updated
 
 - Updated Libket to 0.3.1.
+- Updated KBW to 0.1.7.
 
 ## [0.6](https://pypi.org/project/ket-lang/0.6)
 
