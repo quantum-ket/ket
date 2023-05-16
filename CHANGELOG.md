@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.1](https://pypi.org/project/ket-lang/0.6.1)
+
+### Updated
+
+- Updated Libket to 0.3.1.
+
 ## [0.6](https://pypi.org/project/ket-lang/0.6)
 
 ### Added
