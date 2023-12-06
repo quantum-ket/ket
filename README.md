@@ -1,5 +1,13 @@
+<!--
+SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 [![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![REUSE status](https://api.reuse.software/badge/gitlab.com/quantum-ket/ket)](https://api.reuse.software/info/gitlab.com/quantum-ket/ket)
 
 # Ket Quantum Programming
 

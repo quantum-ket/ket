@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+# SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from ket.gates import *
 from ket.base import set_process_features
 from ket.standard import ctrl, adj

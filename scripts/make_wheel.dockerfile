@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+# SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 FROM rust:1.69-slim-buster AS build_libket_amd64
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 COPY src/ket/clib/libs/libket/ .
