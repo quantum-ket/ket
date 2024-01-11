@@ -3,25 +3,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM rust:1.69-slim-buster AS build_libket_amd64
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+FROM rust:1.75-slim-buster AS build_libket_amd64
 COPY src/ket/clib/libs/libket/ .
 RUN cargo build --release
 
-FROM rust:1.69-slim-buster AS build_libket_aarch64
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+FROM rust:1.75-slim-buster AS build_libket_aarch64
 RUN apt update && apt install -y gcc-aarch64-linux-gnu
 RUN rustup target add aarch64-unknown-linux-gnu
 COPY src/ket/clib/libs/libket/ .
 RUN CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --target aarch64-unknown-linux-gnu --release
 
-FROM rust:1.69-slim-buster AS build_kbw_amd64
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+FROM rust:1.75-slim-buster AS build_kbw_amd64
 COPY src/ket/clib/libs/kbw/ .
 RUN cargo build --release
 
-FROM rust:1.69-slim-buster AS build_kbw_aarch64
-ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+FROM rust:1.75-slim-buster AS build_kbw_aarch64
 RUN apt update && apt install -y gcc-aarch64-linux-gnu
 RUN rustup target add aarch64-unknown-linux-gnu
 COPY src/ket/clib/libs/kbw/ .

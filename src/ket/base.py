@@ -1,3 +1,4 @@
+"""Basic Ket type definitions."""
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -5,17 +6,28 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ctypes import c_size_t, c_int32, c_size_t
+from ctypes import c_int32, c_size_t, c_uint8
+from json import loads
 from random import Random
 from typing import Literal, Optional
 
 from .clib.libket import Process as LibketProcess, API
 from .clib.kbw import get_simulator
 
-__all__ = ["process", "quant", "measure", "sample", "dump", "Pauli", "exp_value"]
+__all__ = [
+    "Process",
+    "Quant",
+    "measure",
+    "sample",
+    "dump",
+    "Pauli",
+    "exp_value",
+]
 
 
-class process(LibketProcess):
+class Process(LibketProcess):
+    """Quantum process for handling the quantum circuit creation and execution."""
+
     def __init__(
         self,
         configuration=None,
@@ -23,9 +35,8 @@ class process(LibketProcess):
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
     ):
-        is_not_none = lambda a: a is not None
         if configuration is not None and any(
-            map(is_not_none, [num_qubits, simulator, execution])
+            map(lambda a: a is not None, [num_qubits, simulator, execution])
         ):
             raise ValueError(
                 "Cannot specify num_qubits, simulator or execution if configuration is provided"
@@ -48,21 +59,58 @@ class process(LibketProcess):
                 )
             )
 
-    def alloc(self, num_qubit: int = 1) -> quant:
+        self._metadata_buffer_size = 512
+        self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
+        self._instructions_buffer_size = 2048
+        self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+
+    def alloc(self, num_qubit: int = 1) -> Quant:
+        """Allocate ``num_qubit`` qubits and return a :class:`~ket.quant` object."""
+
+        if num_qubit < 1:
+            raise ValueError("Cannot allocate less than 1 qubit")
+
         qubits_index = [self.allocate_qubit().value for _ in range(num_qubit)]
-        return quant(qubits=qubits_index, process=self)
+        return Quant(qubits=qubits_index, process=self)
 
     def execute(self):
+        """Force the quantum circuit execution."""
         self.prepare_for_execution()
 
     def _get_ket_process(self):
         return self
 
+    def get_instructions(self) -> dict:
+        """Get the quantum instructions from the process."""
+        write_size = self.instructions_json(
+            self._instructions_buffer, self._instructions_buffer_size
+        )
+        if write_size.value > self._instructions_buffer_size:
+            self._instructions_buffer_size = write_size.value + 1
+            self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+            return self.get_instructions()
+
+        return loads(bytearray(self._instructions_buffer[: write_size.value]))
+
+    def get_metadata(self) -> dict:
+        """Get the metadata from the process."""
+        write_size = self.metadata_json(
+            self._metadata_buffer, self._metadata_buffer_size
+        )
+        if write_size.value > self._metadata_buffer_size:
+            self._metadata_buffer_size = write_size.value + 1
+            self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
+            return self.get_metadata()
+
+        return loads(bytearray(self._metadata_buffer[: write_size.value]))
+
     def __repr__(self) -> str:
-        return f"<Ket 'process'>"
+        return f"<Ket 'Process' id={hex(id(self))}>"
 
 
-class quant:
+class Quant:
+    """List of qubits."""
+
     def __init__(self, *, qubits, process):
         self.qubits = qubits
         self.process = process
@@ -70,12 +118,12 @@ class quant:
     def _get_ket_process(self):
         return self.process
 
-    def __add__(self, other: quant) -> quant:
+    def __add__(self, other: Quant) -> Quant:
         if self.process is not other.process:
             raise ValueError("Cannot concatenate qubits from different processes")
-        return quant(qubits=self.qubits + other.qubits, process=self.process)
+        return Quant(qubits=self.qubits + other.qubits, process=self.process)
 
-    def at(self, index: list[int]) -> quant:
+    def at(self, index: list[int]) -> Quant:
         r"""Return qubits at ``index``
 
         Create a new :class:`~ket.base.quant` with the qubit references at the
@@ -92,7 +140,7 @@ class quant:
             index: List of indexes.
         """
 
-        return quant(qubits=[self.qubits[i] for i in index], process=self.process)
+        return Quant(qubits=[self.qubits[i] for i in index], process=self.process)
 
     def free(self):
         r"""Free the qubits
@@ -114,16 +162,16 @@ class quant:
         )
 
     def __reversed__(self):
-        return quant(qubits=list(reversed(self.qubits)), process=self.process)
+        return Quant(qubits=list(reversed(self.qubits)), process=self.process)
 
     def __getitem__(self, key):
         qubits = self.qubits.__getitem__(key)
-        return quant(
+        return Quant(
             qubits=qubits if isinstance(qubits, list) else [qubits],
             process=self.process,
         )
 
-    class iter:
+    class Iter:
         """Qubits iterator"""
 
         def __init__(self, q):
@@ -141,7 +189,7 @@ class quant:
             return self
 
     def __iter__(self):
-        return self.iter(self)
+        return self.Iter(self)
 
     def __enter__(self):
         return self
@@ -156,16 +204,21 @@ class quant:
         return len(self.qubits)
 
     def __repr__(self):
-        return f"<Ket 'quant' {self.qubits}>"
+        return f"<Ket 'Quant' {self.qubits} pid={hex(id(self.process))}>"
 
 
-class measure:
-    def __init__(self, qubits: quant):
-        self.qubits = qubits
+class Measurement:
+    """Quantum measurement result."""
+
+    def __init__(self, qubits: Quant):
         self.process = qubits.process
-        self.index = self.process.measure(
-            (c_size_t * len(qubits.qubits))(*qubits.qubits), len(qubits.qubits)
-        ).value
+        self.qubits = [qubits[i : i + 64] for i in range(0, len(qubits), 64)]
+        self.indexes = [
+            self.process.measure(
+                (c_size_t * len(qubit.qubits))(*qubit.qubits), len(qubit.qubits)
+            ).value
+            for qubit in self.qubits
+        ]
         self._value = None
 
     def _get_ket_process(self):
@@ -173,25 +226,34 @@ class measure:
 
     def _check(self):
         if self._value is None:
-            available, value = self.process.get_measurement(self.index)
-            if available.value:
-                self._value = value.value
-
-    @property
-    def available(self) -> bool:
-        self._check()
-        return self._value is not None
+            available, values = zip(
+                *(self.process.get_measurement(index) for index in self.indexes)
+            )
+            if all(map(lambda a: a.value, available)):
+                self._value = 0
+                for value, qubit in zip(values, self.qubits):
+                    self._value <<= len(qubit)
+                    self._value |= value.value
 
     @property
     def value(self) -> int | None:
+        """Return the measurement value if available."""
         self._check()
         return self._value
 
     def __repr__(self):
-        return f"<Ket 'measurement' index={self.index}, value={self.value}>"
+        return (
+            f"<Ket 'Measurement' indexes={self.indexes}, "
+            f"value={self.value}, pid={hex(id(self.process))}>"
+        )
 
 
-class dump:
+def measure(qubits: Quant) -> Measurement:
+    """Measure the qubits and return a :class:`~ket.base.measurement` object."""
+    return Measurement(qubits)
+
+
+class QuantumState:
     """Create a snapshot with the current quantum state of ``qubits``
 
     Gathering any information from a :class:`~ket.base.dump` triggers the quantum execution.
@@ -222,7 +284,7 @@ class dump:
     :param qubits: Qubits to dump.
     """
 
-    def __init__(self, qubits: quant):
+    def __init__(self, qubits: Quant):
         self.qubits = qubits
         self.process = qubits.process
         self.index = self.process.dump(
@@ -238,7 +300,7 @@ class dump:
         if self._states is None:
             available, size = self.process.get_dump_size(self.index)
             if available.value:
-                self._states = dict()
+                self._states = {}
                 for i in range(size.value):
                     state, state_size, amp_real, amp_imag = self.process.get_dump(
                         self.index, i
@@ -285,7 +347,7 @@ class dump:
 
         rng = Random(seed)
         shots = rng.choices(list(self.states), list(self.probabilities), k=shots)
-        result = dict()
+        result = {}
         for state in shots:
             if state not in result:
                 result[state] = 1
@@ -404,11 +466,18 @@ class dump:
         )
 
     def __repr__(self):
-        return f"<Ket 'dump' index={self.index}>"
+        return f"<Ket 'QuantumState' index={self.index}, pid={hex(id(self.process))}>"
 
 
-class sample:
-    def __init__(self, qubits: quant, shots: int = 2048):
+def dump(qubits: Quant) -> QuantumState:
+    """Get the quantum state"""
+    return QuantumState(qubits)
+
+
+class Samples:
+    """Quantum state measurement samples."""
+
+    def __init__(self, qubits: Quant, shots: int = 2048):
         self.qubits = qubits
         self.process = qubits.process
         self.index = self.process.sample(
@@ -429,22 +498,30 @@ class sample:
 
     @property
     def value(self) -> dict[int, int] | None:
+        """Get the measurement samples"""
         self._check()
         return self._value
 
     def __repr__(self) -> str:
-        return f"<Ket 'sample' index={self.index}>"
+        return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.process))}>"
+
+
+def sample(qubits: Quant, shots: int = 2048) -> Samples:
+    """Get the quantum state measurement samples"""
+    return Samples(qubits, shots)
 
 
 class Pauli:
-    def __init__(
+    """Pauli operator for Hamiltonian creation."""
+
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         pauli: Literal["X", "Y", "Z"],
-        qubits: quant,
+        qubits: Quant,
         *,
         process=None,
         pauli_list: list[str] | None = None,
-        qubits_list: list[quant] | None = None,
+        qubits_list: list[Quant] | None = None,
         coef: float | None = None,
     ):
         self.process = process if process is not None else qubits.process
@@ -452,7 +529,7 @@ class Pauli:
         self.qubits_list = qubits_list if qubits_list is not None else [qubits]
         self.coef = 1.0 if coef is None else coef
 
-    def _flat(self) -> tuple[list[str], list[quant]]:
+    def _flat(self) -> tuple[list[str], list[Quant]]:
         pauli_list = []
         qubits_list = []
         for pauli, qubits in zip(self.pauli_list, self.qubits_list):
@@ -507,19 +584,21 @@ class Pauli:
 
 
 class Hamiltonian:
+    """Hamiltonian for expected value calculation."""
+
     def __init__(self, pauli_products: list[Pauli], process):
         self.process = process
         self.pauli_products = pauli_products
 
     def __add__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Pauli):
-            other = Hamiltonian([other])
+            other = Hamiltonian([other], self.process)
             return self + other
 
         if self.process is not other.process:
             raise ValueError("different Ket processes")
 
-        return Hamiltonian(self.pauli_products + other.pauli_products)
+        return Hamiltonian(self.pauli_products + other.pauli_products, self.process)
 
     def __mul__(self, other: float) -> Hamiltonian:
         return Hamiltonian(
@@ -529,10 +608,15 @@ class Hamiltonian:
     __rmul__ = __mul__
 
     def __repr__(self) -> str:
-        return " + ".join(str(p) for p in self.pauli_products)
+        return (
+            f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.pauli_products)}, "
+            f"pid={hex(id(self.process))}>"
+        )
 
 
-class exp_value:
+class ExpValue:
+    """Expected value for a quantum state."""
+
     pauli_map = {"X": 1, "Y": 2, "Z": 3}
 
     def __init__(self, hamiltonian: Hamiltonian | Pauli):
@@ -565,5 +649,14 @@ class exp_value:
 
     @property
     def value(self) -> float | None:
+        """Expected value for a quantum state."""
         self._check()
         return self._value
+
+    def __repr__(self) -> str:
+        return f"<Ket 'ExpValue' value={self.value}, pid={hex(id(self.process))}>"
+
+
+def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
+    """Expected value for a quantum state."""
+    return ExpValue(hamiltonian)

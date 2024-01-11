@@ -3,9 +3,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import *
+"""Grover's search algorithm."""
+
 from math import sqrt, pi
 from typing import Callable
+import ket
 
 
 def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
@@ -20,31 +22,30 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
         int: The measured value from the search.
 
     """
-    s = H(quant(size))  # Initialize the state to a superposition of all possible outcomes.
 
-    steps = int((pi / 4) * sqrt(2**size / outcomes))  # Calculate the number of iterations for the algorithm.
+    p = ket.Process(simulator="dense", num_qubits=size)
+
+    s = ket.H(
+        p.alloc(size)
+    )  # Initialize the state to a superposition of all possible outcomes.
+
+    steps = int(
+        (pi / 4) * sqrt(2**size / outcomes)
+    )  # Calculate the number of iterations for the algorithm.
     for _ in range(steps):
         oracle(s)  # Apply the oracle function to the state.
-        with around(H, s):  # Apply a Hadamard gate to each qubit.
-            phase_on(0, s)  # Apply a phase gate to each qubit.
+        with ket.around(ket.H, s):
+            ket.phase_oracle(0, s)  # Apply the diffusor function to the state.
 
-    return measure(s).value  # Measure the final state and return the result.
+    return ket.measure(s).value  # Measure the final state and return the result.
 
 
-if __name__ == '__main__':
-    from ket import kbw
+if __name__ == "__main__":
     from random import randint
 
-    size = 12
-    looking_for = randint(0, pow(2, size) - 1)
+    SIZE = 12
+    looking_for = randint(0, pow(2, SIZE) - 1)
 
-    print("Searching for value", looking_for, "using", size, "qubits.")
+    print("Searching for value", looking_for, "using", SIZE, "qubits.")
 
-    kbw.use_dense()  # Use KBW Dense representation for quantum simulation.
-
-    print('Dense Simulation: measured', grover(size, phase_on(looking_for)))
-    print('Execution time:', quantum_exec_time())
-
-    kbw.use_sparse()  # Use KBW Sparse representation for quantum simulation.
-    print('Sparse Simulation: measured', grover(size, phase_on(looking_for)))
-    print('Execution time:', quantum_exec_time())
+    print("Dense Simulation: measured", grover(SIZE, ket.phase_oracle(looking_for)))

@@ -1,3 +1,5 @@
+"""Wrapper for Libket C API."""
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -16,7 +18,6 @@ from ctypes import (
     c_uint64,
     c_int64,
     c_double,
-    c_char,
 )
 import weakref
 from os import environ
@@ -31,6 +32,7 @@ PAULI_Z = 3
 ROTATION_X = 10
 ROTATION_Y = 20
 ROTATION_Z = 30
+PHASE_SHIFT = 31
 
 SUCCESS = 0
 CONTROL_TWICE = 1
@@ -88,7 +90,7 @@ API_argtypes = {
     ),
     "ket_process_metadata_json": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
     "ket_process_get_qubit_status": ([c_void_p, c_size_t], [c_bool, c_bool]),
-    "ket_process_get_measurement": ([c_void_p, c_size_t], [c_bool, c_int64]),
+    "ket_process_get_measurement": ([c_void_p, c_size_t], [c_bool, c_uint64]),
     "ket_process_get_exp_value": ([c_void_p, c_size_t], [c_bool, c_double]),
     "ket_process_get_sample": (
         [c_void_p, c_size_t],
@@ -103,7 +105,7 @@ API_argtypes = {
 
 
 def libket_path():
-    """Get Libket path"""
+    """Get Libket shared library path"""
 
     if "LIBKET_PATH" in environ:
         path = environ["LIBKET_PATH"]
@@ -123,7 +125,7 @@ def set_log(level: int):
 
 
 class Process:
-    """Libket process"""
+    """Libket process wrapper from C API"""
 
     def __init__(self, configuration):
         self._as_parameter_ = API["ket_process_new"](configuration)
@@ -135,4 +137,4 @@ class Process:
         return lambda *args: API["ket_process_" + name](self, *args)
 
     def __repr__(self) -> str:
-        return f"<Libket 'process'>"
+        return "<Libket 'process'>"

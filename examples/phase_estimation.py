@@ -3,12 +3,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import *
+"""Phase estimation algorithm"""
+
 from math import pi
 from functools import partial
+import ket
 
 
-def qft(qubits: quant, invert: bool = True):
+def qft(qubits: ket.Quant, invert: bool = True):
     """
     Applies the Quantum Fourier Transform (QFT) to the given qubits.
 
@@ -19,17 +21,17 @@ def qft(qubits: quant, invert: bool = True):
     if len(qubits) == 1:
         # Base case:
         # single-qubit QFT is simply the Hadamard gate.
-        H(qubits)
+        ket.H(qubits)
     else:
         # Recursive case:
         # Apply a Hadamard gate to the last qubit.
         *head, tail = qubits
-        H(tail)
+        ket.H(tail)
 
         # Apply controlled phase shift gates to the last qubit with each of the remaining qubits.
         for i, ctrl_qubit in enumerate(reversed(head)):
-            with control(ctrl_qubit):
-                phase(pi / 2**(i + 1), tail)
+            with ket.control(ctrl_qubit):
+                ket.PHASE(pi / 2 ** (i + 1), tail)
 
         # Recursively apply QFT to the remaining qubits.
         qft(head, invert=False)
@@ -38,42 +40,45 @@ def qft(qubits: quant, invert: bool = True):
     if invert:
         size = len(qubits)
         for i in range(size // 2):
-            swap(qubits[i], qubits[size - i - 1])
+            ket.SWAP(qubits[i], qubits[size - i - 1])
 
 
-def phase_estimator(oracle, precision: int) -> float:
+def phase_estimator(oracle_gate, precision: int) -> float:
     """Estimates the phase of a given oracle function to a certain precision
     using the phase estimation algorithm.
 
     Args:
-        oracle (callable): A function that performs a phase shift operation on 
-            the target qubit based on a given phase and index value. 
+        oracle (callable): A function that performs a phase shift operation on
+            the target qubit based on a given phase and index value.
             It should take the form: `oracle(phase_: float, i: int, tgr: quant) -> None`
         precision (int): The number of bits of precision desired in the estimation.
 
     Returns:
         float: An float value representing the estimated phase.
     """
+
+    p = ket.Process(simulator="dense", num_qubits=precision + 1)
+
     # Create a quantum register to hold the control qubits.
-    ctr = H(quant(precision))
+    ctr = ket.H(p.alloc(precision))
 
     # Create a target qubit.
-    tgr = X(quant())
+    tgr = ket.X(p.alloc())
 
     # Apply the oracle function with each control qubit.
     for i, c in enumerate(ctr):
-        with control(c):
-            oracle(i, tgr)
+        with ket.control(c):
+            oracle_gate(i, tgr)
 
     # Apply the inverse QFT to the control qubits.
-    adj(qft, ctr)
+    ket.adj(qft)(ctr)
 
     # Measure the control qubits and return the result.
-    return measure(reversed(ctr)).value / 2**precision
+    return ket.measure(reversed(ctr)).value / 2**precision
 
 
-def oracle(phase_: float, i: int, tgr: quant):
-    """ Performs a phase shift operation on the target
+def oracle(phase: float, i: int, tgr):
+    """Performs a phase shift operation on the target
     qubit based on a given phase and index value.
 
     Args:
@@ -81,11 +86,11 @@ def oracle(phase_: float, i: int, tgr: quant):
         i (int): The index value.
         tgr (quant): The target qubit.
     """
-    phase(2 * pi * phase_ * 2**i, tgr)
+    ket.PHASE(2 * pi * phase * 2**i, tgr)
 
 
 estimate_pi = partial(phase_estimator, partial(oracle, pi / 10))
 
 
-if __name__ == '__main__':
-    print(estimate_pi(15))
+if __name__ == "__main__":
+    print(estimate_pi(20) * 10)

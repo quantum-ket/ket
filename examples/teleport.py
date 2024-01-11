@@ -3,32 +3,43 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import quant, X, Z, H, measure, ctrl, code_ket
+"""Quantum teleportation protocol."""
 
-@code_ket
-def teleport(alice : quant) -> quant:
-    alice_b, bob_b = quant(2)
-    ctrl(H(alice_b), X, bob_b)
+import ket
 
-    ctrl(alice, X, alice_b)
-    H(alice)
 
-    m0 = measure(alice)
-    m1 = measure(alice_b)
+def teleport(alice_msg, alice_aux, bob_aux):
+    """Teleport the information from alice_msg to bob_aux."""
 
-    if m1 == 1:
-        X(bob_b)
-    if m0 == 1:
-        Z(bob_b)
+    ket.ctrl(alice_msg, ket.X)(alice_aux)
+    ket.H(alice_msg)
 
-    return bob_b
+    m0 = ket.measure(alice_msg)
+    m1 = ket.measure(alice_aux)
 
-alice = quant(1)         # alice = |0⟩
-H(alice)                 # alice = |+⟩
-Z(alice)                 # alice = |–⟩
-bob = teleport(alice)    # bob  <- alice
-H(bob)                   # bob   = |1⟩
-bob_m = measure(bob)
+    if m1.value == 1:
+        ket.X(bob_aux)
+    if m0.value == 1:
+        ket.Z(bob_aux)
 
-print('Expected measure 1, result =', bob_m.value)
-# Expected measure 1, result = 1     
+    return bob_aux
+
+
+def bell(qubits):
+    """Bell state preparation."""
+    return ket.ctrl(ket.H(qubits[0]), ket.X)(qubits[1])
+
+
+if __name__ == "__main__":
+    p = ket.Process(execution="live")
+
+    alice = p.alloc()  # alice = |0⟩
+    ket.H(alice)  # alice = |+⟩
+    ket.Z(alice)  # alice = |–⟩
+
+    bob = teleport(alice, *bell(p.alloc(2)))  # bob  <- alice
+    ket.H(bob)  # bob   = |1⟩
+    bob_m = ket.measure(bob)
+
+    print("Expected measure 1, result =", bob_m.value)
+    # Expected measure 1, result = 1

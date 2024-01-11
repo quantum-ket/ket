@@ -3,7 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import *
+"""Quantum RNG."""
+
+import ket
 
 
 def random(n_bits: int) -> int:
@@ -15,11 +17,11 @@ def random(n_bits: int) -> int:
     Returns:
         int: Random n_bits-bit number.
     """
-    with run():
-        return measure(H(quant(n_bits))).value
+    p = ket.Process(simulator="dense", num_qubits=n_bits)
+    return ket.measure(ket.H(p.alloc(n_bits))).value
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage
-    n_bits = 16
-    print(n_bits, 'bits random number:', random(n_bits))
+    N_BITS = 16
+    print(N_BITS, "bits random number:", random(N_BITS))

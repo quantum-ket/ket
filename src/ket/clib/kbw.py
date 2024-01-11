@@ -1,3 +1,5 @@
+"""Wrapper for KBW C API."""
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -32,6 +34,8 @@ API = load_lib("KBW", kbw_path(), API_argtypes, "kbw_error_message")
 
 
 def set_log(level: int):
+    """Set KBW log level"""
+
     API["kbw_set_log_level"](level)
 
 
@@ -44,6 +48,6 @@ def get_simulator(
 
     return API["kbw_make_configuration"](
         num_qubits,
-        True if execution == "live" else False,
-        True if simulator == "sparse" else False,
+        execution == "live",
+        simulator == "sparse",
     )

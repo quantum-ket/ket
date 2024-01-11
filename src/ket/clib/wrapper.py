@@ -3,32 +3,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ctypes import POINTER, c_uint8, c_size_t, c_int32, cdll, c_void_p
+"""Unitary for handle shared library with C API"""
+
+from ctypes import POINTER, c_uint8, c_size_t, c_int32, cdll
 import os
 
 
 def os_lib_name(lib):
     """Append the OS specific extensions to a lib name"""
 
-    if os.name == 'nt':
-        return f'{lib}.dll'
-    if os.uname().sysname == 'Linux':
-        return f'lib{lib}.so'
-    if os.uname().sysname == 'Darwin':
-        return f'lib{lib}.dylib'
-    raise OSError('unsupported operational system')
+    if os.name == "nt":
+        return f"{lib}.dll"
+    if os.uname().sysname == "Linux":
+        return f"lib{lib}.so"
+    if os.uname().sysname == "Darwin":
+        return f"lib{lib}.dylib"
+    raise OSError("unsupported operational system")
 
 
 def from_u8_to_str(data, size):
     """Convert a unsigned char vector to a Python string"""
 
-    return bytearray(data[:size.value]).decode()
-
-
-def from_list_to_c_vector(data):
-    """Cast a Python list to a C vector"""
-
-    return (c_void_p * len(data))(*(d._as_parameter_ for d in data)), len(data)  # pylint: disable=W0212
+    return bytearray(data[: size.value]).decode()
 
 
 class CLibError(Exception):
@@ -56,7 +52,8 @@ class APIWrapper:  # pylint: disable=R0903
             size = c_size_t()
             error_msg = self.error_message(error_code, size)
             raise CLibError(
-                self.lib_name + ': ' + from_u8_to_str(error_msg, size), error_code)
+                self.lib_name + ": " + from_u8_to_str(error_msg, size), error_code
+            )
         if len(out) == 1:
             return out[0]
         if len(out) != 0:
@@ -77,14 +74,9 @@ def load_lib(lib_name, lib_path, api_argtypes, error_message):
         c_call = lib.__getattr__(name)  # pylint: disable=C2801
         c_call.argtypes = [
             *api_argtypes[name][0],
-            *[POINTER(t) for t in api_argtypes[name][1]]
+            *[POINTER(t) for t in api_argtypes[name][1]],
         ]
 
-        api[name] = APIWrapper(
-            lib_name,
-            c_call,
-            api_argtypes[name][1],
-            error_message
-        )
+        api[name] = APIWrapper(lib_name, c_call, api_argtypes[name][1], error_message)
 
     return api

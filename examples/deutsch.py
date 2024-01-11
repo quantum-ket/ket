@@ -3,7 +3,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import *
+"""Deutsch algorithm"""
+
+import ket
 
 
 def balanced_oracle(x, y):
@@ -16,7 +18,7 @@ def balanced_oracle(x, y):
         x: The first qubit.
         y: The second qubit.
     """
-    ctrl(x, X, y)
+    ket.ctrl(x, ket.X)(y)
 
 
 def constant_oracle(x, y):
@@ -29,7 +31,7 @@ def constant_oracle(x, y):
         x: The first qubit.
         y: The second qubit.
     """
-    X(y)
+    ket.X(y)
 
 
 def deutsch(oracle):
@@ -42,14 +44,15 @@ def deutsch(oracle):
     Returns:
         The measurement of the first qubit after the algorithm has been run.
     """
-    x, y = quant(2)  # xy = |00⟩
-    H(x)            # x = |+⟩
-    H(X(y))         # y = |–⟩
-    oracle(x, y)    # |–⟩|–⟩ if balanced else –|+⟩|–⟩
-    return measure(H(x))
+    p = ket.Process()
+    x, y = p.alloc(2)  # xy = |00⟩
+    ket.H(x)  # x = |+⟩
+    ket.H(ket.X(y))  # y = |–⟩
+    oracle(x, y)  # |–⟩|–⟩ if balanced else –|+⟩|–⟩
+    return ket.measure(ket.H(x))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run the Deutsch algorithm with the balanced and constant oracles.
     # Print the measurement of the first qubit after the algorithm has been run.
     print("Balanced oracle measurement:", deutsch(balanced_oracle).value)
