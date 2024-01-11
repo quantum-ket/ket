@@ -38,8 +38,6 @@ PyPI Upload:
   script:
     - pip install twine
     - python -m twine upload dist/* wheelhouse/*
-  only:
-    - master
 
 sast:
   stage: test
