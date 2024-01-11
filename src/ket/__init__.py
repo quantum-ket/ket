@@ -11,6 +11,6 @@ from .base import __all__ as all_base
 from .gates import *
 from .gates import __all__ as all_gate
 
-__version__ = "0.7.dev0"
+__version__ = "0.7.dev1"
 
 __all__ = all_base + all_gate

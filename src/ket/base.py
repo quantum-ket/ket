@@ -17,12 +17,48 @@ from .clib.kbw import get_simulator
 __all__ = [
     "Process",
     "Quant",
+    "Measurement",
     "measure",
+    "Samples",
     "sample",
+    "QuantumState",
     "dump",
     "Pauli",
+    "Hamiltonian",
+    "ExpValue",
     "exp_value",
+    "set_default_process_configuration",
 ]
+
+DEFAULT_PROCESS_CONFIGURATION = {
+    "configuration": None,
+    "num_qubits": None,
+    "simulator": None,
+    "execution": None,
+    "force": False,
+}
+
+
+def set_default_process_configuration(
+    configuration=None,
+    num_qubits: Optional[int] = None,
+    simulator: Optional[Literal["sparse", "dense"]] = None,
+    execution: Optional[Literal["live", "batch"]] = None,
+    force_configuration: bool = False,
+):
+    """Set the default process configuration."""
+
+    global DEFAULT_PROCESS_CONFIGURATION  # pylint: disable=global-statement
+
+    new_configuration = {
+        "configuration": configuration,
+        "num_qubits": num_qubits,
+        "simulator": simulator,
+        "execution": execution,
+        "force": force_configuration,
+    }
+
+    DEFAULT_PROCESS_CONFIGURATION = new_configuration
 
 
 class Process(LibketProcess):
@@ -35,6 +71,30 @@ class Process(LibketProcess):
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
     ):
+        if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
+            map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
+        ):
+            configuration = (
+                DEFAULT_PROCESS_CONFIGURATION["configuration"]
+                if DEFAULT_PROCESS_CONFIGURATION["configuration"] is not None
+                else configuration
+            )
+            num_qubits = (
+                DEFAULT_PROCESS_CONFIGURATION["num_qubits"]
+                if DEFAULT_PROCESS_CONFIGURATION["num_qubits"] is not None
+                else num_qubits
+            )
+            simulator = (
+                DEFAULT_PROCESS_CONFIGURATION["simulator"]
+                if DEFAULT_PROCESS_CONFIGURATION["simulator"] is not None
+                else simulator
+            )
+            execution = (
+                DEFAULT_PROCESS_CONFIGURATION["execution"]
+                if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
+                else execution
+            )
+
         if configuration is not None and any(
             map(lambda a: a is not None, [num_qubits, simulator, execution])
         ):
@@ -328,7 +388,7 @@ class QuantumState:
         self._check()
         if self._states is None:
             return None
-        return dict(map(lambda k, v: (k, abs(v * v)), self._states.items()))
+        return dict(map(lambda a: (a[0], abs(a[1]) ** 2), self._states.items()))
 
     def sample(self, shots=4096, seed=None) -> dict[int, int] | None:
         """Get the quantum execution shots
@@ -575,6 +635,12 @@ class Pauli:
             raise ValueError("different Ket processes")
 
         return Hamiltonian([self, other], process=self.process)
+
+    def __radd__(self, other: int | float) -> Pauli:
+        if other != 0:
+            raise ValueError("cannot add Pauli with float or int")
+
+        return self
 
     def __repr__(self) -> str:
         return f"{self.coef}*" + "".join(
