@@ -1,4 +1,8 @@
-"""Basic Ket type definitions."""
+"""Base Quantum Programming Classes
+
+This module provides base classes for handling quantum programming in the Ket library. It includes
+for handle and store quantum states, measurements, and expected values.
+"""
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -9,7 +13,7 @@ from __future__ import annotations
 from ctypes import c_int32, c_size_t, c_uint8
 from json import loads
 from random import Random
-from typing import Literal, Optional
+from typing import Literal, Optional, Any
 
 from .clib.libket import Process as LibketProcess, API
 from .clib.kbw import get_simulator
@@ -18,15 +22,11 @@ __all__ = [
     "Process",
     "Quant",
     "Measurement",
-    "measure",
     "Samples",
-    "sample",
     "QuantumState",
-    "dump",
     "Pauli",
     "Hamiltonian",
     "ExpValue",
-    "exp_value",
     "set_default_process_configuration",
 ]
 
@@ -46,7 +46,19 @@ def set_default_process_configuration(
     execution: Optional[Literal["live", "batch"]] = None,
     force_configuration: bool = False,
 ):
-    """Set the default process configuration."""
+    """Set default process configurations.
+
+    Configures default parameters for quantum processes using the specified options.
+
+    Args:
+        configuration: Configuration definition for third-party quantum execution. Defaults to None.
+        num_qubits: Number of qubits for the KBW simulator.Defaults to None.
+        simulator: Simulation mode for the KBW simulator. Defaults to None.
+        execution: Execution mode for the KBW simulator. Defaults to None.
+        force_configuration: If set to True, the parameters defined in the
+            :class:`~ket.base.Process` constructor will overwrite those that are not None. Defaults
+            to False.
+    """
 
     global DEFAULT_PROCESS_CONFIGURATION  # pylint: disable=global-statement
 
@@ -62,7 +74,89 @@ def set_default_process_configuration(
 
 
 class Process(LibketProcess):
-    """Quantum process for handling the quantum circuit creation and execution."""
+    """Quantum program process.
+
+    A :class:`~ket.base.Process` in Ket handles quantum circuit preparation and execution, serving
+    as a direct interface to the Rust library. Its primary usage in quantum programming is to
+    allocate qubits using the :meth:`~ket.base.Process.alloc` method.
+
+    Example:
+
+    .. code-block:: python
+
+        from ket import Process
+
+        p = Process()
+        qubits = p.alloc(10) # Allocate 10 qubits
+
+    By default, quantum execution is performed by the KBW simulator using sparse mode with 32
+    qubits. The KBW simulator in sparse mode handles qubits in a representation equivalent to a
+    sparse matrix. This simulator's execution time is related to the amount of superposition in the
+    quantum execution, making it suitable as a default when the number of qubits is unknown or the
+    quantum state can be represented by a sparse matrix, such as in a GHZ state. The dense simulator
+    mode has exponential time complexity with the number of qubits. While it can better explore CPU
+    parallelism, the number of qubits must be carefully set. The default number of qubits for the
+    dense simulator is 12. The choice of simulator mode depends on the quantum algorithm, as each
+    mode has its pros and cons.
+
+    Another parameter for quantum execution on the KBW simulator is between "live" and "batch"
+    execution. This configuration determines when quantum instructions will be executed. If set to
+    "live", quantum instructions execute immediately after the call. If set to "batch", quantum
+    instructions execute only at the end of the process. The default configuration is "live",
+    suitable for quantum simulation where the non-clone theorem of quantum mechanics does not need
+    to be respected. Batch execution is closer to what is expected from a quantum computer and is
+    recommended when preparing quantum code to execute on a QPU.
+
+    Example:
+
+    Batch execution:
+
+    .. code-block:: python
+
+        from ket import *
+
+        p = Process(execution="batch")
+        a, b = p.alloc(2)
+
+        CNOT(H(a), b) # Bell state preparation
+
+        d = dump(a + b)
+
+        p.execute()
+        # The value of `d` will only be available after executing the process
+
+        print(d.show())
+
+        CNOT(a, b)  # This instruction will raise an error since the process
+                    # has already executed.
+
+    Live execution:
+
+    .. code-block:: python
+
+        from ket import *
+
+        p = Process(execution="batch")
+        a, b = p.alloc(2)
+
+        CNOT(H(a), b) # Bell state preparation
+
+        # The value of the dump is available right after
+        print(dump(a + b).show())
+
+        CNOT(a, b)  # This instruction can execute normally
+        H(a)
+
+        print(dump(a + b).show())
+
+
+    Args:
+        configuration: Configuration definition for third-party quantum execution. Defaults to None.
+        num_qubits: Number of qubits for the KBW simulator. If None and ``simulator=="sparse"``,
+            defaults to 32; otherwise, defaults to 12.
+        simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.
+        execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
+    """
 
     def __init__(
         self,
@@ -124,24 +218,89 @@ class Process(LibketProcess):
         self._instructions_buffer_size = 2048
         self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
 
-    def alloc(self, num_qubit: int = 1) -> Quant:
-        """Allocate ``num_qubit`` qubits and return a :class:`~ket.quant` object."""
+    def alloc(self, num_qubits: int = 1) -> Quant:
+        """Allocate a specified number of qubits and return a :class:`~ket.base.Quant` object.
 
-        if num_qubit < 1:
+        Args:
+            num_qubits: The number of qubits to allocate. Defaults to 1.
+
+        Returns:
+            A list like object representing the allocated qubits.
+
+
+        Example:
+            >>> from ket import Process
+            >>> p = Process()
+            >>> qubits = p.alloc(3)
+            >>> print(qubits)
+            <Ket 'Quant' [0, 1, 2] pid=0x...>
+
+        The :meth:`~ket.base.Process.alloc` method allocates the specified number of qubits and
+        returns a :class:`~ket.base.Quant` object. Each qubit is assigned a unique index, and the
+        resulting :class:`~ket.base.Quant` object encapsulates the allocated qubits along with a
+        reference to the parent :class:`~ket.base.Process` object.
+        """
+
+        if num_qubits < 1:
             raise ValueError("Cannot allocate less than 1 qubit")
 
-        qubits_index = [self.allocate_qubit().value for _ in range(num_qubit)]
+        qubits_index = [self.allocate_qubit().value for _ in range(num_qubits)]
         return Quant(qubits=qubits_index, process=self)
 
     def execute(self):
-        """Force the quantum circuit execution."""
+        """Force the execution of the quantum circuit.
+
+        This method triggers the immediate execution of the prepared quantum circuit. It is
+        essential when live execution is required or when batch execution needs to be initiated.
+
+        Example:
+            >>> from ket import Process
+            >>> p = Process()
+            >>> # ... (quantum circuit preparation)
+            >>> # Force the execution of the quantum circuit
+            >>> p.execute()
+
+        Note:
+            The :meth:`~ket.base.Process.execute` method should be used when the quantum
+            instructions are to be executed immediately, either in live mode or to initiate batch
+            execution.
+        """
         self.prepare_for_execution()
 
     def _get_ket_process(self):
         return self
 
-    def get_instructions(self) -> dict:
-        """Get the quantum instructions from the process."""
+    def get_instructions(self) -> list[dict[str, Any]]:
+        """Retrieve quantum instructions from the quantum process.
+
+        Returns:
+            A list of dictionaries containing quantum instructions extracted from the process.
+
+        The :meth:`~ket.base.Process.get_instructions` method retrieves the quantum instructions
+        from the prepared quantum process. It internally calls the
+        :meth:`~ket.base.Process.instructions_json` method to obtain the instructions fom the Rust
+        library in JSON format, converts the byte data into a list of dictionaries, and returns the
+        result.
+
+        Note:
+            Ensure that the quantum process has been appropriately prepared for execution using the
+            :meth:`~ket.base.Process.prepare_for_execution` method before calling this method. The
+            returned instructions provide insights into the quantum circuit and can be useful for
+            debugging or analysis purposes.
+
+        Example:
+            >>> from ket import *
+            >>> p = Process()
+            >>> a, b = p.alloc(2)
+            >>> CNOT(H(a), b)
+            >>> # Get quantum instructions
+            >>> instructions = p.get_instructions()
+            >>> pprint(instructions)
+            [{'Alloc': {'target': 0}},
+             {'Alloc': {'target': 1}},
+             {'Gate': {'control': [], 'gate': 'Hadamard', 'target': 0}},
+             {'Gate': {'control': [0], 'gate': 'PauliX', 'target': 1}}]
+        """
         write_size = self.instructions_json(
             self._instructions_buffer, self._instructions_buffer_size
         )
@@ -152,8 +311,40 @@ class Process(LibketProcess):
 
         return loads(bytearray(self._instructions_buffer[: write_size.value]))
 
-    def get_metadata(self) -> dict:
-        """Get the metadata from the process."""
+    def get_metadata(self) -> dict[str, Any]:
+        """Retrieve metadata from the quantum process.
+
+        Returns:
+            A dictionary containing metadata information extracted from the process.
+
+        The :meth:`~ket.base.Process.get_metadata` method retrieves metadata from the prepared
+        quantum process. It internally calls the :meth:`~ket.base.Process.metadata_json` method to
+        obtain the metadata in JSON format, converts the byte data into a dictionary, and returns
+        the result.
+
+        Note:
+            Ensure that the quantum process has been appropriately prepared for execution using the
+            :meth:`~ket.base.Process.prepare_for_execution` method before calling this method. The
+            returned metadata provides information about the quantum circuit execution, including
+            depth, gate count, qubit simultaneous operations, status, execution time, and timeout.
+
+        Example:
+
+            >>> from ket import Process
+            >>> p = Process()
+            >>> a, b = p.alloc(2)
+            >>> CNOT(H(a), b)
+            >>> # Get metadata
+            >>> metadata = p.get_metadata()
+            >>> pprint(metadata)
+            {'depth': 2,
+             'execution_time': None,
+             'gate_count': {'1': 1, '2': 1},
+             'qubit_simultaneous': 2,
+             'status': 'Live',
+             'timeout': None}
+        """
+
         write_size = self.metadata_json(
             self._metadata_buffer, self._metadata_buffer_size
         )
@@ -169,9 +360,67 @@ class Process(LibketProcess):
 
 
 class Quant:
-    """List of qubits."""
+    """List of qubits.
 
-    def __init__(self, *, qubits, process):
+    This class represents a list of qubit indices within a quantum process. Direct instantiation
+    of this class is not recommended. Instead, it should be created by calling the
+    :meth:`~ket.base.Process.alloc` method.
+
+    A :class:`~ket.base.Quant` serves as a fundamental quantum object where quantum operations
+    should be applied.
+
+    Example:
+
+    .. code-block:: py
+
+        from ket import *
+        # Create a quantum process
+        p = Process()
+
+        # Allocate 2 qubits
+        q1 = p.alloc(2)
+
+        # Apply a Hadamard gates on the first qubit of `q1`
+        H(q1[0])
+
+        # Allocate more 2 qubits
+        q2 = p.alloc(2)
+
+        # Concatenate two Quant objects
+        result_quant = q1 + q2
+        print(result_quant)  # <Ket 'Quant' [0, 1, 2, 3] pid=0x...>
+
+        # Use the fist qubit to control the application of
+        # a Pauli X gate on the other qubits
+        ctrl(result_quant[0], X)(result_quant[1:])
+
+        # Select qubits at specific indexes
+        selected_quant = result_quant.at([0, 1])
+        print(selected_quant)  # <Ket 'Quant' [0, 1] pid=0x...>
+
+        # Free all qubits in a Quant object
+        result_quant.free()
+
+        # Check if all qubits in a Quant object are free
+        is_free = result_quant.is_free()
+        print(is_free)  # True
+
+    Supported operations:
+
+    - Addition (``+``): Concatenates two :class:`~ket.base.Quant` objects.
+      The processes must be the same.
+    - Indexing (``[index]``): Returns a new :class:`~ket.base.Quant` object with selected qubits
+      based on the provided index.
+    - Iteration (``for q in qubits``): Allows iterating over qubits in a :class:`~ket.base.Quant`
+      object.
+    - Reversal (``reversed(qubits)``): Returns a new :class:`~ket.base.Quant` object with reversed
+      qubits.
+    - Context Manager (``with qubits:``): Ensures that all qubits are free at the end of the scope.
+    - Length (``len(qubits)``): Returns the number of qubits in the :class:`~ket.base.Quant` object.
+
+    """
+
+    def __init__(self, *, qubits: list[int], process: Process):
         self.qubits = qubits
         self.process = process
 
@@ -184,39 +433,55 @@ class Quant:
         return Quant(qubits=self.qubits + other.qubits, process=self.process)
 
     def at(self, index: list[int]) -> Quant:
-        r"""Return qubits at ``index``
+        """Return a subset of qubits at specified indices.
 
-        Create a new :class:`~ket.base.quant` with the qubit references at the
-        position defined by the ``index`` list.
+        Create a new :class:`~ket.base.Quant` object with qubit references at the positions defined
+        by the provided ``index`` list.
 
-        :Example:
+        Example:
 
-        .. code-block:: ket
+        .. code-block:: py
 
-            q = quant(20)
-            odd = q.at(range(1, len(q), 2)) # = q[1::2]
+            from ket import *
+
+            # Create a quantum process
+            p = Process()
+
+            # Allocate 5 qubits
+            q = p.alloc(5)
+
+            # Select qubits at odd indices (1, 3)
+            odd_qubits = q.at([1, 3])
 
         Args:
-            index: List of indexes.
+            index: List of indices specifying the positions of qubits to be included in the
+                new :class:`~ket.base.Quant`.
+
+        Returns:
+            A new :class:`~ket.base.Quant` object containing the selected qubits.
         """
 
         return Quant(qubits=[self.qubits[i] for i in index], process=self.process)
 
     def free(self):
-        r"""Free the qubits
+        r"""Release the qubits.
 
-        All qubits must be at the state :math:`\left|0\right>` before the call.
+        This method frees the allocated qubits, assuming they are in the state
+        :math:`\left|0\right>` before the call.
 
         Warning:
-            No check is applied to see if the qubits are at state
-            :math:`\left|0\right>`.
+            No check is performed to verify if the qubits are in the state
+            :math:`\left|0\right>`. Releasing qubits in other states cause undefined behavior.
         """
-
         for qubit in self.qubits:
             self.process.free_qubit(qubit)
 
     def is_free(self) -> bool:
-        """Return ``True`` when all qubits are free"""
+        """Check if all allocated qubits are in the 'free' state.
+
+        Returns:
+            ``True`` if all qubits are free, ``False`` otherwise.
+        """
         return all(
             not self.process.get_qubit_status(qubit)[0].value for qubit in self.qubits
         )
@@ -231,10 +496,8 @@ class Quant:
             process=self.process,
         )
 
-    class Iter:
-        """Qubits iterator"""
-
-        def __init__(self, q):
+    class _QuantIter:
+        def __init__(self, q: Quant):
             self.q = q
             self.idx = -1
             self.size = len(q.qubits)
@@ -249,7 +512,7 @@ class Quant:
             return self
 
     def __iter__(self):
-        return self.Iter(self)
+        return self._QuantIter(self)
 
     def __enter__(self):
         return self
@@ -268,7 +531,28 @@ class Quant:
 
 
 class Measurement:
-    """Quantum measurement result."""
+    """Quantum measurement result.
+
+    This class holds a reference for a measurement result. The result may not be available right
+    after the measurement call, especially in batch execution.
+
+    To read the value, access the attribute :attr:`~ket.base.Measurement.value`. If the value is not
+    available, the measurement will return `None`; otherwise, it will return an unsigned integer.
+
+    You can instantiate this class by calling the :func:`~ket.operations.measure` function.
+
+    Example:
+
+    .. code-block:: python
+
+        from ket import *
+
+        p = Process()
+        q = p.alloc(2)
+        CNOT(H(q[0]), q[1])
+        result = measure(q)
+        print(result.value)  # 0 or 3
+    """
 
     def __init__(self, qubits: Quant):
         self.process = qubits.process
@@ -297,7 +581,7 @@ class Measurement:
 
     @property
     def value(self) -> int | None:
-        """Return the measurement value if available."""
+        """Retrieve the measurement value if available."""
         self._check()
         return self._value
 
@@ -308,40 +592,40 @@ class Measurement:
         )
 
 
-def measure(qubits: Quant) -> Measurement:
-    """Measure the qubits and return a :class:`~ket.base.measurement` object."""
-    return Measurement(qubits)
-
-
 class QuantumState:
-    """Create a snapshot with the current quantum state of ``qubits``
+    """Snapshot of a quantum state.
 
-    Gathering any information from a :class:`~ket.base.dump` triggers the quantum execution.
+    This class holds a reference for a snapshot of a quantum state obtained using a quantum
+    simulator. The result may not be available right after the measurement call, especially in batch
+    execution.
+
+    You can instantiate this class by calling the :func:`~ket.operations.dump` function.
 
     :Example:
 
-    .. code-block:: ket
+    .. code-block:: python
 
-        a, b = quant(2)
-        with around(cnot(H, I), a, b):
+        from ket import *
+
+        p = Process()
+        a, b = p.alloc(2)
+        with around(cat(kron(H, I), CNOT), a, b):
             Y(a)
             inside = dump(a+b)
+
         outside = dump(a+b)
-
-        print('inside:')
         print(inside.show())
-        # inside:
         # |01⟩    (50.00%)
-        #          -0.707107i     ≅     -i/√2
+        #  -0.707107i     ≅     -i/√2
         # |10⟩    (50.00%)
-        #           0.707107i     ≅      i/√2
-        print('outside:')
-        print(outside.show())
-        # outside:
-        # |11⟩    (100.00%)
-        #          -1.000000i     ≅     -i/√1
+        #  0.707107i     ≅      i/√2
 
-    :param qubits: Qubits to dump.
+        print(outside.show())
+        # |11⟩    (100.00%)
+        #  -1.000000i     ≅     -i/√1
+
+    Args:
+        qubits: Qubits from which to capture a quantum state snapshot.
     """
 
     def __init__(self, qubits: Quant):
@@ -373,9 +657,12 @@ class QuantumState:
 
     @property
     def states(self) -> dict[int, complex] | None:
-        """Get the quantum state
+        """Get the quantum state.
 
-        This function returns a ``dict`` that maps base states to probability amplitude.
+        Returns a dictionary mapping base states to their corresponding probability amplitudes.
+
+        Returns:
+            The quantum state, or None if the quantum state information is not available.
         """
 
         self._check()
@@ -383,22 +670,32 @@ class QuantumState:
 
     @property
     def probabilities(self) -> dict[int, float] | None:
-        """List of measurement probabilities"""
+        """Get the measurement probabilities.
 
+        Returns a dictionary mapping base states to their corresponding measurement probabilities.
+
+        Returns:
+            The measurement probabilities, or None if the quantum state information is not
+            available.
+        """
         self._check()
         if self._states is None:
             return None
         return dict(map(lambda a: (a[0], abs(a[1]) ** 2), self._states.items()))
 
     def sample(self, shots=4096, seed=None) -> dict[int, int] | None:
-        """Get the quantum execution shots
+        """Get the quantum execution shots.
 
-        If the dump variable does not hold the result of shots execution,
-        the parameters `shots` and `seed` are used to generate the sample.
+        The parameters ``shots`` and ``seed`` are used to generate the sample from the quantum state
+        snapshot.
 
         Args:
-            shots: Number of shots (used if the dump does not store the result of shots execution)
-            seed: Seed for the RNG (used if the dump does not store the result of shots execution)
+            shots: Number of shots. Defaults to 4096.
+            seed: Seed for the RNG.
+
+        Returns:
+            A dictionary mapping measurement outcomes to their frequencies in the generated sample,
+            or None if the quantum state information is not available.
         """
 
         self._check()
@@ -416,20 +713,24 @@ class QuantumState:
         return result
 
     def show(self, format_str: str | None = None) -> str | None:
-        r"""Return the quantum state as a string
+        """Return the quantum state as a string.
 
-        Use the format starting to change the print format of the basis states:
+        Use the format string to change the print format of the basis states:
 
         * ``i``: print the state in the decimal base
         * ``b``: print the state in the binary base (default)
-        * ``i|b<n>``: separate the ``n`` first qubits, the remaining print in the binary base
+        * ``i|b<n>``: separate the ``n`` first qubits; the remaining print in the binary base
         * ``i|b<n1>:i|b<n2>[:i|b<n3>...]``: separate the ``n1, n2, n3, ...`` first qubits
 
         :Example:
 
-        .. code-block:: ket
+        .. code-block:: py
 
-            q = quant(19)
+            from ket import *
+
+            p = Process()
+
+            q = p.alloc(19)
             X(ctrl(H(q[0]), X, q[1:])[1::2])
             d = dump(q)
 
@@ -455,7 +756,11 @@ class QuantumState:
             #  0.707107               ≅      1/√2
 
         Args:
-            format: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
+            format_str: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
+
+        Returns:
+            The formatted quantum state as a string, or None if the quantum state information is not
+            available.
         """
 
         self._check()
@@ -529,13 +834,37 @@ class QuantumState:
         return f"<Ket 'QuantumState' index={self.index}, pid={hex(id(self.process))}>"
 
 
-def dump(qubits: Quant) -> QuantumState:
-    """Get the quantum state"""
-    return QuantumState(qubits)
-
-
 class Samples:
-    """Quantum state measurement samples."""
+    """Quantum state measurement samples.
+
+    This class holds a reference for a measurement sample result. The result may not be available
+    right after the sample call, especially in batch execution.
+
+    To read the value, access the attribute :attr:`~ket.base.Sample.value`. If the value is not
+    available, the measurement will return `None`; otherwise, it will return a dictionary mapping
+    measurement outcomes to their respective counts.
+
+    You can instantiate this class by calling the :func:`~ket.operations.sample` function.
+
+    Example:
+
+    .. code-block:: py
+
+        from ket import *
+
+        p = Process()
+        q = p.alloc(2)
+        CNOT(H(q[0]), q[1])
+        results = sample(q)
+
+        print(results.value)
+        # {0: 1042, 3: 1006}
+
+    Args:
+        qubits: Qubits for which the measurement samples are obtained.
+        shots: Number of measurement shots (default is 2048).
+
+    """
 
     def __init__(self, qubits: Quant, shots: int = 2048):
         self.qubits = qubits
@@ -558,7 +887,7 @@ class Samples:
 
     @property
     def value(self) -> dict[int, int] | None:
-        """Get the measurement samples"""
+        """Retrieve the measurement samples if available."""
         self._check()
         return self._value
 
@@ -566,20 +895,67 @@ class Samples:
         return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.process))}>"
 
 
-def sample(qubits: Quant, shots: int = 2048) -> Samples:
-    """Get the quantum state measurement samples"""
-    return Samples(qubits, shots)
-
-
 class Pauli:
-    """Pauli operator for Hamiltonian creation."""
+    """Pauli operator for Hamiltonian creation.
+
+    This class represents a Pauli operator for Hamiltonian creation. The primary usage of this class
+    is to prepare a Hamiltonian by adding and multiplying Pauli operators and scalars for calculating
+    the expected value of a quantum state.
+
+    Allowed operations:
+    - Multiply by a scalar or another :class:`~ket.base.Pauli` operator.
+    - Add another :class:`~ket.base.Pauli` or :class:`~ket.base.Hamiltonian` operator.
+
+    Example:
+
+    .. code-block::
+
+        from ket import *
+
+        p = Process()
+        qubits = p.alloc(3)
+        H(qubits[1])
+        S(H(qubits[2]))
+
+        # Example 1: Single Pauli term
+        pauli_term = Pauli("X", qubits[0])
+        print(repr(pauli_term))
+        # <Ket 'Pauli' 1.0*X0, pid=0x...>
+
+        # Example 2: Sum of Pauli terms
+        sum_pauli = Pauli("Y", qubits[1]) + Pauli("Z", qubits[2])
+        print(repr(sum_pauli))
+        # <Ket 'Hamiltonian' 1.0*Y1 + 1.0*Z2, pid=0x...>
+
+        # Example 3: Pauli multiplication
+        multiplied_pauli = 2.0 * Pauli("X", qubits[0]) * Pauli("Y", qubits[1])
+        print(repr(multiplied_pauli))
+        # <Ket 'Pauli' 2.0*X0Y1, pid=0x...>
+
+        # Example 4: Calculating expected value
+        h = Pauli("Z", qubits[0]) + Pauli("X", qubits[1]) + Pauli("Y", qubits[2])
+        print(repr(h))
+        # <Ket 'Hamiltonian' 1.0*Z0 + 1.0*X1 + 1.0*Y2, pid=0x...>
+        result = exp_value(h)
+        print(result.value)  # 3.0000000000000013
+
+
+    Args:
+        pauli: Pauli operator type.
+        qubits: Qubits to apply the Pauli operator to.
+        process: *For internal usage*. Quantum process, default is the process of the given qubits.
+        pauli_list: *For internal usage*. List of Pauli operators.
+        qubits_list: *For internal usage*. List of Qubit.
+        coef: *For internal usage*. Coefficient for the Pauli operator, default is 1.0.
+
+    """
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
         pauli: Literal["X", "Y", "Z"],
         qubits: Quant,
         *,
-        process=None,
+        process: Process | None = None,
         pauli_list: list[str] | None = None,
         qubits_list: list[Quant] | None = None,
         coef: float | None = None,
@@ -642,17 +1018,24 @@ class Pauli:
 
         return self
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"{self.coef}*" + "".join(
             "".join(f"{pauli}{qubit}" for qubit in qubits.qubits)
             for pauli, qubits in zip(self.pauli_list, self.qubits_list)
         )
 
+    def __repr__(self) -> str:
+        return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.process))}>"
+
 
 class Hamiltonian:
-    """Hamiltonian for expected value calculation."""
+    """Hamiltonian for expected value calculation.
 
-    def __init__(self, pauli_products: list[Pauli], process):
+    This class is not intended to be instantiated directly. Instead, it should be created
+    by adding :class:`~ket.base.Pauli` operators or other :class:`~ket.base.Hamiltonian` objects.
+    """
+
+    def __init__(self, pauli_products: list[Pauli], process: Process):
         self.process = process
         self.pauli_products = pauli_products
 
@@ -681,7 +1064,29 @@ class Hamiltonian:
 
 
 class ExpValue:
-    """Expected value for a quantum state."""
+    """Expected value for a quantum state.
+
+    This class holds a reference for a expected value result. The result may not be available right
+    after the measurement call, especially in batch execution.
+
+    To read the value, access the attribute :attr:`~ket.base.ExpValue.value`. If the value is not
+    available, the measurement will return `None`; otherwise, it will return a float.
+
+    You can instantiate this class by calling the :func:`~ket.operations.exp_value` function.
+
+    Example:
+
+    .. code-block:: python
+
+        from ket import *
+
+        p = Process()
+        q = p.alloc(2)
+        CNOT(H(q[0]), q[1])
+        result = exp_value(Pauli("X", q))
+        print(result.value) # 1.0000000000000004
+
+    """
 
     pauli_map = {"X": 1, "Y": 2, "Z": 3}
 
@@ -715,14 +1120,9 @@ class ExpValue:
 
     @property
     def value(self) -> float | None:
-        """Expected value for a quantum state."""
+        """Retrieve the expected value if available."""
         self._check()
         return self._value
 
     def __repr__(self) -> str:
         return f"<Ket 'ExpValue' value={self.value}, pid={hex(id(self.process))}>"
-
-
-def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
-    """Expected value for a quantum state."""
-    return ExpValue(hamiltonian)
