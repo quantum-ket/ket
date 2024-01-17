@@ -2,8 +2,80 @@
 # SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
 #
 # SPDX-License-Identifier: Apache-2.0
+"""Ket Quantum Programming Platform.
 
-"""Ket Quantum programming Platform"""
+Ket is a comprehensive library designed for quantum programming, providing essential functions and
+classes to build quantum algorithms and applications. It facilitates the manipulation and storage of
+quantum states, measurement operations, and the computation of expected values.
+
+Explore the documentation of individual submodules for in-depth information and more practical code
+examples.
+
+All the functionality from the submodules is conveniently accessible within the ``ket`` namespace.
+
+Examples:
+
+    - Grover algorithm
+
+    .. code-block:: python
+
+        from math import sqrt, pi
+        import ket
+
+        def grover(size: int, oracle) -> int:
+            p = ket.Process(simulator="dense", num_qubits=size)
+
+            s = ket.H(p.alloc(size)) 
+
+            steps = int((pi / 4) * sqrt(2**size))  
+
+            for _ in range(steps):
+                oracle(s) 
+                with ket.around(ket.H, s):
+                    ket.phase_oracle(0, s)
+
+            return ket.measure(s).value
+
+    - Quantum teleportation protocol
+
+    .. code-block:: python
+
+        import ket
+
+        def teleport(alice_msg, alice_aux, bob_aux):
+            ket.ctrl(alice_msg, ket.X)(alice_aux)
+            ket.H(alice_msg)
+
+            m0 = ket.measure(alice_msg)
+            m1 = ket.measure(alice_aux)
+
+            if m1.value == 1:
+                ket.X(bob_aux)
+            if m0.value == 1:
+                ket.Z(bob_aux)
+
+            return bob_aux
+
+        def bell(qubits):
+            return ket.ctrl(ket.H(qubits[0]), ket.X)(qubits[1])
+
+        def message(qubit):
+            ket.H(alice)
+            ket.Z(alice)
+
+        p = ket.Process()
+
+        alice = p.alloc()  # alice = |0⟩
+        message(alice)     # alice = |–⟩
+
+        bob = teleport(alice, *bell(p.alloc(2)))  # bob  <- alice
+        
+        ket.H(bob)         # bob   = |1⟩
+        bob_m = ket.measure(bob)
+        print("Expected measure 1, result =", bob_m.value)
+
+"""
+
 
 from .clib import libs
 from .base import *
@@ -13,6 +85,6 @@ from .operations import __all__ as all_func
 from .gates import *
 from .gates import __all__ as all_gate
 
-__version__ = "0.7.dev2"
+__version__ = "0.7.dev3"
 
 __all__ = all_base + all_func + all_gate

@@ -7,6 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.7](https://pypi.org/project/ket-lang/0.7)
+
+### Updated
+
+- Conducted a significant refactoring in the Ket library, eliminating the stack process and introducing functionality for expected value calculations.
+- Updated Libket to 0.4.0.
+- Updated KBW to 0.2.0.
+
+
 ## [0.6.1](https://pypi.org/project/ket-lang/0.6.1)
 
 ### Updated

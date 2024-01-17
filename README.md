@@ -43,121 +43,38 @@ from math import sqrt, pi
 
 
 def grover(n: int, oracle) -> int:
-    qubits = H(quant(n))
-    steps = int((pi/4)*sqrt(2**n))
+    p = Process()
+    qubits = H(p.alloc(n))
+    steps = int((pi / 4) * sqrt(2**n))
     for _ in range(steps):
         oracle(qubits)
         with around(H, qubits):
-            phase_on(0, qubits)
+            phase_oracle(0, qubits)
     return measure(qubits).value
 
 
 n = 8
 looking_for = 13
-print(grover(n, phase_on(looking_for)))
+print(grover(n, phase_oracle(looking_for)))
 # 13
-```
-
-### Shor's Algorithm
-
-```py
-from ket import *
-from ket.plugins import pown
-from random import randint
-from functools import reduce
-from math import log2, gcd
-
-def qft(qubits: quant, invert: bool = True):
-    if len(qubits) == 1:
-        H(qubits)
-    else:
-        head, *tail = qubits
-        H(head)
-        for i, c in enumerate(reversed(tail)):
-            ctrl(c, phase(pi / 2**(i + 1)), head)
-        qft(tail, invert=False)
-
-    if invert:
-        for i in range(len(qubits) // 2):
-            swap(qubits[i], qubits[- i - 1])
-
-def quantum_subroutine(N, x):
-    n = N.bit_length()
-
-    def subroutine():
-        reg1 = H(quant(n))
-        reg2 = pown(x, reg1, N)
-        measure(reg2)
-        adj(qft, reg1)
-        return measure(reg1).value
-
-    r = reduce(gcd, [subroutine() for _ in range(n)])
-    return 2**n//r
-
-
-def shor(N: int) -> int:
-    if N % 2 == 0:
-        return 2
-    n = N.bit_length()
-    y = int(log2(N))
-    for b in range(2, n+1):
-        x = y/b
-        u1 = int(2**x)
-        u2 = u1+1
-        if u1**b == N:
-            return u1
-        elif u2**b == N:
-            return u2
-
-    for _ in range(N.bit_length()):
-        x = randint(2, N-1)
-        gcd_x_N = gcd(x, N)
-        if gcd_x_N > 1:
-            return gcd_x_N
-
-        r = quantum_subroutine(N, x)
-
-        if r % 2 == 0 and pow(x, r//2) != -1 % N:
-            p = gcd(x**(r//2)-1, N)
-            if p != 1 and p != N and p*N//p == N:
-                factor = p
-                break
-
-            q = gcd(x**(r//2)+1, N)
-            if q != 1 and q != N and q*N//q == N:
-                factor = q
-                break
-
-    if factor is not None:
-        return factor
-    else:
-        raise RuntimeError(f"fails to factor {N}")
-
-N = 4063
-p = shor(N)
-q = N//p
-print(f'{N}={p}x{q}')
-# 4063=17x239
 ```
 
 ### Quantum Teleportation
 
 ```py
 from ket import *
-from ket import code_ket
 
 
-def entangle(a: quant, b: quant):
-    return cnot(H(a), b)
+def entangle(a: Quant, b: Quant):
+    return CNOT(H(a), b)
 
 
-def teleport(quantum_message: quant, entangled_qubit: quant):
-    adj(entangle, quantum_message, entangled_qubit)
-    return measure(entangled_qubit), measure(quantum_message)
+def teleport(quantum_message: Quant, entangled_qubit: Quant):
+    adj(entangle)(quantum_message, entangled_qubit)
+    return measure(entangled_qubit).value, measure(quantum_message).value
 
 
-@code_ket
-def decode(classical_message: tuple[int, int], qubit: quant):
+def decode(classical_message: tuple[int, int], qubit: Quant):
     if classical_message[0] == 1:
         X(qubit)
 
@@ -165,28 +82,29 @@ def decode(classical_message: tuple[int, int], qubit: quant):
         Z(qubit)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from math import pi
 
-    alice_message = phase(pi/4, H(quant()))
+    p = Process()
+
+    alice_message = PHASE(pi / 4, H(p.alloc()))
 
     alice_message_dump = dump(alice_message)
 
-    alice_qubit, bob_qubit = entangle(*quant(2))
+    alice_qubit, bob_qubit = entangle(*p.alloc(2))
 
     classical_message = teleport(
-        quantum_message=alice_message,
-        entangled_qubit=alice_qubit
+        quantum_message=alice_message, entangled_qubit=alice_qubit
     )
 
     decode(classical_message, bob_qubit)
 
     bob_qubit_dump = dump(bob_qubit)
 
-    print('Alice Message:')
+    print("Alice Message:")
     print(alice_message_dump.show())
 
-    print('Bob Qubit:')
+    print("Bob Qubit:")
     print(bob_qubit_dump.show())
 # Alice Message:
 # |0⟩     (50.00%)
@@ -209,15 +127,6 @@ git clone https://gitlab.com/quantum-ket/ket.git
 cd ket
 pip install -e . --user
 ```
-
-## Roadmap :notebook_with_decorative_cover:
-
-* [ ] Quantum code optimization.
-* [ ] Quantum circuit visualization.
-  
-* :zap: We plan to expand the [quantum library](https://quantumket.org/ket#quantum-library) with quantum algorithm building blocks.
-* :package: Full quantum algorithm implementations must be packaged with  Ket as a dependency.
-* :x: Low-level quantum control, like pulse programming, is out of Ket's scope.
 
 ## Cite Ket :book:
 
@@ -245,7 +154,3 @@ When using Ket for research projects, please cite:
    keywords = {Quantum programming, cloud quantum computation, qubit simulation}
 }
 ```
-
-## Community :family:
-
-Join the conversation on our [Discord](https://discord.gg/XkXvwRQ9aa).

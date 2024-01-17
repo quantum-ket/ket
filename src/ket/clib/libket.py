@@ -16,7 +16,6 @@ from ctypes import (
     c_uint8,
     c_int32,
     c_uint64,
-    c_int64,
     c_double,
 )
 import weakref
