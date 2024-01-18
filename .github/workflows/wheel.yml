@@ -29,7 +29,7 @@ jobs:
           cp src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
           cp src\ket\clib\libs\kbw\target\release\kbw.dll src\ket\clib\libs\kbw.dll
       - name: Install Python Dependencies
-        run: py -m pip install wheel twine
+        run: py -m pip install setuptools wheel twine
       - name: Build Wheel
         run: py setup.py bdist_wheel -p win-amd64
       - name: Archive Wheel
@@ -57,7 +57,7 @@ jobs:
           mv src/ket/clib/libs/libket/target/release/libket.dylib src/ket/clib/libs/kbw/target/release/libkbw.dylib src/ket/clib/libs/
           rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
       - name: Install Python Dependencies
-        run: python3 -m pip install wheel twine
+        run: python3 -m pip install setuptools wheel twine
       - name: Build Wheel
         run: python3 setup.py bdist_wheel -p macosx_10_7_x86_64
       - name: Archive Wheel
