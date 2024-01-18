@@ -87,6 +87,6 @@ from .gates import __all__ as all_gate
 from .expv import *
 from .expv import __all__ as all_expv
 
-__version__ = "0.7.dev4"
+__version__ = "0.7rc0"
 
 __all__ = all_base + all_func + all_gate + all_expv
