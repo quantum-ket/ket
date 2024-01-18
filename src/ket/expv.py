@@ -253,5 +253,16 @@ class ExpValue:
         self._check()
         return self._value
 
+    def get(self) -> dict[int, int]:
+        """Retrieve the expected values.
+
+        If the value is not available, the quantum process will execute to get the result.
+        """
+
+        self._check()
+        if self._value is None:
+            self.process.execute()
+        return self.value
+
     def __repr__(self) -> str:
         return f"<Ket 'ExpValue' value={self.value}, pid={hex(id(self.process))}>"

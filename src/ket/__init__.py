@@ -84,7 +84,9 @@ from .operations import *
 from .operations import __all__ as all_func
 from .gates import *
 from .gates import __all__ as all_gate
+from .expv import *
+from .expv import __all__ as all_expv
 
-__version__ = "0.7.dev3"
+__version__ = "0.7.dev4"
 
-__all__ = all_base + all_func + all_gate
+__all__ = all_base + all_func + all_gate + all_expv

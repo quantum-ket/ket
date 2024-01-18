@@ -582,6 +582,17 @@ class Measurement:
         self._check()
         return self._value
 
+    def get(self) -> int:
+        """Retrieve the measurement value.
+
+        If the value is not available, the quantum process will execute to get the result.
+        """
+
+        self._check()
+        if self._value is None:
+            self.process.execute()
+        return self.value
+
     def __repr__(self):
         return (
             f"<Ket 'Measurement' indexes={self.indexes}, "
@@ -664,6 +675,17 @@ class QuantumState:
 
         self._check()
         return self._states
+
+    def get(self) -> dict[int, complex]:
+        """Get the quantum state.
+
+        If the quantum state is not available, the quantum process will execute to get the result.
+        """
+
+        self._check()
+        if self._states is None:
+            self.process.execute()
+        return self.states
 
     @property
     def probabilities(self) -> dict[int, float] | None:
@@ -887,6 +909,17 @@ class Samples:
         """Retrieve the measurement samples if available."""
         self._check()
         return self._value
+
+    def get(self) -> dict[int, int]:
+        """Retrieve the measurement samples.
+
+        If the value is not available, the quantum process will execute to get the result.
+        """
+
+        self._check()
+        if self._value is None:
+            self.process.execute()
+        return self.value
 
     def __repr__(self) -> str:
         return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.process))}>"
