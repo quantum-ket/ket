@@ -35,7 +35,7 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
     for _ in range(steps):
         oracle(s)  # Apply the oracle function to the state.
         with ket.around(ket.H, s):
-            ket.phase_oracle(0, s)  # Apply the diffusor function to the state.
+            ket.lib.phase_oracle(0, s)  # Apply the diffusor function to the state.
 
     return ket.measure(s).value  # Measure the final state and return the result.
 
@@ -48,4 +48,4 @@ if __name__ == "__main__":
 
     print("Searching for value", looking_for, "using", SIZE, "qubits.")
 
-    print("Dense Simulation: measured", grover(SIZE, ket.phase_oracle(looking_for)))
+    print("Dense Simulation: measured", grover(SIZE, ket.lib.phase_oracle(looking_for)))

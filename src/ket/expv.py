@@ -9,6 +9,8 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=duplicate-code
+
 from ctypes import c_int32, c_size_t
 from typing import Literal
 

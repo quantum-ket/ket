@@ -12,6 +12,7 @@ Explore the documentation of individual submodules for in-depth information and 
 examples.
 
 All the functionality from the submodules is conveniently accessible within the ``ket`` namespace.
+Except for the `lib` module.
 
 Examples:
 
@@ -86,7 +87,8 @@ from .gates import *
 from .gates import __all__ as all_gate
 from .expv import *
 from .expv import __all__ as all_expv
+from . import lib
 
-__version__ = "0.7rc0"
+__version__ = "0.7rc1"
 
-__all__ = all_base + all_func + all_gate + all_expv
+__all__ = all_base + all_func + all_gate + all_expv + ["lib"]

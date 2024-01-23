@@ -81,8 +81,6 @@ __all__ = [
     "RXX",
     "RZZ",
     "RYY",
-    "flip_to_control",
-    "phase_oracle",
 ]
 
 
@@ -338,7 +336,9 @@ TD.__doc__ = _gate_docstring(
 def CNOT(  # pylint: disable=invalid-name missing-function-docstring
     control_qubit: Quant, target_qubit: Quant
 ) -> tuple[Quant, Quant]:
-    return ctrl(control_qubit, X)(target_qubit)
+    for c, t in zip(control_qubit, target_qubit):
+        ctrl(c, X)(t)
+    return control_qubit, target_qubit
 
 
 CNOT.__doc__ = _gate_docstring(
@@ -441,75 +441,3 @@ RYY.__doc__ = _gate_docstring(
     r"0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\"
     r"i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2} \end{bmatrix}",
 )
-
-
-def flip_to_control(
-    control_state: int | list[int], qubits: Quant | None = None
-) -> Quant | Callable[[Quant], Quant]:
-    r"""Flip qubits from :math:`\ket{\texttt{control_state}}` to :math:`\ket{1\dots1}`.
-
-    The primary usage of this gate is to change the state when controlled applications are applied.
-    For instance, all controlled operations are only applied if the control qubits' state is
-    :math:`\ket{1}`. This gate is useful for using another state as control.
-
-    Example:
-
-        .. code-block:: python
-
-            from ket import *
-
-            p = Process()
-            q = p.alloc(3)
-
-            H(q[:2])
-
-            with around(flip_to_control(0b01), q[:2]):
-                ctrl(q[:2], X)(q[2])
-    """
-
-    def inner(qubits: Quant) -> Quant:
-        if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
-
-        length = len(qubits)
-        if hasattr(control_state, "__iter__"):
-            if len(control_state) != length:
-                raise ValueError(
-                    f"'to' received a list of length {len(control_state)} to use on {length} qubits"
-                )
-        else:
-            if length < control_state.bit_length():
-                raise ValueError(
-                    f"To flip with control_state={control_state} "
-                    f"you need at least {control_state.bit_length()} qubits"
-                )
-
-            state = [int(i) for i in f"{{:0{length}b}}".format(control_state)]
-
-        for i, qubit in zip(state, qubits):
-            if i == 0:
-                X(qubit)
-        return qubits
-
-    if qubits is None:
-        return inner
-    return inner(qubits)
-
-
-def phase_oracle(
-    state: int, qubits: Quant | None = None
-) -> Quant | Callable[[Quant], Quant]:
-    r"""Transform qubits from :math:`\ket{\texttt{state}}` to :math:`-\ket{\texttt{state}}`.
-
-    This gate is useful for marking states in Grover's algorithm.
-    """
-
-    def inner(qubits: Quant) -> Quant:
-        init, last = qubits[:-1], qubits[-1]
-        with around(flip_to_control(state >> 1), init):
-            with around(lambda q: X(q) if state & 1 == 0 else None, last):
-                ctrl(init, Z)(last)
-
-    if qubits is None:
-        return inner
-    return inner(qubits)

@@ -49,11 +49,20 @@ class APIWrapper:  # pylint: disable=R0903
         out = [c_type() for c_type in self.output]
         error_code = self.c_call(*args, *out)
         if error_code != 0:
-            size = c_size_t()
-            error_msg = self.error_message(error_code, size)
-            raise CLibError(
-                self.lib_name + ": " + from_u8_to_str(error_msg, size), error_code
-            )
+            error_msg_buffer_size = 128
+            error_message_buffer = (c_uint8 * error_msg_buffer_size)()
+            write_size = c_size_t()
+            while (
+                self.error_message(
+                    error_code, error_message_buffer, error_msg_buffer_size, write_size
+                )
+                != 0
+            ):
+                error_msg_buffer_size = write_size.value
+                error_message_buffer = (c_uint8 * error_msg_buffer_size)()
+
+            error_msg = bytearray(error_message_buffer[: write_size.value]).decode()
+            raise CLibError(f"{self.lib_name}: {error_msg}", error_code)
         if len(out) == 1:
             return out[0]
         if len(out) != 0:
@@ -66,8 +75,8 @@ def load_lib(lib_name, lib_path, api_argtypes, error_message):
 
     lib = cdll.LoadLibrary(lib_path)
     error_message = lib.__getattr__(error_message)  # pylint: disable=C2801
-    error_message.argtypes = [c_int32, POINTER(c_size_t)]
-    error_message.restype = POINTER(c_uint8)
+    error_message.argtypes = [c_int32, POINTER(c_uint8), c_size_t, POINTER(c_size_t)]
+    error_message.restype = c_int32
 
     api = {}
     for name in api_argtypes:

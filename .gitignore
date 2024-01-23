@@ -14,4 +14,4 @@ wheelhouse
 .coverage
 venv
 .reuse/dep5
-.vscode/launch.json.license
+.vscode/
