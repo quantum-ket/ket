@@ -85,7 +85,7 @@ def control(control_qubits: Quant):
 
             # CSWAP c[0] a b
             with control(c[0]):
-                swap(a, b)
+                SWAP(a, b)
 
     Args:
         control_qubits: The qubits to control the quantum operations.
