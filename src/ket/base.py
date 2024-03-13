@@ -3,6 +3,7 @@
 This module provides base classes for handling quantum programming in the Ket library. It includes
 for handle and store quantum states, measurements.
 """
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -10,6 +11,8 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from cmath import sqrt
+from collections import defaultdict
 from ctypes import c_size_t, c_uint8
 from json import loads
 from random import Random
@@ -652,7 +655,7 @@ class QuantumState:
         if self._states is None:
             available, size = self.process.get_dump_size(self.index)
             if available.value:
-                self._states = {}
+                states = defaultdict(complex)
                 for i in range(size.value):
                     state, state_size, amp_real, amp_imag = self.process.get_dump(
                         self.index, i
@@ -661,7 +664,16 @@ class QuantumState:
                         "".join(f"{state[j]:064b}" for j in range(state_size.value)), 2
                     )
                     amplitude = complex(amp_real.value, amp_imag.value)
-                    self._states[state] = amplitude
+                    states[state] += amplitude
+
+                p = sum(map(lambda a: abs(a) ** 2, states.values()))
+                if abs(p - 1.0) < 1e-10:
+                    self._states = dict(states)
+                else:
+                    self._states = {
+                        state: amplitude / sqrt(p)
+                        for state, amplitude in states.items()
+                    }
 
     @property
     def states(self) -> dict[int, complex] | None:
