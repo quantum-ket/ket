@@ -35,6 +35,7 @@ Example:
         s_gate(q)
         t_gate(q)
 """
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>

@@ -430,6 +430,8 @@ class Quant:
     def __add__(self, other: Quant) -> Quant:
         if self.process is not other.process:
             raise ValueError("Cannot concatenate qubits from different processes")
+        if any(qubit in other.qubits for qubit in self.qubits):
+            raise ValueError("Cannot concatenate qubits with overlapping indices")
         return Quant(qubits=self.qubits + other.qubits, process=self.process)
 
     def at(self, index: list[int]) -> Quant:

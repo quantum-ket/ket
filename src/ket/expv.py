@@ -2,6 +2,7 @@
 
 This module provides base classes creating a Hamiltonian fro expected value calculation.
 """
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>

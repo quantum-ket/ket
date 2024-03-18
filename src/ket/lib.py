@@ -2,6 +2,7 @@
 
 Utilities for preparing quantum states and building quantum algorithms.
 """
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
