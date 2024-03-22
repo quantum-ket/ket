@@ -43,11 +43,12 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from cmath import asin, exp, isclose, cos, sin
+from math import acos, atan2, pi
 from fractions import Fraction
 from functools import reduce
-from math import pi
 from operator import add
-from typing import Callable
+from typing import Any, Callable
 
 from .clib.libket import (
     HADAMARD,
@@ -60,8 +61,8 @@ from .clib.libket import (
     PHASE_SHIFT,
 )
 
-from .base import Quant
-from .operations import ctrl, cat, kron, around
+from .base import Process, Quant
+from .operations import _search_process, ctrl, cat, kron, around
 
 __all__ = [
     "I",
@@ -82,6 +83,8 @@ __all__ = [
     "RXX",
     "RZZ",
     "RYY",
+    "global_phase",
+    "unitary",
 ]
 
 
@@ -442,3 +445,104 @@ RYY.__doc__ = _gate_docstring(
     r"0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\"
     r"i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2} \end{bmatrix}",
 )
+
+
+def global_phase(
+    theta: float,
+) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
+    """Apply a global phase shift."""
+
+    def _global_phase(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
+        def inner(*args, ket_process: Process | None = None, **kwargs):
+            ket_process = _search_process(ket_process, args, kwargs)
+
+            top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
+            use_fraction = abs(pi * top / bottom - theta) < 1e-14
+            params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
+
+            ket_process.apply_global_phase(*params)
+
+            return gate(*args, **kwargs)
+
+        return inner
+
+    return _global_phase
+
+
+def _is_unitary(matrix):
+    if len(matrix) != 2 or len(matrix[0]) != 2:
+        raise ValueError("Input matrix must be a 2x2 matrix")
+
+    conj_transpose = [[matrix[j][i].conjugate() for j in range(2)] for i in range(2)]
+
+    result = [
+        [sum(matrix[i][k] * conj_transpose[k][j] for k in range(2)) for j in range(2)]
+        for i in range(2)
+    ]
+
+    return all(
+        isclose(result[i][j], 1 if i == j else 0, abs_tol=1e-10)
+        for i in range(2)
+        for j in range(2)
+    )
+
+
+def _extract_phase(matrix):
+    a, b = matrix[0]
+    c, d = matrix[1]
+    det = a * d - b * c
+    return 1 / 2 * atan2(det.imag, det.real)
+
+
+def _zyz(matrix):
+    phase = _extract_phase(matrix)
+
+    matrix = [
+        [exp(-1j * phase) * matrix[i][j] for j in range(len(matrix[0]))]
+        for i in range(len(matrix))
+    ]
+
+    theta_1 = (
+        2 * acos(abs(matrix[0][0]))
+        if abs(matrix[0][0]) >= abs(matrix[0][1])
+        else 2 * asin(abs(matrix[0][1]))
+    )
+
+    if not isclose(cos(theta_1 / 2), 0.0, abs_tol=1e-10):
+        aux_0_plus_2 = matrix[1][1] / cos(theta_1 / 2)
+        theta_0_plus_2 = 2 * atan2(aux_0_plus_2.imag, aux_0_plus_2.real)
+    else:
+        theta_0_plus_2 = 0.0
+
+    if not isclose(sin(theta_1 / 2), 0.0, abs_tol=1e-10):
+        aux_1_sub_2 = matrix[1][0] / sin(theta_1 / 2)
+        theta_0_sub_2 = 2 * atan2(aux_1_sub_2.imag, aux_1_sub_2.real)
+
+    else:
+        theta_0_sub_2 = 0.0
+
+    theta_0 = (theta_0_plus_2 + theta_0_sub_2) / 2
+    theta_2 = (theta_0_plus_2 - theta_0_sub_2) / 2
+
+    return phase, theta_0, theta_1, theta_2
+
+
+def unitary(
+    matrix: list[list[complex]], qubits: Quant | None = None
+) -> Quant | Callable[[Quant], Quant]:
+    """Apply a unitary 2x2 matrix to a qubit."""
+    if not _is_unitary(matrix):
+        raise ValueError("Input matrix is not unitary")
+
+    phase, theta_0, theta_1, theta_2 = _zyz(matrix)
+
+    @global_phase(phase)
+    def inner(qubits: Quant):
+        RZ(theta_2.real, qubits)
+        RY(theta_1.real, qubits)
+        RZ(theta_0.real, qubits)
+        return qubits
+
+    if qubits is None:
+        return inner
+    return inner(qubits)

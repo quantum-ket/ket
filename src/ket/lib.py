@@ -14,7 +14,7 @@ from functools import reduce
 from operator import add
 from typing import Callable, Literal
 from math import asin, sqrt
-
+from collections.abc import Sized
 
 from .base import Quant, Process
 from .operations import ctrl, around, dump
@@ -60,7 +60,7 @@ def flip_to_control(
             qubits = reduce(add, qubits)
 
         length = len(qubits)
-        if hasattr(control_state, "__iter__"):
+        if isinstance(control_state, Sized):
             if len(control_state) != length:
                 raise ValueError(
                     f"'to' received a list of length {len(control_state)} to use on {length} qubits"
@@ -97,6 +97,7 @@ def phase_oracle(
         with around(flip_to_control(state >> 1), init):
             with around(lambda q: X(q) if state & 1 == 0 else None, last):
                 ctrl(init, Z)(last)
+        return qubits
 
     if qubits is None:
         return inner
@@ -150,7 +151,7 @@ def dump_matrix(
 
     process = Process(num_qubits=2 * size, execution="batch", simulator=simulator)
 
-    mat = [[0 for _ in range(2**size)] for _ in range(2**size)]
+    mat = [[0.0j for _ in range(2**size)] for _ in range(2**size)]
 
     row = process.alloc(size)
     column = process.alloc(size)

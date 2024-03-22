@@ -144,6 +144,26 @@ def ctrl(control_qubits: Quant, gate: Callable[[Any], Any]) -> Callable[[Any], A
     return inner
 
 
+def _search_process(ket_process, args, kwargs):
+    def search(ket_process, args):
+        for arg in args:
+            if hasattr(arg, "_get_ket_process"):
+                arg_process = arg._get_ket_process()  # pylint: disable=protected-access
+                if ket_process is not None and ket_process is not arg_process:
+                    raise ValueError("parameter with different Ket processes")
+                ket_process = arg_process
+        return ket_process
+
+    if ket_process is None:
+        ket_process = search(ket_process, args)
+        ket_process = search(ket_process, kwargs.values())
+
+    if ket_process is None:
+        raise ValueError("Ket process not found in the parameters")
+
+    return ket_process
+
+
 def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """Return the inverse of a gate.
 
@@ -176,26 +196,7 @@ def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """
 
     def inner(*args, ket_process: Process | None = None, **kwargs):
-        if ket_process is None:
-            for arg in args:
-                if hasattr(arg, "_get_ket_process"):
-                    arg_process = (
-                        arg._get_ket_process()  # pylint: disable=protected-access
-                    )
-                    if ket_process is not None and ket_process is not arg_process:
-                        raise ValueError("parameter with different Ket processes")
-                    ket_process = arg_process
-            for arg in kwargs.values():
-                if hasattr(arg, "_get_ket_process"):
-                    arg_process = (
-                        arg._get_ket_process()  # pylint: disable=protected-access
-                    )
-                    if ket_process is not None and ket_process is not arg_process:
-                        raise ValueError("parameter with different Ket processes")
-                    ket_process = arg_process
-
-        if ket_process is None:
-            raise ValueError("Ket process not found in the parameters")
+        ket_process = _search_process(ket_process, args, kwargs)
 
         with inverse(ket_process):
             gate(*args, **kwargs)
