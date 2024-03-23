@@ -470,7 +470,7 @@ def global_phase(
 
 
 def _is_unitary(matrix):
-    if len(matrix) != 2 or len(matrix[0]) != 2:
+    if len(matrix) != 2 or len(matrix[0]) != 2 or len(matrix[1]) != 2:
         raise ValueError("Input matrix must be a 2x2 matrix")
 
     conj_transpose = [[matrix[j][i].conjugate() for j in range(2)] for i in range(2)]

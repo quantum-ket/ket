@@ -36,8 +36,11 @@ Test:
   image: python:3-slim
   stage: test
   script:
-    - pip install wheelhouse/ket_lang*.whl pytest pytest-cov
+    - pip install wheelhouse/ket_lang*manylinux_2_28_x86_64.whl pytest pytest-cov
     - pytest
+  artifacts:
+    paths:
+      - htmlcov
 
 PyPI Upload:
   image: python:alpine3.16
