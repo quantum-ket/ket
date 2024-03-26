@@ -450,7 +450,37 @@ RYY.__doc__ = _gate_docstring(
 def global_phase(
     theta: float,
 ) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
-    """Apply a global phase shift."""
+    r"""Apply a global phase to a quantum operation.
+
+    Decorator that adds a global phase :math:`e^{i\theta}` to a quantum gate
+    :math:`U`, creating the gate :math:`e^{i\theta}U`.
+
+    In quantum computation, global phases are overall factors that can be
+    applied to quantum states without affecting the measurement outcomes.
+    Mathematically, they represent rotations in the complex plane and are
+    usually ignored because they have no observable consequences. However, in
+    certain contexts, such as controlled quantum operations, the global phase
+    can affect the behavior of the operation.
+
+    The addition of a global phase can be important for maintaining
+    consistency in quantum algorithms, particularly when dealing with controlled
+    operations where relative phase differences between different components
+    of the quantum state can impact the computation.
+
+    Example:
+
+    .. code-block:: python
+
+        @global_phase(pi / 2)
+        def my_z_gate(qubit):
+            return RZ(pi, qubit)
+
+    This example defines a custom quantum gate equivalent to a Pauli Z
+    operation, where :math:`Z = e^{i\frac{\pi}{2}}R_z(\pi)`.
+
+    Args:
+        theta: The :math:`\theta` angle of the global phase :math:`e^{i\theta}`.
+    """
 
     def _global_phase(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
         def inner(*args, ket_process: Process | None = None, **kwargs):
@@ -530,7 +560,27 @@ def _zyz(matrix):
 def unitary(
     matrix: list[list[complex]], qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    """Apply a unitary 2x2 matrix to a qubit."""
+    """Apply a unitary 2x2 matrix to a qubit.
+
+    Create or apply a unitary single qubit gate.
+
+    The provided unitary matrix is decomposed into a sequence of rotation gates,
+    which together implement an equivalent unitary transformation. When the gate
+    is used in a controlled operation, the resulting unitary is equivalent up to
+    a global phase.
+
+    Args:
+        matrix: Unitary matrix in the format ``[[a, b], [c, d]]``.
+        qubits: Qubits to be transformed.
+
+    Returns:
+        If ``qubits`` is ``None``, returns a new callable that implements the unitary
+        operation. Otherwise, returns the :class:`~ket.base.Quant` object that
+        the gate acted upon.
+
+    Raises:
+        ValueError: If the input matrix is not unitary.
+    """
     if not _is_unitary(matrix):
         raise ValueError("Input matrix is not unitary")
 
