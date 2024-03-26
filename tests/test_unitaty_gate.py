@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from math import pi, sqrt
 from cmath import isclose, exp
 import ket
