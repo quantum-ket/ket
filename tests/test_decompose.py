@@ -1,8 +1,6 @@
 from math import sqrt, pi
 from cmath import exp, isclose
-from pprint import pprint
 import ket
-import numpy as np
 
 GATES = {
     ket.X: [[0, 1], [1, 0]],
