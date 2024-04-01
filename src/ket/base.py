@@ -36,6 +36,7 @@ DEFAULT_PROCESS_CONFIGURATION = {
     "simulator": None,
     "execution": None,
     "force": False,
+    "decompose": None,
 }
 
 
@@ -44,6 +45,7 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments
     num_qubits: Optional[int] = None,
     simulator: Optional[Literal["sparse", "dense"]] = None,
     execution: Optional[Literal["live", "batch"]] = None,
+    decompose: Optional[bool] = None,
     force_configuration: bool = False,
 ):
     """Set default process configurations.
@@ -68,6 +70,7 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments
         "simulator": simulator,
         "execution": execution,
         "force": force_configuration,
+        "decompose": decompose,
     }
 
     DEFAULT_PROCESS_CONFIGURATION = new_configuration
@@ -164,6 +167,7 @@ class Process(LibketProcess):
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
+        decompose: Optional[bool] = None,
     ):
         if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
             map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
@@ -188,9 +192,14 @@ class Process(LibketProcess):
                 if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
                 else execution
             )
+            decompose = (
+                DEFAULT_PROCESS_CONFIGURATION["decompose"]
+                if DEFAULT_PROCESS_CONFIGURATION["decompose"] is not None
+                else decompose
+            )
 
         if configuration is not None and any(
-            map(lambda a: a is not None, [num_qubits, simulator, execution])
+            map(lambda a: a is not None, [num_qubits, simulator, execution, decompose])
         ):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
@@ -208,6 +217,7 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
+                    decompose=decompose,
                 )
             )
 
