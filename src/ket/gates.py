@@ -78,6 +78,7 @@ __all__ = [
     "T",
     "SD",
     "TD",
+    "U3",
     "CNOT",
     "SWAP",
     "RXX",
@@ -215,7 +216,7 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
 RX.__doc__ = _gate_docstring(
     "X-axes rotation",
     r"\begin{bmatrix} \cos(\theta/2) & -i\sin(\theta/2) \\ -i\sin(\theta/2) & \cos(\theta/2) \end{bmatrix}",  # pylint: disable=line-too-long
-    r"\begin{matrix} R_x\left|0\right> = & \cos(\theta/2)\left|0\right> + i\sin(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
+    r"\begin{matrix} R_x\left|0\right> = & \cos(\theta/2)\left|0\right> - i\sin(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
     r"R_x\left|1\right> = & -i\sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right> \end{matrix}",  # pylint: disable=line-too-long
 )
 
@@ -243,8 +244,8 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
 RY.__doc__ = _gate_docstring(
     "Y-axes rotation",
     r"\begin{bmatrix} \cos(\theta/2) & -\sin(\theta/2) \\ \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}",  # pylint: disable=line-too-long
-    r"\begin{matrix} R_y\left|0\right> = & \cos(\theta/2)\left|0\right> - \sin(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
-    r"R_y\left|1\right> = & \sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right> \end{matrix}",  # pylint: disable=line-too-long
+    r"\begin{matrix} R_y\left|0\right> = & \cos(\theta/2)\left|0\right> + \sin(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
+    r"R_y\left|1\right> = & -\sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right> \end{matrix}",  # pylint: disable=line-too-long
 )
 
 
@@ -438,12 +439,25 @@ def RYY(  # pylint: disable=invalid-name missing-function-docstring
     return inner(qubits_a, qubits_b)
 
 
-RYY.__doc__ = _gate_docstring(
-    "YY rotation",
-    r"\begin{bmatrix} \cos\frac{\theta}{2} & 0 & 0 & i\sin\frac{\theta}{2} \\"
-    r"0 & \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} & 0 \\"
-    r"0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\"
-    r"i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2} \end{bmatrix}",
+def U3(  # pylint: disable=invalid-name missing-function-docstring
+    theta: float, phi: float, lambda_: float, qubit: Quant | None = None
+) -> Quant | Callable[[Quant], Quant]:
+    gate = cat(RZ(lambda_), RY(theta), RZ(phi))
+    if qubit is not None:
+        return gate(qubit)
+    return gate
+
+
+U3.__doc__ = _gate_docstring(
+    "U3",
+    r"\begin{bmatrix}"
+    r"e^{-i (\phi + \lambda)/2} \cos(\theta/2) & -e^{-i (\phi - \lambda)/2} \sin(\theta/2) \\"
+    r"e^{i (\phi - \lambda)/2} \sin(\theta/2) & e^{i (\phi + \lambda)/2} \cos(\theta/2)"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"U3\left|0\right> = & e^{-i (\phi + \lambda)/2} \cos(\theta/2)\left|0\right> + e^{i (\phi - \lambda)/2} \sin(\theta/2) \left|1\right> \\"  # pylint: disable=line-too-long
+    r"U3\left|1\right> = & -e^{-i (\phi - \lambda)/2} \sin(\theta/2)\left|0\right> + e^{i (\phi + \lambda)/2} \cos(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
+    r"\end{matrix}",
 )
 
 
@@ -532,8 +546,14 @@ def _zyz(matrix):
         for i in range(len(matrix))
     ]
 
+    def clip(num):
+        """Clip the number to compensate for floating point error"""
+        if -(1.0 + 10e-10) < num < 1.0 + 10e-10:
+            return min(max(num, -1.0), 1.0)
+        raise ValueError("math domain error")
+
     theta_1 = (
-        2 * acos(abs(matrix[0][0]))
+        2 * acos(clip(abs(matrix[0][0])))
         if abs(matrix[0][0]) >= abs(matrix[0][1])
         else 2 * asin(abs(matrix[0][1]))
     )

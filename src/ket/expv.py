@@ -181,6 +181,12 @@ class Hamiltonian:
 
         return Hamiltonian(self.pauli_products + other.pauli_products, self.process)
 
+    def __radd__(self, other: int | float) -> Hamiltonian:
+        if other != 0:
+            raise ValueError("cannot add Hamiltonian with float or int")
+
+        return self
+
     def __mul__(self, other: float) -> Hamiltonian:
         return Hamiltonian(
             [p * other for p in self.pauli_products], process=self.process
