@@ -32,12 +32,24 @@ Package Source Code:
     paths:
       - dist/ket-lang*.tar.gz
 
+Test:
+  image: python:3-slim
+  stage: test
+  script:
+    - pip install wheelhouse/ket_lang*manylinux_2_28_x86_64.whl pytest pytest-cov
+    - pytest
+  artifacts:
+    paths:
+      - htmlcov
+
 PyPI Upload:
   image: python:alpine3.16
   stage: deploy
   script:
     - pip install twine
     - python -m twine upload dist/* wheelhouse/*
+  only:
+    - master
 
 sast:
   stage: test
