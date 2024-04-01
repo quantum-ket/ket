@@ -63,6 +63,10 @@ API_argtypes = {
         [c_void_p, c_int32, c_int32, c_uint32, c_double, c_size_t],
         [],
     ),
+    "ket_process_apply_global_phase": (
+        [c_void_p, c_int32, c_uint32, c_double],
+        [],
+    ),
     "ket_process_measure": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
     "ket_hamiltonian_new": ([], [c_void_p]),
     "ket_hamiltonian_add": (
