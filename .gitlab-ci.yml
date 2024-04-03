@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 stages:
+  - lint
   - build
   - test
   - deploy
@@ -34,7 +35,7 @@ Package Source Code:
 
 Lint:
   image: python:3-slim
-  stage: test
+  stage: lint
   script:
     - pip install pipx
     - pipx run pylint src
