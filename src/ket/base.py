@@ -39,7 +39,7 @@ DEFAULT_PROCESS_CONFIGURATION = {
 }
 
 
-def set_default_process_configuration(
+def set_default_process_configuration(  # pylint: disable=too-many-arguments
     configuration=None,
     num_qubits: Optional[int] = None,
     simulator: Optional[Literal["sparse", "dense"]] = None,
@@ -158,7 +158,7 @@ class Process(LibketProcess):
         execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         configuration=None,
         num_qubits: Optional[int] = None,
@@ -192,9 +192,7 @@ class Process(LibketProcess):
         if configuration is not None and any(
             map(lambda a: a is not None, [num_qubits, simulator, execution])
         ):
-            raise ValueError(
-                "Cannot specify num_qubits, simulator or execution if configuration is provided"
-            )
+            raise ValueError("Cannot specify arguments if configuration is provided")
 
         if configuration is not None:
             super().__init__(configuration)

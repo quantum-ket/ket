@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from ctypes import c_size_t
 from functools import reduce
 from operator import add
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 
 from .base import (
@@ -145,13 +145,21 @@ def ctrl(control_qubits: Quant, gate: Callable[[Any], Any]) -> Callable[[Any], A
 
 
 def _search_process(ket_process, args, kwargs):
+    def inner(ket_process, arg):
+        if hasattr(arg, "_get_ket_process"):
+            arg_process = arg._get_ket_process()  # pylint: disable=protected-access
+            if ket_process is not None and ket_process is not arg_process:
+                raise ValueError("parameter with different Ket processes")
+            ket_process = arg_process
+        return ket_process
+
     def search(ket_process, args):
         for arg in args:
-            if hasattr(arg, "_get_ket_process"):
-                arg_process = arg._get_ket_process()  # pylint: disable=protected-access
-                if ket_process is not None and ket_process is not arg_process:
-                    raise ValueError("parameter with different Ket processes")
-                ket_process = arg_process
+            if isinstance(arg, Sequence) and not isinstance(arg, str):
+                for subarg in arg:
+                    ket_process = inner(ket_process, subarg)
+            else:
+                ket_process = inner(ket_process, arg)
         return ket_process
 
     if ket_process is None:
@@ -256,8 +264,8 @@ def cat(*gates) -> Callable[[Any], Any]:
     def inner(*args):
         for gate in gates:
             args = gate(*args)
-            if not hasattr(args, "__iter__"):
-                args = tuple(args)
+            if not isinstance(args, tuple):
+                args = (args,)
 
         if len(args) == 1:
             return args[0]
@@ -347,6 +355,9 @@ def measure(qubits: Quant) -> Measurement:
     Returns:
         Object representing the measurement results.
     """
+    if not isinstance(qubits, Quant):
+        qubits = reduce(add, qubits)
+
     return Measurement(qubits)
 
 
@@ -359,6 +370,9 @@ def dump(qubits: Quant) -> QuantumState:
     Returns:
         Object representing the quantum state.
     """
+    if not isinstance(qubits, Quant):
+        qubits = reduce(add, qubits)
+
     return QuantumState(qubits)
 
 
@@ -372,6 +386,9 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
     Returns:
         Object representing the measurement samples.
     """
+    if not isinstance(qubits, Quant):
+        qubits = reduce(add, qubits)
+
     return Samples(qubits, shots)
 
 
