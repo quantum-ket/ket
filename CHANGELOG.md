@@ -7,6 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.7.1](https://pypi.org/project/ket-lang/0.7.1)
+
+### Added
+
+- Added multi-controlled single-qubit gate decomposition option.
+- Added U3 gate, unitary gate constructor, and global phase decorator. 
+
+### Updated
+
+- Updated Libket to 0.4.1.
+- Updated KBW to 0.2.1.
+
 ## [0.7](https://pypi.org/project/ket-lang/0.7)
 
 ### Updated

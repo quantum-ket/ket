@@ -38,7 +38,7 @@ def grover(size: int, state: int) -> int:
 if __name__ == "__main__":
     from random import randint
 
-    SIZE = 4
+    SIZE = 10
     looking_for = randint(0, pow(2, SIZE) - 1)
 
     print("Searching for value", looking_for, "using", SIZE, "qubits.")

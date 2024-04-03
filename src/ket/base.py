@@ -54,9 +54,10 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments
 
     Args:
         configuration: Configuration definition for third-party quantum execution. Defaults to None.
-        num_qubits: Number of qubits for the KBW simulator.Defaults to None.
+        num_qubits: Number of qubits for the KBW simulator. Defaults to None.
         simulator: Simulation mode for the KBW simulator. Defaults to None.
         execution: Execution mode for the KBW simulator. Defaults to None.
+        decompose: Enable quantum gate decomposition (may increase execution time). Defaults to None.
         force_configuration: If set to True, the parameters defined in the
             :class:`~ket.base.Process` constructor will overwrite those that are not None. Defaults
             to False.
@@ -159,6 +160,7 @@ class Process(LibketProcess):
             defaults to 32; otherwise, defaults to 12.
         simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
+        decompose: Enable quantum gate decomposition (may increase execution time). If None, defaults to False.
     """
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -217,7 +219,7 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
-                    decompose=decompose,
+                    decompose=bool(decompose),
                 )
             )
 
