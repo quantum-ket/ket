@@ -12,7 +12,7 @@ GATES = {
 }
 
 
-def test_decomposition():
+def test_decomposition_c_t():
     ket.set_default_process_configuration(decompose=True, force_configuration=True)
 
     n = 7
@@ -48,25 +48,45 @@ def test_decomposition():
         )
 
 
+def test_decomposition_t_c():
+    n = 7
+
+    for ket_gate in GATES.keys():
+        gate = lambda q: ket.ctrl(q[1:], ket_gate)(q[0])
+
+        ket.set_default_process_configuration(decompose=True, force_configuration=True)
+        decompose_matrix = ket.lib.dump_matrix(gate, size=n)
+
+        ket.set_default_process_configuration(decompose=False, force_configuration=True)
+        not_decompose_matrix = ket.lib.dump_matrix(gate, size=n)
+
+        assert all(
+            isclose(decompose_matrix[i][j], not_decompose_matrix[i][j], abs_tol=1e-10)
+            for i in range(2**n)
+            for j in range(2**n)
+        )
+
+
 def test_decomposition_is_enabled():
     n = 5
 
     ket.set_default_process_configuration(decompose=False, force_configuration=True)
 
     p1 = ket.Process()
-    q = p1.alloc(5)
+    q = p1.alloc(n)
     ket.ctrl(q[:-1], ket.H)(q[-1])
 
     ket.set_default_process_configuration(decompose=True, force_configuration=True)
 
     p2 = ket.Process()
-    q = p2.alloc(5)
+    q = p2.alloc(n)
     ket.ctrl(q[:-1], ket.H)(q[-1])
 
     assert len(p1.get_instructions()) < len(p2.get_instructions())
 
 
 if __name__ == "__main__":
-    test_decomposition()
+    test_decomposition_c_t()
+    test_decomposition_t_c()
     test_decomposition_is_enabled()
     print("Ok")
