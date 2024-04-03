@@ -32,13 +32,19 @@ Package Source Code:
     paths:
       - dist/ket-lang*.tar.gz
 
-Lint and Test:
+Lint:
   image: python:3-slim
   stage: test
   script:
-    - pip install wheelhouse/ket_lang*manylinux_2_28_x86_64.whl pytest pytest-cov pipx
+    - pip install pipx
     - pipx run pylint src
     - pipx run reuse lint
+
+Test:
+  image: python:3-slim
+  stage: test
+  script:
+    - pip install wheelhouse/ket_lang*manylinux_2_28_x86_64.whl pytest pytest-cov
     - pytest
   artifacts:
     paths:
