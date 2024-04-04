@@ -26,11 +26,13 @@ def grover(size: int, state: int) -> int:
 
     for _ in range(int((pi / 4) * sqrt(2**size))):
 
+        # Oracle: |state⟩ -> ˗|state⟩
         with ket.around(ket.lib.flip_to_control(state), s):
             ket.ctrl(s, ket.RZ(2 * pi))(aux)
 
+        # Grover Diffusion
         with ket.around(ket.cat(ket.H, ket.X), s):
-            ket.ctrl(s[:-1], ket.Z)(s[-1])
+            ket.ctrl(s, ket.RZ(2 * pi))(aux)
 
     return ket.measure(s).value
 
