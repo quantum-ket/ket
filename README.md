@@ -118,15 +118,68 @@ if __name__ == "__main__":
 #  0.500000+0.500000i     ≅  (1+i)/√4
 ```
 
-## Ket Development :hammer:
+## Setup for Ket Development :hammer:
 
-Setup for Ket development:
+To get started with Ket development, follow these steps:
+
+### 1. Rust Installation
+
+Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.75 using the following command:
 
 ```shell
-git clone https://gitlab.com/quantum-ket/ket.git
-cd ket
-pip install -e . --user
+rustup default 1.75
 ```
+
+### 2. Clone and Compile
+
+Clone the Ket repository and compile the Rust libraries:
+
+```shell
+git clone --recursive https://gitlab.com/quantum-ket/ket.git
+cd ket
+
+cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
+cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+
+ln -s libket/target/debug/libket.so src/ket/clib/libs
+ln -s kbw/target/debug/libkbw.so src/ket/clib/libs
+```
+
+### 3. Set Up Virtual Environment
+
+Set up a virtual environment for Python:
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 4. Install Dependencies
+
+Upgrade pip and install development requirements:
+
+```shell
+pip install -U pip
+pip install -r requirements_dev.txt
+```
+
+### 5. Install Ket
+
+Install Ket in editable mode:
+
+```shell
+pip install -e .
+```
+
+### 6. Run Tests
+
+To ensure everything is correctly installed, run the tests:
+
+```shell
+pytest
+```
+
+You're now set up for Ket development! Happy coding! 🚀
 
 ## Cite Ket :book:
 
