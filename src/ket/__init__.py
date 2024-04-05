@@ -89,6 +89,6 @@ from .expv import *
 from .expv import __all__ as all_expv
 from . import lib
 
-__version__ = "0.7"
+__version__ = "0.7.1.dev0"
 
 __all__ = all_base + all_func + all_gate + all_expv + ["lib"]
