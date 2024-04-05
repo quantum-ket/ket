@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 stages:
+  - lint
   - build
   - test
   - deploy
@@ -31,6 +32,14 @@ Package Source Code:
   artifacts:
     paths:
       - dist/ket-lang*.tar.gz
+
+Lint:
+  image: python:3-slim
+  stage: lint
+  script:
+    - pip install pipx
+    - pipx run pylint src
+    - pipx run reuse lint
 
 Test:
   image: python:3-slim

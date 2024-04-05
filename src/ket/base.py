@@ -36,14 +36,16 @@ DEFAULT_PROCESS_CONFIGURATION = {
     "simulator": None,
     "execution": None,
     "force": False,
+    "decompose": None,
 }
 
 
-def set_default_process_configuration(
+def set_default_process_configuration(  # pylint: disable=too-many-arguments
     configuration=None,
     num_qubits: Optional[int] = None,
     simulator: Optional[Literal["sparse", "dense"]] = None,
     execution: Optional[Literal["live", "batch"]] = None,
+    decompose: Optional[bool] = None,
     force_configuration: bool = False,
 ):
     """Set default process configurations.
@@ -52,9 +54,10 @@ def set_default_process_configuration(
 
     Args:
         configuration: Configuration definition for third-party quantum execution. Defaults to None.
-        num_qubits: Number of qubits for the KBW simulator.Defaults to None.
+        num_qubits: Number of qubits for the KBW simulator. Defaults to None.
         simulator: Simulation mode for the KBW simulator. Defaults to None.
         execution: Execution mode for the KBW simulator. Defaults to None.
+        decompose: Enable quantum gate decomposition (increase execution time). Defaults to None.
         force_configuration: If set to True, the parameters defined in the
             :class:`~ket.base.Process` constructor will overwrite those that are not None. Defaults
             to False.
@@ -68,6 +71,7 @@ def set_default_process_configuration(
         "simulator": simulator,
         "execution": execution,
         "force": force_configuration,
+        "decompose": decompose,
     }
 
     DEFAULT_PROCESS_CONFIGURATION = new_configuration
@@ -156,14 +160,17 @@ class Process(LibketProcess):
             defaults to 32; otherwise, defaults to 12.
         simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
+        decompose: Enable quantum gate decomposition (increase execution time).
+            If None, defaults to False.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         configuration=None,
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
+        decompose: Optional[bool] = None,
     ):
         if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
             map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
@@ -188,13 +195,16 @@ class Process(LibketProcess):
                 if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
                 else execution
             )
+            decompose = (
+                DEFAULT_PROCESS_CONFIGURATION["decompose"]
+                if DEFAULT_PROCESS_CONFIGURATION["decompose"] is not None
+                else decompose
+            )
 
         if configuration is not None and any(
-            map(lambda a: a is not None, [num_qubits, simulator, execution])
+            map(lambda a: a is not None, [num_qubits, simulator, execution, decompose])
         ):
-            raise ValueError(
-                "Cannot specify num_qubits, simulator or execution if configuration is provided"
-            )
+            raise ValueError("Cannot specify arguments if configuration is provided")
 
         if configuration is not None:
             super().__init__(configuration)
@@ -210,6 +220,7 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
+                    decompose=bool(decompose),
                 )
             )
 
