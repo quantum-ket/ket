@@ -3,30 +3,27 @@
 import json
 from os import path
 from ctypes import CFUNCTYPE, Structure, POINTER, c_uint8, c_size_t, c_void_p
-from ket.clib.wrapper import load_lib
-from qiskit_client import QiskitClient
-from qiskit.providers import Backend
+from ..clib.wrapper import load_lib
+from ..clib.libket import BatchCExecution, API as libket
+from .qiskit_client import QiskitClient
 
-
-class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
-    """C BatchCExecution Structure"""
-
-    _fields_ = [
-        ("submit_execution", CFUNCTYPE(None, POINTER(c_uint8), c_size_t)),
-        ("get_result", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
-        ("get_status", CFUNCTYPE(c_uint8)),
-    ]
+try:
+    from qiskit.providers import Backend
+except ImportError:
+    raise ImportError(
+        "QiskitInterface requires the qiskit module to be used. You can install them alongside ket by running `pip install ket[ibm]`."
+    )
 
 
 class QiskitInterface:
-    def __init__(self, num_qubits: int, backend: Backend) -> None:
+    def __init__(self, backend: Backend, num_qubits: int) -> None:
         self.num_qubits = num_qubits
 
         self.result_json = None
         self.result_json_len = None
 
         self.client = QiskitClient(backend, num_qubits)
-        self._formatted_result   = None
+        self._formatted_result = None
 
         @CFUNCTYPE(None, POINTER(c_uint8), c_size_t)
         def submit_execution(data, size):
@@ -55,22 +52,10 @@ class QiskitInterface:
             get_status,
         )
 
-        self.lib = load_lib(
-            "Ket C Execution",
-            path.dirname(__file__) + "/libket_c_execution.so",
-            {
-                "ket_c_exec_make_configuration": (
-                    [c_size_t, POINTER(BatchCExecution)],
-                    [c_void_p],
-                )
-            },
-            "ket_c_exec_error_message",
-        )
-
     def make_configuration(self):
         """Make configuration"""
 
-        return self.lib["ket_c_exec_make_configuration"](
+        return libket["ket_batch_make_configuration"](
             self.num_qubits,
             self.c_struct,
         )
