@@ -1,10 +1,11 @@
-from qiskit_interface import QiskitInterface
+from ket.ibm import QiskitInterface
 from qiskit_aer import AerSimulator
 import ket
 
+
 def test_measure():
     num_qubits = 2
-    interface = QiskitInterface(num_qubits, AerSimulator())
+    interface = QiskitInterface(AerSimulator(), num_qubits)
     process = ket.Process(interface.make_configuration())
     a, b = process.alloc(2)
 
@@ -15,9 +16,10 @@ def test_measure():
     process.execute()
     assert True
 
+
 def test_sample():
     num_qubits = 2
-    interface = QiskitInterface(num_qubits, AerSimulator())
+    interface = QiskitInterface(AerSimulator(), num_qubits)
     process = ket.Process(interface.make_configuration())
     a, b = process.alloc(2)
 
@@ -31,7 +33,7 @@ def test_sample():
 
 def test_exp_value():
     num_qubits = 2
-    interface = QiskitInterface(num_qubits, AerSimulator())
+    interface = QiskitInterface(AerSimulator(), num_qubits)
     process = ket.Process(interface.make_configuration())
     a, b = process.alloc(2)
 

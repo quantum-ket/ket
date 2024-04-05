@@ -1,8 +1,9 @@
 import math
 import ket
+
 import qiskit
 from qiskit_aer import AerSimulator
-from qiskit_client import QiskitClient
+from ket.ibm.qiskit_client import QiskitClient
 
 
 def test_circuit():
@@ -31,6 +32,8 @@ def test_circuit():
 
 
 def test_exp_value():
+    backend = AerSimulator()
+
     ket_process = ket.Process()
     q = ket_process.alloc(2)
     ket.CNOT(ket.H(q[0]), q[1])
@@ -41,7 +44,7 @@ def test_exp_value():
     final_ket_result = float(ket_result.value)
 
     instructions = ket_process.get_instructions()
-    client = QiskitClient(None)
+    client = QiskitClient(backend, num_qubits=2)
     client_result = client.process_instructions(instructions)
     final_client_result = float(client_result["exp_values"][0])
 
