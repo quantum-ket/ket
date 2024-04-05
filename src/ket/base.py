@@ -21,6 +21,14 @@ from typing import Literal, Optional, Any
 from .clib.libket import Process as LibketProcess
 from .clib.kbw import get_simulator
 
+try:
+    import numpy as np
+    import plotly.graph_objs as go
+
+    VISUALIZE = True
+except ImportError:
+    VISUALIZE = False
+
 __all__ = [
     "Process",
     "Quant",
@@ -756,7 +764,178 @@ class QuantumState:
                 result[state] += 1
         return result
 
-    def show(self, format_str: str | None = None) -> str | None:
+    def sphere(self):
+        """Return a Bloch sphere plot of the quantum state.
+
+        Returns:
+            go.Figure: A Bloch sphere plot of the quantum state.
+        """
+
+        if len(self.qubits) != 1:
+            raise ValueError("Bloch sphere plot is available only for 1 qubit")
+        if not VISUALIZE:
+            raise RuntimeError(
+                "Visualization optional dependence are required. Install with: "
+                "pip install ket-lang[visualization]"
+            )
+
+        phi = np.linspace(0, np.pi, 20)
+        theta = np.linspace(0, 2 * np.pi, 40)
+        phi, theta = np.meshgrid(phi, theta)
+        x = np.sin(phi) * np.cos(theta)
+        y = np.sin(phi) * np.sin(theta)
+        z = np.cos(phi)
+        sphere = go.Surface(
+            x=x, y=y, z=z, showscale=False, opacity=0.02, name="Bloch Sphere"
+        )
+
+        equator_theta = np.linspace(0, 2 * np.pi, 100)
+        equator_x = np.cos(equator_theta)
+        equator_y = np.sin(equator_theta)
+        equator_z = np.zeros_like(equator_theta)
+
+        equator = go.Scatter3d(
+            x=equator_x,
+            y=equator_y,
+            z=equator_z,
+            mode="lines",
+            line=dict(color="gray", width=3),
+            opacity=0.1,
+            name="Equator",
+        )
+
+        z_line = go.Scatter3d(
+            x=[0, 0],
+            y=[0, 0],
+            z=[1, -1],
+            mode="lines",
+            line=dict(color="gray", width=3),
+            opacity=0.1,
+            name="z line",
+        )
+
+        x_line = go.Scatter3d(
+            x=[1, -1],
+            y=[0, 0],
+            z=[0, 0],
+            mode="lines",
+            line=dict(color="gray", width=3),
+            opacity=0.1,
+            name="x line",
+        )
+
+        y_line = go.Scatter3d(
+            x=[0, 0],
+            y=[1, -1],
+            z=[0, 0],
+            mode="lines",
+            line=dict(color="gray", width=3),
+            opacity=0.1,
+            name="y line",
+        )
+
+        basis_points = [
+            ([0, 0, 1], "|0⟩"),
+            ([0, 0, -1], "|1⟩"),
+            ([1, 0, 0], "|+⟩"),
+            ([-1, 0, 0], "|‒⟩"),
+            ([0, 1, 0], "|i+⟩"),
+            ([0, -1, 0], "|i‒⟩"),
+        ]
+
+        basis = [
+            go.Scatter3d(
+                x=[p[0]],
+                y=[p[1]],
+                z=[p[2]],
+                mode="text",
+                text=[text],
+                textposition="middle center",
+                name=text,
+            )
+            for p, text in basis_points
+        ]
+
+        ket = np.array(
+            [
+                [self.get()[0] if 0 in self.get() else 0.0],
+                [self.get()[1] if 1 in self.get() else 0.0],
+            ]
+        )
+
+        bra = np.conjugate(ket.T)
+
+        pauli_x = np.array([[0, 1], [1, 0]])
+        pauli_y = np.array([[0, -1j], [1j, 0]])
+        pauli_z = np.array([[1, 0], [0, -1]])
+        exp_x = (bra @ pauli_x @ ket).item().real
+        exp_y = (bra @ pauli_y @ ket).item().real
+        exp_z = (bra @ pauli_z @ ket).item().real
+
+        qubit = go.Scatter3d(
+            x=[exp_x],
+            y=[exp_y],
+            z=[exp_z],
+            mode="markers",
+            marker={"size": 5, "color": "red"},
+            name="qubit",
+        )
+
+        line = go.Scatter3d(
+            x=[0, exp_x],
+            y=[0, exp_y],
+            z=[0, exp_z],
+            mode="lines",
+            line={"color": "red", "width": 3},
+            opacity=0.5,
+            name="qubit line",
+        )
+
+        fig = go.Figure(
+            data=[
+                sphere,
+                qubit,
+                line,
+                equator,
+                x_line,
+                y_line,
+                z_line,
+                *basis,
+            ]
+        )
+
+        fig.update_layout(
+            scene=dict(
+                xaxis={
+                    "range": [-1, 1],
+                    "showgrid": False,
+                    "showbackground": False,
+                    "visible": False,
+                },
+                yaxis={
+                    "range": [-1, 1],
+                    "showgrid": False,
+                    "showbackground": False,
+                    "visible": False,
+                },
+                zaxis={
+                    "range": [-1, 1],
+                    "showgrid": False,
+                    "showbackground": False,
+                    "visible": False,
+                },
+                aspectmode="cube",
+            ),
+            showlegend=False,
+        )
+
+        return fig
+
+    def show(
+        self,
+        format_str: str | None = None,
+        mode: Literal["latex", "str"] | None = None,
+    ):
         r"""Return the quantum state as a string.
 
         Use the format string to change the print format of the basis states:
@@ -800,16 +979,28 @@ class QuantumState:
                 #  0.707107               ≅      1/√2
 
         Args:
-            format_str: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
+            format: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
+            mode: If "str", return a string representation of the quantum state. If "latex",
+                return a LaTeX Math representation of the quantum state. If in Jupyter Notebook,
+                defaults to "latex", otherwise defaults to "str".
 
         Returns:
-            The formatted quantum state as a string, or None if the quantum state information is not
-            available.
+            The formatted quantum state as a string, or Latex Math.
         """
 
-        self._check()
-        if self._states is None:
-            return None
+        if mode is None:
+            try:
+                from IPython import get_ipython
+
+                if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
+                    mode = "latex"
+                else:
+                    mode = "str"
+            except ImportError:
+                mode = "str"
+        else:
+            if mode not in ("latex", "str"):
+                raise ValueError(f"Unknown mode: {mode}")
 
         if format_str is not None:
             if format_str in ("b", "i"):
@@ -823,6 +1014,12 @@ class QuantumState:
                 fmt.append(("b", count, self.size))
         else:
             fmt = [("b", 0, self.size)]
+
+        if mode == "latex":
+            return self._show_latex(fmt)
+        return self._show_str(fmt)
+
+    def _show_str(self, fmt=list[tuple[Literal["i", "b"], int, int]]) -> str:
 
         def fmt_ket(state, begin, end, f):
             return (
@@ -871,8 +1068,53 @@ class QuantumState:
 
         return "\n".join(
             state_amp_str(state, amp)
-            for state, amp in sorted(self._states.items(), key=lambda k: k[0])
+            for state, amp in sorted(self.get().items(), key=lambda k: k[0])
         )
+
+    def _show_latex(self, fmt=list[tuple[Literal["i", "b"], int, int]]):
+        from IPython.display import Math
+
+        def float_to_math(num: float, is_complex: bool) -> str | None:
+            num_str = None
+            if abs(num) > 1e-14:
+
+                sqrt_dem_float = 1 / num**2
+                sqrt_dem = round(sqrt_dem_float)
+                if abs(sqrt_dem - sqrt_dem_float) < 1e-10 and sqrt_dem != 1:
+                    num_str = f"\\frac{{{'-' if num < 0.0 else ''}{'i' if is_complex else '1'}}}{{\\sqrt{{{sqrt_dem}}}}}"
+                else:
+                    round_num = round(num)
+                    if abs(round_num - num) > 1e-14:
+                        num_str = str(num)
+                        if "e" in num_str:
+                            num_str = num_str.replace("e", "\\times10^{") + "}"
+                    else:
+                        num_str = ""
+                    if is_complex:
+                        num_str += "i"
+            return num_str
+
+        math = []
+        for state, amp in self.get().items():
+
+            real_str = float_to_math(amp.real, False)
+            imag_str = float_to_math(amp.imag, True)
+
+            state_str = f"{state:0{len(self.qubits)}b}"
+            state_str = [
+                f"\\left|{state_str[start:end] if fmt == 'b' else int(state_str[start:end], 2)}\\right>"  # pylint: disable=line-too-long
+                for fmt, start, end in fmt
+            ]
+            state_str = "".join(state_str)
+
+            if real_str is not None and imag_str is not None:
+                math.append(f"({real_str}+{imag_str}i) {state_str}")
+            else:
+                math.append(
+                    f"{real_str if real_str is not None else imag_str} {state_str}"
+                )
+
+        return Math("+".join(math).replace("+-", "-"))
 
     def __repr__(self):
         return f"<Ket 'QuantumState' index={self.index}, pid={hex(id(self.process))}>"
