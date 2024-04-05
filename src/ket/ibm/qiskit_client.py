@@ -1,16 +1,22 @@
 from math import pi
 from typing import Any
-from qiskit import QuantumCircuit, transpile
-from qiskit.providers import Backend
-from qiskit.primitives import Estimator
-from qiskit.quantum_info import SparsePauliOp
-from qiskit.circuit import library, Gate
-from qiskit_aer import AerSimulator
+
+try:
+    from qiskit import QuantumCircuit, transpile
+    from qiskit.providers import Backend
+    from qiskit.primitives import Estimator
+    from qiskit.quantum_info import SparsePauliOp
+    from qiskit.circuit import library, Gate
+except ImportError:
+    raise ImportError(
+        "QiskitClient requires the qiskit module to be used. You can install them"
+        "alongside ket by running `pip install ket[ibm]`."
+    )
 
 
 class QiskitClient:
-    def __init__(self, backend: Backend | None, num_qubits=2) -> None:
-        self.backend = backend if backend is not None else AerSimulator()
+    def __init__(self, backend: Backend, num_qubits: int) -> None:
+        self.backend = backend
         self.num_qubits = num_qubits
         self.quantum_circuit = QuantumCircuit(num_qubits, num_qubits)
 
