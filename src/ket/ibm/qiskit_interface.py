@@ -1,22 +1,13 @@
 """IBM Quantum Devices backend for Ket"""
 
 import json
-from os import path
-from ctypes import CFUNCTYPE, Structure, POINTER, c_uint8, c_size_t, c_void_p
-from ..clib.wrapper import load_lib
+from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t
 from ..clib.libket import BatchCExecution, API as libket
 from .qiskit_client import QiskitClient
 
-try:
-    from qiskit.providers import Backend
-except ImportError:
-    raise ImportError(
-        "QiskitInterface requires the qiskit module to be used. You can install them alongside ket by running `pip install ket[ibm]`."
-    )
-
 
 class QiskitInterface:
-    def __init__(self, backend: Backend, num_qubits: int) -> None:
+    def __init__(self, backend, num_qubits: int) -> None:
         self.num_qubits = num_qubits
 
         self.result_json = None
