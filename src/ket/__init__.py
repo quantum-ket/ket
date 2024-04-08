@@ -87,8 +87,10 @@ from .gates import *
 from .gates import __all__ as all_gate
 from .expv import *
 from .expv import __all__ as all_expv
+from .quantumstate import *
+from .quantumstate import __all__ as all_state
 from . import lib
 
-__version__ = "0.7.1.dev1"
+__version__ = "0.7.1.dev2"
 
-__all__ = all_base + all_func + all_gate + all_expv + ["lib"]
+__all__ = all_base + all_func + all_gate + all_expv + all_state + ["lib"]
