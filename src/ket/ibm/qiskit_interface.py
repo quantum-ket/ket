@@ -5,15 +5,20 @@ from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t
 from ..clib.libket import BatchCExecution, API as libket
 from .qiskit_client import QiskitClient
 
+from qiskit.providers import Backend
+from qiskit_ibm_runtime import QiskitRuntimeService
+
 
 class QiskitInterface:
-    def __init__(self, backend, num_qubits: int) -> None:
+    def __init__(
+        self, num_qubits: int, backend: Backend, service: QiskitRuntimeService | None
+    ) -> None:
         self.num_qubits = num_qubits
 
         self.result_json = None
         self.result_json_len = None
 
-        self.client = QiskitClient(backend, num_qubits)
+        self.client = QiskitClient(num_qubits, backend, service)
         self._formatted_result = None
 
         @CFUNCTYPE(None, POINTER(c_uint8), c_size_t)

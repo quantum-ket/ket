@@ -2,11 +2,14 @@ from math import pi
 from typing import Any
 
 try:
-    from qiskit import QuantumCircuit, transpile
+    from qiskit import QuantumCircuit
     from qiskit.providers import Backend
-    from qiskit.primitives import Estimator
-    from qiskit.quantum_info import SparsePauliOp
     from qiskit.circuit import library, Gate
+    from qiskit.quantum_info import SparsePauliOp
+    from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+    from qiskit_ibm_runtime import QiskitRuntimeService, Session
+    from qiskit_ibm_runtime import SamplerV2 as Sampler
+    from qiskit_ibm_runtime import EstimatorV2 as Estimator
 except ImportError:
     raise ImportError(
         "QiskitClient requires the qiskit module to be used. You can install them"
@@ -15,25 +18,30 @@ except ImportError:
 
 
 class QiskitClient:
-    def __init__(self, backend: Backend, num_qubits: int) -> None:
-        self.backend = backend
+    def __init__(
+        self, num_qubits: int, backend: Backend, service: QiskitRuntimeService | None
+    ) -> None:
         self.num_qubits = num_qubits
+        self.backend = backend
+        self.service = service
         self.quantum_circuit = QuantumCircuit(num_qubits, num_qubits)
 
         self._measurement_map = {}
         self._sample_map = {}
+        self._samples = {}
         self._exp_values = []
 
     def process_instructions(
         self, instructions: list[dict[str, Any]]
     ) -> dict[str, Any]:
-        result = self._send_instructions(instructions)
-        formatted_result = self._format_result(result)
+        self._send_instructions(instructions)
+        formatted_result = self._format_result()
         return formatted_result
 
     def _send_instructions(self, instructions: list[dict[str, Any]]):
         qubit_map = list(range(self.num_qubits))
         qubit_stack = list(range(self.num_qubits))
+        observables = []
 
         for inst in instructions:
             if "Alloc" in inst:
@@ -60,7 +68,7 @@ class QiskitClient:
 
             elif "ExpValue" in inst:
                 hamiltonian: dict = inst["ExpValue"]["hamiltonian"]
-                self._exp_values.extend(self._get_expectation_value(hamiltonian))
+                observables.append(self._build_observable(hamiltonian))
 
             elif "Sample" in inst:
                 qubits = [qubit_map[qubit] for qubit in inst["Sample"]["qubits"]]
@@ -73,11 +81,36 @@ class QiskitClient:
             else:
                 raise RuntimeError("Unknown operation")
 
-        transpiled_qc = transpile(self.quantum_circuit, self.backend)
-        result = self.backend.run(transpiled_qc).result()
-        return result
+        pm = generate_preset_pass_manager(
+            target=self.backend.target, optimization_level=1
+        )
+        isa_circuit = pm.run(self.quantum_circuit)
 
-    def _format_result(self, result) -> dict[str, Any]:
+        with Session(service=self.service, backend=self.backend) as session:
+            if self._sample_map or self._measurement_map:
+                sampler = Sampler(session=session)
+                result_data = sampler.run([isa_circuit]).result()[0].data
+                result = (
+                    result_data.c.get_counts()
+                    if hasattr(result_data, "c")
+                    else result_data.cr.get_counts()
+                )
+                self._samples = result
+
+            for observable in observables:
+                isa_observable = observable.apply_layout(isa_circuit.layout)
+                estimator = Estimator(session=session)
+                job = estimator.run([(isa_circuit, isa_observable)])
+                pub_result = job.result()[0].data.evs
+
+                result = (
+                    pub_result.tolist()
+                    if type(pub_result.tolist()) == list
+                    else [float(pub_result)]
+                )
+                self._exp_values.extend(result)
+
+    def _format_result(self) -> dict[str, Any]:
         result_dict = {
             "measurements": [0] * len(self._measurement_map),
             "exp_values": [],
@@ -87,27 +120,25 @@ class QiskitClient:
         }
 
         if self._measurement_map:
-            counts = result.get_counts()
-            mode = max(counts.values())
+            meas_bin = max(self._samples, key=self._samples.get)
+            reversed_meas_bin = meas_bin[::-1]
 
-            measurement = [r for r, m in counts.items() if m == mode][0]
-            measurement = measurement[::-1]
-            # Measurement values are stored in the same order as the
-            # structure of the measurement map.
-            for k, v in self._measurement_map.items():
-                result_dict["measurements"][k] = int(
-                    "".join([measurement[i] for i in v]), 2
+            # meas_index is the index of the measurement in the measurement map, as
+            # there can be multiple measurements in a single instruction.
+            # qubits is the list of qubits that were measured in the measurement.
+            for meas_index, qubits in self._measurement_map.items():
+                result_dict["measurements"][meas_index] = int(
+                    "".join([reversed_meas_bin[qubit] for qubit in qubits]), 2
                 )
 
         if self._sample_map:
-            counts = result.get_counts()
             for k, v in self._sample_map.items():
                 result_dict["samples"][k] = (
                     [
                         int("".join([measurement[::-1][i] for i in v]), 2)
-                        for measurement in counts.keys()
+                        for measurement in self._samples.keys()
                     ],
-                    list(counts.values()),
+                    list(self._samples.values()),
                 )
 
         result_dict["exp_values"] = self._exp_values
@@ -146,7 +177,7 @@ class QiskitClient:
         elif "Phase" in gate_type:
             return library.U1Gate(theta)
 
-    def _get_expectation_value(self, hamiltonian: dict[str, Any]) -> list:
+    def _build_observable(self, hamiltonian: dict[str, Any]) -> SparsePauliOp:
         """Iterates over each dict term in ket's hamiltonian, transforming them into
         n_qubits long string terms, combining Pauli operators when viable, to form a
         qiskt hamiltonian string.
@@ -188,9 +219,5 @@ class QiskitClient:
                 [hamiltonian["coefficients"][coef_index]] * len(qiskit_hmlt_product)
             )
 
-        estimator = Estimator()
         observable = SparsePauliOp(qiskit_hamiltonian, qiskit_coeffs)
-        expectation_value = (
-            estimator.run(self.quantum_circuit, observable).result().values
-        )
-        return list(expectation_value)
+        return observable
