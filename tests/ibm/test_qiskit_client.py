@@ -1,21 +1,20 @@
 import math
 import ket
-
 import qiskit
+
+from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_aer import AerSimulator
 from ket.ibm.qiskit_client import QiskitClient
 
-
 def test_circuit():
-    backend = AerSimulator()
     ket_process = ket.Process()
     q = ket_process.alloc(3)
     ket.CNOT(ket.H(q[0]), q[1])
     ket.CNOT(ket.H(q[1]), q[2])
     ket.sample(q)
-
     instructions = ket_process.get_instructions()
-    client = QiskitClient(backend, num_qubits=3)
+
+    client = QiskitClient(num_qubits=3, backend=AerSimulator(), service=None)
     client.process_instructions(instructions)
 
     qiskit_circuit = qiskit.QuantumCircuit(3, 3)
@@ -24,16 +23,15 @@ def test_circuit():
     qiskit_circuit.h(1)
     qiskit_circuit.cx(1, 0)
     qiskit_circuit.measure([0, 1, 2], [0, 1, 2])
-    transpiled_circuit = qiskit.transpile(qiskit_circuit, backend)
-    backend.run(transpiled_circuit).result()
+
+    pm = generate_preset_pass_manager(backend=AerSimulator(), optimization_level=1)
+    isa_qc = pm.run(qiskit_circuit)
 
     for interface_inst in client.quantum_circuit.data:
-        assert interface_inst in transpiled_circuit.data
+        assert interface_inst in isa_qc.data
 
 
 def test_exp_value():
-    backend = AerSimulator()
-
     ket_process = ket.Process()
     q = ket_process.alloc(2)
     ket.CNOT(ket.H(q[0]), q[1])
@@ -44,7 +42,7 @@ def test_exp_value():
     final_ket_result = float(ket_result.value)
 
     instructions = ket_process.get_instructions()
-    client = QiskitClient(backend, num_qubits=2)
+    client = QiskitClient(num_qubits=2, backend=AerSimulator(), service=None)
     client_result = client.process_instructions(instructions)
     final_client_result = float(client_result["exp_values"][0])
 
