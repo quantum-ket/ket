@@ -6,6 +6,7 @@ for handle and store quantum states, measurements.
 
 from __future__ import annotations
 
+import ctypes
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 # SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
 #
@@ -36,6 +37,7 @@ DEFAULT_PROCESS_CONFIGURATION = {
     "simulator": None,
     "execution": None,
     "force": False,
+    "optimize": False
 }
 
 
@@ -164,6 +166,7 @@ class Process(LibketProcess):
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
+        optimize: Optional[bool] = False,
     ):
         if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
             map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
@@ -188,9 +191,14 @@ class Process(LibketProcess):
                 if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
                 else execution
             )
+            optimize = (
+                DEFAULT_PROCESS_CONFIGURATION["optimize"]
+                if DEFAULT_PROCESS_CONFIGURATION["optimize"] is not None
+                else optimize
+            )
 
         if configuration is not None and any(
-            map(lambda a: a is not None, [num_qubits, simulator, execution])
+            map(lambda a: a is not None, [num_qubits, simulator, execution, optimize])
         ):
             raise ValueError(
                 "Cannot specify num_qubits, simulator or execution if configuration is provided"
@@ -210,6 +218,7 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
+                    optimize=optimize
                 )
             )
 
@@ -217,6 +226,8 @@ class Process(LibketProcess):
         self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
         self._instructions_buffer_size = 2048
         self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+        self._qasmv2_buffer_size = 2048
+        self._qasmv2_buffer = (c_uint8 * self._qasmv2_buffer_size)()
 
     def alloc(self, num_qubits: int = 1) -> Quant:
         """Allocate a specified number of qubits and return a :class:`~ket.base.Quant` object.
@@ -269,6 +280,26 @@ class Process(LibketProcess):
 
     def _get_ket_process(self):
         return self
+
+    def zx_optimize(self):
+        self.optimize()
+
+    def import_qasmv2(self, qasm):
+        encoded_qasm = qasm.encode('utf-8')  # Encode to bytes
+        self.from_qasmv2(
+            encoded_qasm
+        )
+
+    def get_qasmv2(self):
+        write_size = self.to_qasmv2(
+            self._qasmv2_buffer, self._qasmv2_buffer_size
+        )
+        if write_size.value > self._qasmv2_buffer_size:
+            self._qasmv2_buffer_size = write_size.value + 1
+            self._qasmv2_buffer = (c_uint8 * self._qasmv2_buffer_size)()
+            return self.get_qasmv2()
+
+        return bytearray(self._qasmv2_buffer[: write_size.value]).decode("utf-8")
 
     def get_instructions(self) -> list[dict[str, Any]]:
         """Retrieve quantum instructions from the quantum process.

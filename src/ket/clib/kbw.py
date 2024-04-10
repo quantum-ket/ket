@@ -15,7 +15,7 @@ from .wrapper import load_lib, os_lib_name
 
 API_argtypes = {
     "kbw_set_log_level": ([c_uint32], []),
-    "kbw_make_configuration": ([c_size_t, c_bool, c_bool], [c_void_p]),
+    "kbw_make_configuration": ([c_size_t, c_bool, c_bool, c_bool], [c_void_p]),
 }
 
 
@@ -43,6 +43,7 @@ def get_simulator(
     num_qubits: int,
     execution: Literal["live", "batch"] = "live",
     simulator: Literal["sparse", "dense"] = "sparse",
+    optimize: bool = False
 ):
     """Create a configuration"""
 
@@ -50,4 +51,5 @@ def get_simulator(
         num_qubits,
         execution == "live",
         simulator == "sparse",
+        optimize,
     )

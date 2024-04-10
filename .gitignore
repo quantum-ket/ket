@@ -15,3 +15,4 @@ wheelhouse
 venv
 .reuse/dep5
 .vscode/
+.idea

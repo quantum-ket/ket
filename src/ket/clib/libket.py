@@ -16,7 +16,7 @@ from ctypes import (
     c_uint8,
     c_int32,
     c_uint64,
-    c_double,
+    c_double, c_char, c_char_p,
 )
 import weakref
 from os import environ
@@ -99,6 +99,15 @@ API_argtypes = {
     "ket_process_get_dump": (
         [c_void_p, c_size_t, c_size_t],
         [POINTER(c_uint64), c_size_t, c_double, c_double],
+    ),
+    "ket_process_optimize": ([c_void_p], []),
+    "ket_process_to_qasmv2": (
+        [c_void_p, POINTER(c_uint8), c_size_t],
+        [c_size_t],
+    ),
+    "ket_process_from_qasmv2": (
+        [c_void_p, c_char_p],
+        [],
     ),
 }
 
