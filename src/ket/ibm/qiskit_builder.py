@@ -1,3 +1,5 @@
+""" Builder for qiskit quantum circuits. """
+
 try:
     from qiskit import QuantumCircuit
     from qiskit.circuit import library, Gate
@@ -37,7 +39,7 @@ class QiskitBuilder:
 
             elif "Gate" in inst:
                 gate_type = inst["Gate"]["gate"]
-                gate: Gate = self._get_gate(gate_type)
+                gate: Gate = self.get_gate(gate_type)
 
                 control = [qubit_map[qubit] for qubit in inst["Gate"]["control"]]
                 if len(control):
@@ -53,7 +55,7 @@ class QiskitBuilder:
 
             elif "ExpValue" in inst:
                 hamiltonian: dict = inst["ExpValue"]["hamiltonian"]
-                data["observables"].append(self._build_observable(hamiltonian))
+                data["observables"].append(self.build_observable(hamiltonian))
 
             elif "Sample" in inst:
                 qubits = [qubit_map[qubit] for qubit in inst["Sample"]["qubits"]]
@@ -68,7 +70,7 @@ class QiskitBuilder:
 
         return data
 
-    def _get_gate(self, gate_type) -> Gate:
+    def get_gate(self, gate_type) -> Gate:
         """From the type of the gate, returns the corresponding qiskit gate object."""
 
         if "PauliX" in gate_type:
@@ -106,7 +108,7 @@ class QiskitBuilder:
 
         return library.U1Gate(theta)  # Phase gate
 
-    def _build_observable(self, hamiltonian: dict[str, Any]) -> SparsePauliOp:
+    def build_observable(self, hamiltonian: dict[str, Any]) -> SparsePauliOp:
         """Builds a Qiskit compliant observable format from the ket-lang hamiltonian
         format.
         ---
