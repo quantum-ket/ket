@@ -1,6 +1,13 @@
 """ Interface for setting up connection to the IBM quantum infrastructure. """
 
+# SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+# SPDX-FileCopyrightText: 2024 Otávio Augusto de Santana Jatobá
+# <otavio.jatoba@grad.ufsc.br>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 try:
+    from qiskit import QuantumCircuit
     from qiskit.providers import Backend
     from qiskit_ibm_runtime import QiskitRuntimeService
 except ImportError as exc:
@@ -66,3 +73,18 @@ class IBMDevice:
             self.num_qubits,
             self.c_struct,
         )
+
+    @property
+    def circuit(self) -> QuantumCircuit:
+        """Quantum circuit object for the IBM device."""
+        return self.client.circuit
+
+    @property
+    def backend(self) -> Backend:
+        """Backend object for the IBM device."""
+        return self.client.backend
+
+    @property
+    def service(self) -> QiskitRuntimeService | None:
+        """IBM runtime service used for the cloud connection."""
+        return self.client.service

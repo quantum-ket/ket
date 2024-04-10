@@ -1,8 +1,14 @@
 """ Client for connecting the Qiskit ket interface with the Qiskit runtime backend."""
 
-try:
-    from qiskit.providers import Backend
+# SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+# SPDX-FileCopyrightText: 2024 Otávio Augusto de Santana Jatobá
+# <otavio.jatoba@grad.ufsc.br>
+#
+# SPDX-License-Identifier: Apache-2.0
 
+try:
+    from qiskit import QuantumCircuit
+    from qiskit.providers import Backend
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
     from qiskit_ibm_runtime import QiskitRuntimeService, Session
     from qiskit_ibm_runtime import SamplerV2 as Sampler
@@ -128,3 +134,8 @@ class IBMClient:
 
         result_dict["exp_values"] = raw_results["exp_values"]
         return result_dict
+
+    @property
+    def circuit(self) -> QuantumCircuit:
+        """IBM quantum circuit object used in the device."""
+        return self.qiskit_builder.circuit
