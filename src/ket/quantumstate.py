@@ -28,6 +28,14 @@ try:
 except ImportError:
     VISUALIZE = False
 
+try:
+    from IPython import get_ipython
+    from IPython.display import Math
+
+    IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+except ImportError:
+    IN_NOTEBOOK = False
+
 __all__ = ["QuantumState"]
 
 
@@ -229,12 +237,15 @@ class QuantumState:
         )
 
         basis_points = [
-            ([0, 0, 1], "|0⟩"),
-            ([0, 0, -1], "|1⟩"),
-            ([1, 0, 0], "|+⟩"),
-            ([-1, 0, 0], "|‒⟩"),
-            ([0, 1, 0], "|i+⟩"),
-            ([0, -1, 0], "|i‒⟩"),
+            ([0.0, 0.0, 1.0], "|0⟩"),
+            ([0.0, 0.0, 0.8], "Z"),
+            ([0.0, 0.0, -1.0], "|1⟩"),
+            ([1.0, 0.0, 0.0], "|+⟩"),
+            ([0.8, 0.0, 0.0], "X"),
+            ([-1.0, 0.0, 0.0], "|‒⟩"),
+            ([0.0, 1.0, 0.0], "|+i⟩"),
+            ([0.0, 0.8, 0.0], "Y"),
+            ([0.0, -1.0, 0.0], "|-i⟩"),
         ]
 
         basis = [
@@ -408,20 +419,12 @@ class QuantumState:
         """
 
         if mode is None:
-            try:
-                from IPython import (  # pylint: disable=import-outside-toplevel
-                    get_ipython,
-                )
-
-                if get_ipython().__class__.__name__ == "ZMQInteractiveShell":
-                    mode = "latex"
-                else:
-                    mode = "str"
-            except ImportError:
+            if IN_NOTEBOOK:
+                mode = "latex"
+            else:
                 mode = "str"
-        else:
-            if mode not in ("latex", "str"):
-                raise ValueError(f"Unknown mode: {mode}")
+        elif mode not in ("latex", "str"):
+            raise ValueError(f"Unknown mode: {mode}")
 
         if format_str is not None:
             if format_str in ("b", "i"):
@@ -493,10 +496,6 @@ class QuantumState:
         )
 
     def _show_latex(self, fmt=list[tuple[Literal["i", "b"], int, int]]):
-        from IPython.display import (  # pylint: disable=import-outside-toplevel,import-error
-            Math,
-        )
-
         def float_to_math(num: float, is_complex: bool) -> str | None:
             num_str = None
             if abs(num) > 1e-14:
