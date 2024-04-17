@@ -91,6 +91,6 @@ from .quantumstate import *
 from .quantumstate import __all__ as all_state
 from . import lib
 
-__version__ = "0.7.1rc0"
+__version__ = "0.7.1rc1"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state + ["lib"]

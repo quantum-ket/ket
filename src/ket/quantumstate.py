@@ -270,17 +270,19 @@ class QuantumState:
             *basis,
         ]
 
-    def sphere(self):
+    def sphere(self) -> go.Figure:
         """Generate a Bloch sphere plot representing the quantum state.
 
-        This method creates a Bloch sphere plot visualizing the quantum state
-        using the qubit state vector.
+        This method creates a Bloch sphere plot visualizing of one qubit quantum state.
+
 
         Note:
-            This method requires additional dependencies from ket-lang[visualization].
+            This method requires additional dependencies from ``ket-lang[visualization]``.
+            
+            Install with: ``pip install ket-lang[visualization]``.
 
         Returns:
-            go.Figure: A Bloch sphere plot illustrating the quantum state.
+            A Bloch sphere plot illustrating the quantum state.
         """
 
         if len(self.qubits) != 1:
@@ -365,7 +367,7 @@ class QuantumState:
         self,
         format_str: str | None = None,
         mode: Literal["latex", "str"] | None = None,
-    ):
+    ) -> str | Math:
         r"""Return the quantum state as a string.
 
         Use the format string to change the print format of the basis states:
@@ -410,9 +412,9 @@ class QuantumState:
 
         Args:
             format: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
-            mode: If "str", return a string representation of the quantum state. If "latex",
+            mode: If ``"str"``, return a string representation of the quantum state. If ``"latex"``,
                 return a LaTeX Math representation of the quantum state. If in Jupyter Notebook,
-                defaults to "latex", otherwise defaults to "str".
+                defaults to ``"latex"``, otherwise defaults to ``"str"``.
 
         Returns:
             The formatted quantum state as a string, or Latex Math.
@@ -495,7 +497,7 @@ class QuantumState:
             for state, amp in sorted(self.get().items(), key=lambda k: k[0])
         )
 
-    def _show_latex(self, fmt=list[tuple[Literal["i", "b"], int, int]]):
+    def _show_latex(self, fmt=list[tuple[Literal["i", "b"], int, int]]) -> Math:
         def float_to_math(num: float, is_complex: bool) -> str | None:
             num_str = None
             if abs(num) > 1e-14:
@@ -538,17 +540,19 @@ class QuantumState:
 
         return Math("+".join(math).replace("+-", "-"))
 
-    def histogram(self):
+    def histogram(self) -> go.Figure:
         """Generate a histogram representing the quantum state.
 
         This method creates a histogram visualizing the probability distribution
         of the quantum state.
 
         Note:
-            This method requires additional dependencies from ket-lang[visualization].
+            This method requires additional dependencies from ``ket-lang[visualization]``.
+
+            Install with: ``pip install ket-lang[visualization]``.
 
         Returns:
-            go.Figure: A histogram of the quantum state.
+            Histogram of the quantum state.
         """
         if not VISUALIZE:
             raise RuntimeError(
