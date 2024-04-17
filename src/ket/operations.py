@@ -25,8 +25,9 @@ from .base import (
     Quant,
     Measurement,
     Samples,
-    QuantumState,
 )
+from .quantumstate import QuantumState
+
 
 from .expv import (
     Pauli,
