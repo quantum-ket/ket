@@ -122,62 +122,62 @@ if __name__ == "__main__":
 
 To get started with Ket development, follow these steps:
 
-### 1. Rust Installation
+1. **Rust Installation**
+   
+    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.75 using the following command:
+    
+    ```shell
+    rustup default 1.75
+    ```
 
-Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.75 using the following command:
+2. **Clone and Compile**
 
-```shell
-rustup default 1.75
-```
+    Clone the Ket repository and compile the Rust libraries:
 
-### 2. Clone and Compile
+    ```shell
+    git clone --recursive https://gitlab.com/quantum-ket/ket.git
+    cd ket
 
-Clone the Ket repository and compile the Rust libraries:
+    cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
+    cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
-```shell
-git clone --recursive https://gitlab.com/quantum-ket/ket.git
-cd ket
+    ln -s libket/target/debug/libket.so src/ket/clib/libs
+    ln -s kbw/target/debug/libkbw.so src/ket/clib/libs
+    ```
 
-cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
-cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+3. **Set Up Virtual Environment**
 
-ln -s libket/target/debug/libket.so src/ket/clib/libs
-ln -s kbw/target/debug/libkbw.so src/ket/clib/libs
-```
+    Set up a virtual environment for Python:
 
-### 3. Set Up Virtual Environment
+    ```shell
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
 
-Set up a virtual environment for Python:
+4. **Install Dependencies**
 
-```shell
-python3 -m venv venv
-source venv/bin/activate
-```
+    Upgrade pip and install development requirements:
+    
+    ```shell
+    pip install -U pip
+    pip install -r requirements_dev.txt
+    ```
 
-### 4. Install Dependencies
+5. **Install Ket**
 
-Upgrade pip and install development requirements:
+    Install Ket in editable mode:
 
-```shell
-pip install -U pip
-pip install -r requirements_dev.txt
-```
+    ```shell
+    pip install -e .
+    ```
 
-### 5. Install Ket
+6. **Run Tests**
 
-Install Ket in editable mode:
-
-```shell
-pip install -e .
-```
-
-### 6. Run Tests
-
-To ensure everything is correctly installed, run the tests:
-
-```shell
-pytest
-```
+    To ensure everything is correctly installed, run the tests:
+    
+    ```shell
+    pytest
+    ```
 
 You're now set up for Ket development! Happy coding! 🚀
 
