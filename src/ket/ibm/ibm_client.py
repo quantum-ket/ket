@@ -19,7 +19,6 @@ except ImportError as exc:
         "alongside ket by running `pip install ket[ibm]`."
     ) from exc
 from typing import Any
-from pprint import pprint
 from .qiskit_builder import QiskitBuilder
 
 
@@ -52,13 +51,12 @@ class IBMClient:
         """Processes the instructions received from the ket interface and returns the
         libket compliant formatted results."""
 
-        raw_results = {"samples": None, "exp_values": []}
+        raw_results = {"samples": [], "exp_values": []}
         measurement_map = {}
         sample_map = {}
         builder_data = self.qiskit_builder.build(
             instructions, measurement_map, sample_map
         )
-        pprint(builder_data["observables"])
         pm = generate_preset_pass_manager(
             target=self.backend.target, optimization_level=1
         )
@@ -76,24 +74,23 @@ class IBMClient:
                 )
                 raw_results["samples"] = result
 
-            # BUG: The following code is not working as expected.
-            # This might be because its missing a collection parameter value sets to
-            # bind the circuit against.
+            # BUG: The following code is not working as expected. The EstimatorV2
+            # class is not always returning the expected results.
             for observable in builder_data["observables"]:
                 isa_observable = observable.apply_layout(isa_circuit.layout)
-                numpy_result = (  # evs here returns either an ndarray of a numpy scalar
+                result = (
                     Estimator(session=session)
                     .run([(isa_circuit, isa_observable)])
                     .result()[0]
                     .data.evs
-                )
-                print(f"numpy_result: {numpy_result}")
-                result = (
-                    numpy_result.tolist()
-                    if isinstance(numpy_result.tolist(), list)
-                    else [float(numpy_result)]
-                )
-                raw_results["exp_values"].extend(result)
+                ).tolist()
+
+                # Calling tolist() on an ndarray with a single element returns a
+                # scalar, so we need to check if the result is a list or a scalar.
+                if isinstance(result, list):
+                    raw_results["exp_values"].extend(result)
+                else:
+                    raw_results["exp_values"].append(result)
 
         return self.format_result(raw_results, measurement_map, sample_map)
 
@@ -116,7 +113,7 @@ class IBMClient:
 
             # meas_index is the index of the measurement in the measurement map, as
             # there can be multiple measurements in a single instruction.
-            # qubits is the list of qubits that were measured in the measurement.
+            # qubits is the list of qubits that were measured.
             for meas_index, qubits in meas_map.items():
                 result_dict["measurements"][meas_index] = int(
                     "".join([reversed_meas_bin[qubit] for qubit in qubits]), 2
@@ -132,7 +129,7 @@ class IBMClient:
                     list(raw_results["samples"].values()),
                 )
 
-        result_dict["exp_values"] = raw_results["exp_values"]
+        result_dict["exp_values"].extend(raw_results["exp_values"])
         return result_dict
 
     @property
