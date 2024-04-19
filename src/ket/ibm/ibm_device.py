@@ -23,13 +23,37 @@ from .ibm_client import IBMClient
 
 
 class IBMDevice:
-    """Sets up a ket process to connect to the IBM Quantum or IBM Cloud devices."""
+    """Sets up a ket process to connect to the IBM Quantum or IBM Cloud devices.
+
+    Attributes:
+        backend: The backend to be used for the quantum circuit.
+        service: The Qiskit runtime service to be used for the quantum circuit.
+        num_qubits: The number of qubits to be used for the quantum circuit.
+        client: The IBMClient object to process the instructions.
+    """
 
     def __init__(
-        self, num_qubits: int, backend: Backend, service: QiskitRuntimeService | None
+        self,
+        backend: Backend,
+        service: QiskitRuntimeService | None = None,
+        num_qubits: int = 0,
     ) -> None:
-        self.num_qubits = num_qubits
-        self.client = IBMClient(num_qubits, backend, service)
+        """
+        Initializes the IBMDevice object.
+
+        Parameters:
+        ---
+        backend (Backend): The backend to be used for the quantum circuit.
+        service (QiskitRuntimeService, optional): The Qiskit runtime service to be used
+        for the quantum circuit. Defaults to None.
+        num_qubits (int, optional): The number of qubits to be used for the quantum
+        circuit. Defaults to the max number of qubits available to the backend.
+        """
+
+        self.num_qubits = (
+            backend.configuration().n_qubits if not num_qubits else num_qubits
+        )
+        self.client = IBMClient(self.num_qubits, backend, service)
 
         self.result_json = None
         self.result_json_len = None
