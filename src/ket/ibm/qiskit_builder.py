@@ -38,7 +38,7 @@ class QiskitBuilder:
 
         for inst in instructions:
             if "Alloc" in inst:
-                qubit_map[inst["Alloc"]["target"]] = qubit_stack.pop()
+                qubit_map[inst["Alloc"]["target"]] = qubit_stack.pop(0)
 
             elif "Free" in inst:
                 qubit_stack.append(qubit_map[inst["Free"]["target"]])
