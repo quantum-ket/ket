@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 stages:
+  - lint
   - build
   - test
   - deploy
@@ -11,16 +12,29 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-Build Wheels:
+Build x86_64 Wheels:
   image: docker:latest
   stage: build
   services:
     - docker:dind
   script:
-    - ./scripts/make_wheel.sh
+    - ./scripts/make_wheel_x86_64.sh
   artifacts:
     paths:
       - wheelhouse/*.whl
+
+Build aarch64 Wheels:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  script:
+    - ./scripts/make_wheel_aarch64.sh
+  artifacts:
+    paths:
+      - wheelhouse/*.whl
+  only:
+    - master
 
 Package Source Code:
   image: python:3-slim
@@ -30,7 +44,15 @@ Package Source Code:
     - python -m build -s
   artifacts:
     paths:
-      - dist/ket-lang*.tar.gz
+      - dist/ket_lang*.tar.gz
+
+Lint:
+  image: python:3-slim
+  stage: lint
+  script:
+    - pip install pipx
+    - pipx run pylint src
+    - pipx run reuse lint
 
 Test:
   image: python:3-slim

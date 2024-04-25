@@ -13,6 +13,8 @@ from __future__ import annotations
 # pylint: disable=duplicate-code
 
 from ctypes import c_int32, c_size_t
+from functools import reduce
+from operator import add
 from typing import Literal
 
 from .base import Process, Quant
@@ -86,15 +88,18 @@ class Pauli:
         pauli: Literal["X", "Y", "Z"],
         qubits: Quant,
         *,
-        process: Process | None = None,
-        pauli_list: list[str] | None = None,
-        qubits_list: list[Quant] | None = None,
-        coef: float | None = None,
+        _process: Process | None = None,
+        _pauli_list: list[str] | None = None,
+        _qubits_list: list[Quant] | None = None,
+        _coef: float | None = None,
     ):
-        self.process = process if process is not None else qubits.process
-        self.pauli_list = pauli_list if pauli_list is not None else [pauli]
-        self.qubits_list = qubits_list if qubits_list is not None else [qubits]
-        self.coef = 1.0 if coef is None else coef
+        if not isinstance(qubits, Quant) and _qubits_list is None:
+            qubits = reduce(add, qubits)
+
+        self.process = _process if _process is not None else qubits.process
+        self.pauli_list = _pauli_list if _pauli_list is not None else [pauli]
+        self.qubits_list = _qubits_list if _qubits_list is not None else [qubits]
+        self.coef = 1.0 if _coef is None else _coef
 
     def _flat(self) -> tuple[list[str], list[Quant]]:
         pauli_list = []
@@ -109,10 +114,10 @@ class Pauli:
             return Pauli(
                 None,
                 None,
-                process=self.process,
-                pauli_list=self.pauli_list,
-                qubits_list=self.qubits_list,
-                coef=self.coef * other,
+                _process=self.process,
+                _pauli_list=self.pauli_list,
+                _qubits_list=self.qubits_list,
+                _coef=self.coef * other,
             )
 
         if self.process is not other.process:
@@ -121,20 +126,20 @@ class Pauli:
         return Pauli(
             None,
             None,
-            process=self.process,
-            pauli_list=self.pauli_list + other.pauli_list,
-            qubits_list=self.qubits_list + other.qubits_list,
-            coef=self.coef * other.coef,
+            _process=self.process,
+            _pauli_list=self.pauli_list + other.pauli_list,
+            _qubits_list=self.qubits_list + other.qubits_list,
+            _coef=self.coef * other.coef,
         )
 
     def __rmul__(self, other: float) -> Pauli:
         return Pauli(
             None,
             None,
-            process=self.process,
-            pauli_list=self.pauli_list,
-            qubits_list=self.qubits_list,
-            coef=self.coef * other,
+            _process=self.process,
+            _pauli_list=self.pauli_list,
+            _qubits_list=self.qubits_list,
+            _coef=self.coef * other,
         )
 
     def __add__(self, other) -> Hamiltonian:
@@ -180,6 +185,12 @@ class Hamiltonian:
             raise ValueError("different Ket processes")
 
         return Hamiltonian(self.pauli_products + other.pauli_products, self.process)
+
+    def __radd__(self, other: int | float) -> Hamiltonian:
+        if other != 0:
+            raise ValueError("cannot add Hamiltonian with float or int")
+
+        return self
 
     def __mul__(self, other: float) -> Hamiltonian:
         return Hamiltonian(

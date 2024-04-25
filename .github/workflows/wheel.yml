@@ -24,6 +24,7 @@ jobs:
         run: git submodule update --init --recursive
       - name: Compile Rust Libs
         run: |
+          rustup default 1.75
           cargo build --release --manifest-path src\ket\clib\libs\libket\Cargo.toml
           cargo build --release --manifest-path src\ket\clib\libs\kbw\Cargo.toml
           cp src\ket\clib\libs\libket\target\release\ket.dll src\ket\clib\libs\ket.dll
@@ -52,6 +53,7 @@ jobs:
         run: git submodule update --init --recursive
       - name: Compile Rust Libs
         run: |
+          rustup default 1.75
           cargo build --release --manifest-path src/ket/clib/libs/libket/Cargo.toml
           cargo build --release --manifest-path src/ket/clib/libs/kbw/Cargo.toml
           mv src/ket/clib/libs/libket/target/release/libket.dylib src/ket/clib/libs/kbw/target/release/libkbw.dylib src/ket/clib/libs/

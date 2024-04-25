@@ -43,8 +43,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from cmath import asin, exp, isclose, cos, sin
-from math import acos, atan2, pi
+from math import pi
 from fractions import Fraction
 from functools import reduce
 from operator import add
@@ -78,13 +77,14 @@ __all__ = [
     "T",
     "SD",
     "TD",
+    "U3",
     "CNOT",
     "SWAP",
     "RXX",
     "RZZ",
     "RYY",
+    "SX",
     "global_phase",
-    "unitary",
 ]
 
 
@@ -187,8 +187,10 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
 H.__doc__ = _gate_docstring(
     "Hadamard",
     r"\frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}",
-    r"\begin{matrix} H\left|0\right> = & \frac{1}{\sqrt{2}}\left(\left|0\right> + \left|1\right>\right) \\"  # pylint: disable=line-too-long
-    r"H\left|1\right> = & \frac{1}{\sqrt{2}}\left(\left|0\right> - \left|1\right>\right) \end{matrix}",  # pylint: disable=line-too-long
+    r"\begin{matrix}"
+    r"H\left|0\right> = & \frac{1}{\sqrt{2}}\left(\left|0\right> + \left|1\right>\right) \\"
+    r"H\left|1\right> = & \frac{1}{\sqrt{2}}\left(\left|0\right> - \left|1\right>\right)"
+    r"\end{matrix}",
 )
 
 
@@ -214,9 +216,13 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
 
 RX.__doc__ = _gate_docstring(
     "X-axes rotation",
-    r"\begin{bmatrix} \cos(\theta/2) & -i\sin(\theta/2) \\ -i\sin(\theta/2) & \cos(\theta/2) \end{bmatrix}",  # pylint: disable=line-too-long
-    r"\begin{matrix} R_x\left|0\right> = & \cos(\theta/2)\left|0\right> + i\sin(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
-    r"R_x\left|1\right> = & -i\sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right> \end{matrix}",  # pylint: disable=line-too-long
+    r"\begin{bmatrix}"
+    r"\cos(\theta/2) & -i\sin(\theta/2) \\ -i\sin(\theta/2) & \cos(\theta/2)"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"R_x\left|0\right> = & \cos(\theta/2)\left|0\right> - i\sin(\theta/2)\left|1\right> \\"
+    r"R_x\left|1\right> = & -i\sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right>"
+    r"\end{matrix}",
 )
 
 
@@ -242,9 +248,13 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
 
 RY.__doc__ = _gate_docstring(
     "Y-axes rotation",
-    r"\begin{bmatrix} \cos(\theta/2) & -\sin(\theta/2) \\ \sin(\theta/2) & \cos(\theta/2) \end{bmatrix}",  # pylint: disable=line-too-long
-    r"\begin{matrix} R_y\left|0\right> = & \cos(\theta/2)\left|0\right> - \sin(\theta/2)\left|1\right> \\"  # pylint: disable=line-too-long
-    r"R_y\left|1\right> = & \sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right> \end{matrix}",  # pylint: disable=line-too-long
+    r"\begin{bmatrix}"
+    r"\cos(\theta/2) & -\sin(\theta/2) \\ \sin(\theta/2) & \cos(\theta/2)"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"R_y\left|0\right> = & \cos(\theta/2)\left|0\right> + \sin(\theta/2)\left|1\right> \\"
+    r"R_y\left|1\right> = & -\sin(\theta/2)\left|0\right> + \cos(\theta/2)\left|1\right>"
+    r"\end{matrix}",
 )
 
 
@@ -347,12 +357,17 @@ def CNOT(  # pylint: disable=invalid-name missing-function-docstring
 
 CNOT.__doc__ = _gate_docstring(
     "Controlled NOT",
-    r"\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0 \end{bmatrix}",  # pylint: disable=line-too-long
-    r"\begin{matrix} \text{CNOT}\left|00\right> = & \left|00\right> \\"
+    r"\begin{bmatrix}"
+    r"1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \\ 0 & 0 & 1 & 0"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"\text{CNOT}\left|00\right> = & \left|00\right> \\"
     r"\text{CNOT}\left|01\right> = & \left|01\right> \\"
     r"\text{CNOT}\left|10\right> = & \left|11\right> \\"
     r"\text{CNOT}\left|11\right> = & \left|10\right> \\"
-    r"\text{CNOT}\left|\text{c}\right>\left|\text{t}\right> = & \left|\text{c}\right> \left|\text{c}\oplus\text{t}\right> \end{matrix}",  # pylint: disable=line-too-long
+    r"\text{CNOT}\left|\text{c}\right>\left|\text{t}\right> ="
+    r"& \left|\text{c}\right> \left|\text{c}\oplus\text{t}\right>"
+    r"\end{matrix}",
 )
 
 
@@ -367,12 +382,17 @@ def SWAP(  # pylint: disable=invalid-name missing-function-docstring
 
 SWAP.__doc__ = _gate_docstring(
     "SWAP",
-    r"\begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}",  # pylint: disable=line-too-long
-    r"\begin{matrix} \text{SWAP}\left|00\right> = & \left|00\right> \\"
+    r"\begin{bmatrix}"
+    r"1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 1"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"\text{SWAP}\left|00\right> = & \left|00\right> \\"
     r"\text{SWAP}\left|01\right> = & \left|10\right> \\"
     r"\text{SWAP}\left|10\right> = & \left|01\right> \\"
     r"\text{SWAP}\left|11\right> = & \left|11\right> \\"
-    r"\text{SWAP}\left|\text{a}\right>\left|\text{b}\right> = & \left|\text{b}\right> \left|\text{a}\right> \end{matrix}",  # pylint: disable=line-too-long
+    r"\text{SWAP}\left|\text{a}\right>\left|\text{b}\right> ="
+    r"& \left|\text{b}\right> \left|\text{a}\right>"
+    r"\end{matrix}",
 )
 
 
@@ -438,12 +458,27 @@ def RYY(  # pylint: disable=invalid-name missing-function-docstring
     return inner(qubits_a, qubits_b)
 
 
-RYY.__doc__ = _gate_docstring(
-    "YY rotation",
-    r"\begin{bmatrix} \cos\frac{\theta}{2} & 0 & 0 & i\sin\frac{\theta}{2} \\"
-    r"0 & \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} & 0 \\"
-    r"0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\"
-    r"i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2} \end{bmatrix}",
+def U3(  # pylint: disable=invalid-name missing-function-docstring
+    theta: float, phi: float, lambda_: float, qubit: Quant | None = None
+) -> Quant | Callable[[Quant], Quant]:
+    gate = cat(RZ(lambda_), RY(theta), RZ(phi))
+    if qubit is not None:
+        return gate(qubit)
+    return gate
+
+
+U3.__doc__ = _gate_docstring(
+    "U3",
+    r"\begin{bmatrix}"
+    r"e^{-i (\phi + \lambda)/2} \cos(\theta/2) & -e^{-i (\phi - \lambda)/2} \sin(\theta/2) \\"
+    r"e^{i (\phi - \lambda)/2} \sin(\theta/2) & e^{i (\phi + \lambda)/2} \cos(\theta/2)"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"U3\left|0\right> = & e^{-i (\phi + \lambda)/2} \cos(\theta/2)\left|0\right>"
+    r"+ e^{i (\phi - \lambda)/2} \sin(\theta/2) \left|1\right> \\"
+    r"U3\left|1\right> = & -e^{-i (\phi - \lambda)/2} \sin(\theta/2)\left|0\right>"
+    r"+ e^{i (\phi + \lambda)/2} \cos(\theta/2)\left|1\right> \\"
+    r"\end{matrix}",
 )
 
 
@@ -499,100 +534,12 @@ def global_phase(
     return _global_phase
 
 
-def _is_unitary(matrix):
-    if len(matrix) != 2 or len(matrix[0]) != 2 or len(matrix[1]) != 2:
-        raise ValueError("Input matrix must be a 2x2 matrix")
-
-    conj_transpose = [[matrix[j][i].conjugate() for j in range(2)] for i in range(2)]
-
-    result = [
-        [sum(matrix[i][k] * conj_transpose[k][j] for k in range(2)) for j in range(2)]
-        for i in range(2)
-    ]
-
-    return all(
-        isclose(result[i][j], 1 if i == j else 0, abs_tol=1e-10)
-        for i in range(2)
-        for j in range(2)
-    )
-
-
-def _extract_phase(matrix):
-    a, b = matrix[0]
-    c, d = matrix[1]
-    det = a * d - b * c
-    return 1 / 2 * atan2(det.imag, det.real)
-
-
-def _zyz(matrix):
-    phase = _extract_phase(matrix)
-
-    matrix = [
-        [exp(-1j * phase) * matrix[i][j] for j in range(len(matrix[0]))]
-        for i in range(len(matrix))
-    ]
-
-    theta_1 = (
-        2 * acos(abs(matrix[0][0]))
-        if abs(matrix[0][0]) >= abs(matrix[0][1])
-        else 2 * asin(abs(matrix[0][1]))
-    )
-
-    if not isclose(cos(theta_1 / 2), 0.0, abs_tol=1e-10):
-        aux_0_plus_2 = matrix[1][1] / cos(theta_1 / 2)
-        theta_0_plus_2 = 2 * atan2(aux_0_plus_2.imag, aux_0_plus_2.real)
-    else:
-        theta_0_plus_2 = 0.0
-
-    if not isclose(sin(theta_1 / 2), 0.0, abs_tol=1e-10):
-        aux_1_sub_2 = matrix[1][0] / sin(theta_1 / 2)
-        theta_0_sub_2 = 2 * atan2(aux_1_sub_2.imag, aux_1_sub_2.real)
-
-    else:
-        theta_0_sub_2 = 0.0
-
-    theta_0 = (theta_0_plus_2 + theta_0_sub_2) / 2
-    theta_2 = (theta_0_plus_2 - theta_0_sub_2) / 2
-
-    return phase, theta_0, theta_1, theta_2
-
-
-def unitary(
-    matrix: list[list[complex]], qubits: Quant | None = None
-) -> Quant | Callable[[Quant], Quant]:
-    """Apply a unitary 2x2 matrix to a qubit.
-
-    Create or apply a unitary single qubit gate.
-
-    The provided unitary matrix is decomposed into a sequence of rotation gates,
-    which together implement an equivalent unitary transformation. When the gate
-    is used in a controlled operation, the resulting unitary is equivalent up to
-    a global phase.
-
-    Args:
-        matrix: Unitary matrix in the format ``[[a, b], [c, d]]``.
-        qubits: Qubits to be transformed.
-
-    Returns:
-        If ``qubits`` is ``None``, returns a new callable that implements the unitary
-        operation. Otherwise, returns the :class:`~ket.base.Quant` object that
-        the gate acted upon.
-
-    Raises:
-        ValueError: If the input matrix is not unitary.
-    """
-    if not _is_unitary(matrix):
-        raise ValueError("Input matrix is not unitary")
-
-    phase, theta_0, theta_1, theta_2 = _zyz(matrix)
-
-    @global_phase(phase)
-    def inner(qubits: Quant):
-        RZ(theta_2.real, qubits)
-        RY(theta_1.real, qubits)
-        RZ(theta_0.real, qubits)
-        return qubits
-
-    if qubits is None:
-        return inner
-    return inner(qubits)
+SX = global_phase(pi / 4)(RX(pi / 2))
+SX.__doc__ = _gate_docstring(
+    "Sqrt X",
+    r"\frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}",
+    r"\begin{matrix}"
+    r"\sqrt{X}\left|0\right> = & \frac{1}{2} ((1+i)\left|0\right> + (1-i)\left|1\right>) \\"
+    r"\sqrt{X}\left|1\right> = & \frac{1}{2} ((1-i)\left|0\right> + (1+i)\left|1\right>)"
+    r"\end{matrix}",
+)
