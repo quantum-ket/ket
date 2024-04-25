@@ -87,9 +87,11 @@ class QiskitBuilder:
             return library.ZGate()
         if "Hadamard" in gate_type:
             return library.HGate()
-        if "Rotation" in gate_type or "Phase" in gate_type:
+        if isinstance(gate_type, dict) and any(
+            "Rotation" in key or "Phase" in key for key in list(gate_type.keys())
+        ):
             # gate_type here is a dict
-            rotation_type: str = gate_type.keys()[0]
+            rotation_type: str = list(gate_type.keys())[0]
             rot = gate_type[rotation_type]
             theta = 0
             if "Scalar" in rot:
