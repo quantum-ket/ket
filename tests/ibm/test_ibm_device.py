@@ -101,10 +101,3 @@ class TestIBMDevice:
 
         assert math.isclose(ket_result, device_result, rel_tol=1e-9)
         print("Expectation value test passed!")
-
-
-if __name__ == "__main__":
-    test = TestIBMDevice()
-    test.test_measure()
-    test.test_sample()
-    test.test_exp_value()
