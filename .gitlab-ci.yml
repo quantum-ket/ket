@@ -58,7 +58,7 @@ Test:
   image: python:3-slim
   stage: test
   script:
-    - pip install wheelhouse/ket_lang*manylinux_2_28_x86_64.whl[ibm] pytest pytest-cov
+    - pip install `ls wheelhouse/ket_lang*manylinux_2_28_x86_64.whl`[ibm] pytest pytest-cov
     - pytest
   artifacts:
     paths:
