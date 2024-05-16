@@ -458,6 +458,17 @@ def RYY(  # pylint: disable=invalid-name missing-function-docstring
     return inner(qubits_a, qubits_b)
 
 
+RYY.__doc__ = _gate_docstring(
+    "ZZ rotation",
+    r"\begin{bmatrix}"
+    r"\cos\frac{\theta}{2} & 0 & 0 & i\sin\frac{\theta}{2} \\"
+    r"0 & \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} & 0 \\"
+    r"0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\"
+    r"i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2}"
+    r"\end{bmatrix}",
+)
+
+
 def U3(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, phi: float, lambda_: float, qubit: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
