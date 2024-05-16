@@ -84,6 +84,8 @@ API_argtypes = {
     "ket_process_dump": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
     "ket_process_ctrl_push": ([c_void_p, POINTER(c_size_t), c_size_t], []),
     "ket_process_ctrl_pop": ([c_void_p], []),
+    "ket_process_ctrl_stack": ([c_void_p], []),
+    "ket_process_ctrl_unstack": ([c_void_p], []),
     "ket_process_adj_begin": ([c_void_p], []),
     "ket_process_adj_end": ([c_void_p], []),
     "ket_process_prepare_for_execution": ([c_void_p], []),

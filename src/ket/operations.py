@@ -308,7 +308,7 @@ def kron(*gates) -> Callable[[Any], Any]:
 
 @contextmanager
 def around(
-    gate: Callable[[Any], Any], *arg, ket_process: Process | None = None, **kwargs
+    gate: Callable[[Any], Any], *args, ket_process: Process | None = None, **kwargs
 ):
     r"""Applying and then reversing quantum gates.
 
@@ -340,11 +340,17 @@ def around(
 
     """
 
-    gate(*arg, **kwargs)
+    ket_process = _search_process(ket_process, args, kwargs)
+
+    ket_process.ctrl_stack()
+    gate(*args, **kwargs)
+    ket_process.ctrl_unstack()
     try:
         yield
     finally:
-        adj(gate)(*arg, ket_process=ket_process, **kwargs)
+        ket_process.ctrl_stack()
+        adj(gate)(*args, ket_process=ket_process, **kwargs)
+        ket_process.ctrl_unstack()
 
 
 def measure(qubits: Quant) -> Measurement:

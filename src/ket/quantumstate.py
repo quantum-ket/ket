@@ -278,7 +278,7 @@ class QuantumState:
 
         Note:
             This method requires additional dependencies from ``ket-lang[visualization]``.
-            
+
             Install with: ``pip install ket-lang[visualization]``.
 
         Returns:
