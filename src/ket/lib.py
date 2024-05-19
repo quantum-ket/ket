@@ -259,7 +259,7 @@ def _zyz(matrix):
         2 * acos(clip(abs(matrix[0][0])))
         if abs(matrix[0][0]) >= abs(matrix[0][1])
         else 2 * asin(abs(matrix[0][1]))
-    )
+    ).real
 
     if not isclose(cos(theta_1 / 2), 0.0, abs_tol=1e-10):
         aux_0_plus_2 = matrix[1][1] / cos(theta_1 / 2)

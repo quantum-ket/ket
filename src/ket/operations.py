@@ -204,11 +204,11 @@ def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
 
     """
 
-    def inner(*args, ket_process: Process | None = None, **kwargs):
+    def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
         ket_process = _search_process(ket_process, args, kwargs)
 
         with inverse(ket_process):
-            gate(*args, **kwargs)
+            return gate(*args, **kwargs)
 
     return inner
 
