@@ -1,5 +1,7 @@
 """ Interface for setting up connection to the IBM quantum infrastructure. """
 
+from __future__ import annotations
+
 # SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 # SPDX-FileCopyrightText: 2024 Otávio Augusto de Santana Jatobá
 # <otavio.jatoba@grad.ufsc.br>
