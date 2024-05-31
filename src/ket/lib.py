@@ -67,6 +67,7 @@ def flip_to_control(
                 raise ValueError(
                     f"'to' received a list of length {len(control_state)} to use on {length} qubits"
                 )
+            state = control_state
         else:
             if length < control_state.bit_length():
                 raise ValueError(
