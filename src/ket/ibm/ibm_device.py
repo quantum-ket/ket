@@ -1,6 +1,7 @@
 """ Interface for setting up connection to the IBM quantum infrastructure. """
 
 from __future__ import annotations
+from operator import iconcat
 
 # SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 # SPDX-FileCopyrightText: 2024 Otávio Augusto de Santana Jatobá
@@ -18,6 +19,7 @@ except ImportError as exc:
         "alongside ket by running `pip install ket[ibm]`."
     ) from exc
 
+from functools import reduce
 import json
 from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t
 from ..clib.libket import BatchCExecution, API as libket
@@ -38,7 +40,9 @@ class IBMDevice:
         self,
         backend: Backend,
         service: QiskitRuntimeService | None = None,
-        num_qubits: int = 0,
+        num_qubits: int | None = None,
+        *,
+        use_qiskit_mapping: bool = False,
     ) -> None:
         """
         Initializes the IBMDevice object.
@@ -56,6 +60,15 @@ class IBMDevice:
             backend.configuration().n_qubits if not num_qubits else num_qubits
         )
         self.client = IBMClient(self.num_qubits, backend, service)
+
+        if backend.coupling_map and not use_qiskit_mapping:
+            coupling_graph = list(backend.coupling_map.graph.edge_list())
+            self.coupling_graph_size = len(coupling_graph)
+            coupling_graph = reduce(iconcat, coupling_graph, [])
+            self.coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+        else:
+            self.coupling_graph = None
+            self.coupling_graph_size = 0
 
         self.result_json = None
         self.result_json_len = None
@@ -92,18 +105,29 @@ class IBMDevice:
             get_status,
         )
 
-    def make_configuration(self):
+    def build(self):
         """Set up the configuration for the ket process inside libket."""
 
-        return libket["ket_batch_make_configuration"](
+        return libket["ket_make_configuration"](
             self.num_qubits,
             self.c_struct,
+            1,
+            1,
+            1,
+            0,
+            self.coupling_graph,
+            self.coupling_graph_size,
         )
 
     @property
     def circuit(self) -> QuantumCircuit:
         """Quantum circuit object for the IBM device."""
         return self.client.circuit
+
+    @property
+    def isa_circuit(self) -> QuantumCircuit:
+        """Quantum circuit object for the IBM device."""
+        return self.client.isa_circuit
 
     @property
     def backend(self) -> Backend:

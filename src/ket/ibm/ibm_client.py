@@ -46,6 +46,7 @@ class IBMClient:
         self.backend = backend
         self.service = service
         self.qiskit_builder = QiskitBuilder(num_qubits)
+        self.isa_circuit = None
 
     def process_instructions(
         self, instructions: list[dict[str, Any]]
@@ -62,12 +63,12 @@ class IBMClient:
         pm = generate_preset_pass_manager(
             target=self.backend.target, optimization_level=1
         )
-        isa_circuit = pm.run(builder_data["circuit"])
+        self.isa_circuit = pm.run(builder_data["circuit"])
 
         with Session(service=self.service, backend=self.backend) as session:
             if sample_map or measurement_map:
                 result_data = (
-                    Sampler(session=session).run([isa_circuit]).result()[0].data
+                    Sampler(session=session).run([self.isa_circuit]).result()[0].data
                 )
                 result = (
                     result_data.c.get_counts()
@@ -79,10 +80,10 @@ class IBMClient:
             # BUG: The following code is not working as expected. The EstimatorV2
             # class is not always returning the expected results.
             for observable in builder_data["observables"]:
-                isa_observable = observable.apply_layout(isa_circuit.layout)
+                isa_observable = observable.apply_layout(self.isa_circuit.layout)
                 result = (
                     Estimator(session=session)
-                    .run([(isa_circuit, isa_observable)])
+                    .run([(self.isa_circuit, isa_observable)])
                     .result()[0]
                     .data.evs
                 ).tolist()

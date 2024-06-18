@@ -42,8 +42,12 @@ class QiskitBuilder:
             if "Alloc" in inst:
                 qubit_map[inst["Alloc"]["target"]] = qubit_stack.pop(0)
 
-            elif "Free" in inst:
-                qubit_stack.append(qubit_map[inst["Free"]["target"]])
+            elif "Phase" in inst:
+                continue
+
+            elif "SWAP" in inst:
+                qubits = [qubit_map[qubit] for qubit in inst["SWAP"]]
+                data["circuit"].swap(*qubits)
 
             elif "Gate" in inst:
                 gate_type = inst["Gate"]["gate"]
@@ -100,7 +104,7 @@ class QiskitBuilder:
                 theta = rot["Scalar"]
             else:
                 pi_fraction = rot["PiFraction"]
-                theta = pi * pi_fraction["top"] / pi_fraction["bottom"]
+                theta = pi * pi_fraction["numer"] / pi_fraction["denom"]
             return self._get_rotation_or_phase_gate(gate_type, theta)
 
         raise RuntimeError("Unknown gate")

@@ -70,7 +70,6 @@ API_argtypes = {
     "ket_process_new": ([c_void_p], [c_void_p]),
     "ket_process_delete": ([c_void_p], []),
     "ket_process_allocate_qubit": ([c_void_p], [c_size_t]),
-    "ket_process_free_qubit": ([c_void_p, c_void_p], []),
     "ket_process_apply_gate": (
         [c_void_p, c_int32, c_int32, c_uint32, c_double, c_size_t],
         [],
@@ -118,8 +117,17 @@ API_argtypes = {
         [c_void_p, c_size_t, c_size_t],
         [POINTER(c_uint64), c_size_t, c_double, c_double],
     ),
-    "ket_batch_make_configuration": (
-        [c_size_t, POINTER(BatchCExecution)],
+    "ket_make_configuration": (
+        [
+            c_size_t,
+            POINTER(BatchCExecution),
+            c_int32,
+            c_int32,
+            c_int32,
+            c_int32,
+            POINTER(c_size_t),
+            c_size_t,
+        ],
         [c_void_p],
     ),
 }
