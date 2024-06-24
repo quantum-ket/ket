@@ -61,7 +61,13 @@ class IBMClient:
             instructions, measurement_map, sample_map
         )
         pm = generate_preset_pass_manager(
-            target=self.backend.target, optimization_level=1
+            target=self.backend.target,
+            optimization_level=1,
+            initial_layout=(
+                list(range(self.qiskit_builder.num_qubits))
+                if self.backend.coupling_map
+                else None
+            ),
         )
         self.isa_circuit = pm.run(builder_data["circuit"])
 

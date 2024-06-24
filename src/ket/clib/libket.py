@@ -20,6 +20,9 @@ from ctypes import (
     c_uint64,
     c_double,
 )
+from functools import reduce
+from operator import iconcat
+from typing import Literal
 import weakref
 from os import environ
 from os.path import dirname
@@ -127,6 +130,8 @@ API_argtypes = {
             c_int32,
             POINTER(c_size_t),
             c_size_t,
+            c_int32,
+            c_int32,
         ],
         [c_void_p],
     ),
@@ -167,3 +172,42 @@ class Process:
 
     def __repr__(self) -> str:
         return "<Libket 'process'>"
+
+
+def make_configuration(  # pylint: disable=too-many-arguments
+    num_qubits: int,
+    batch_execution,
+    measure: Literal["Disable", "Allowed", "ValidAfter"],
+    sample: Literal["Disable", "Allowed", "ValidAfter"],
+    exp_value: Literal["Disable", "Allowed", "ValidAfter"],
+    dump: Literal["Disable", "Allowed", "ValidAfter"],
+    coupling_graph: list[tuple[int, int]] | None,
+    u4_gate_type: Literal["CX", "CZ"],
+    u2_gate_set: Literal["All", "RzSx"],
+) -> Process:
+    """Make a Libket configuration"""
+
+    def feature_status(value):
+        if value == "Disable":
+            return 0
+        if value == "Allowed":
+            return 1
+        return 2
+
+    coupling_graph_size = len(coupling_graph) if coupling_graph else 0
+    if coupling_graph:
+        coupling_graph = reduce(iconcat, coupling_graph, [])
+        coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+
+    return API["ket_make_configuration"](
+        num_qubits,
+        batch_execution,
+        feature_status(measure),
+        feature_status(sample),
+        feature_status(exp_value),
+        feature_status(dump),
+        coupling_graph,
+        coupling_graph_size,
+        1 if u4_gate_type == "CZ" else 0,
+        1 if u2_gate_set == "RzSx" else 0,
+    )
