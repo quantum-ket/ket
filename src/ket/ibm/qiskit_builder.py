@@ -35,33 +35,25 @@ class QiskitBuilder:
             "circuit": self.circuit,
             "observables": [],
         }
-        qubit_map = list(range(self.num_qubits))
-        qubit_stack = list(range(self.num_qubits))
 
         for inst in instructions:
             if "Alloc" in inst:
-                qubit_map[inst["Alloc"]["target"]] = qubit_stack.pop(0)
+                continue
 
             elif "Phase" in inst:
                 continue
-
-            elif "SWAP" in inst:
-                qubits = [qubit_map[qubit] for qubit in inst["SWAP"]]
-                data["circuit"].swap(*qubits)
 
             elif "Gate" in inst:
                 gate_type = inst["Gate"]["gate"]
                 gate: Gate = self.get_gate(gate_type)
 
-                control = [qubit_map[qubit] for qubit in inst["Gate"]["control"]]
+                control = inst["Gate"]["control"]
                 if len(control):
                     gate = gate.control(len(control))
-                data["circuit"].append(
-                    gate, control + [qubit_map[inst["Gate"]["target"]]]
-                )
+                data["circuit"].append(gate, control + [inst["Gate"]["target"]])
 
             elif "Measure" in inst:
-                qubits = [qubit_map[qubit] for qubit in inst["Measure"]["qubits"]]
+                qubits = inst["Measure"]["qubits"]
                 meas_map[inst["Measure"]["output"]] = qubits
                 data["circuit"].measure(qubits, qubits)
 
@@ -70,7 +62,7 @@ class QiskitBuilder:
                 data["observables"].append(self.build_observable(hamiltonian))
 
             elif "Sample" in inst:
-                qubits = [qubit_map[qubit] for qubit in inst["Sample"]["qubits"]]
+                qubits = inst["Sample"]["qubits"]
                 sample_map[inst["Sample"]["output"]] = qubits
                 data["circuit"].measure(qubits, qubits)
 
