@@ -38,7 +38,7 @@ class TestIBMDevice:
         """Tests the measurement operation using the IBMDevice"""
 
         device = IBMDevice(backend=BACKEND, num_qubits=NUM_QUBITS)
-        ket_process = ket.Process(device.make_configuration())
+        ket_process = ket.Process(device.build())
         q = ket_process.alloc(NUM_QUBITS)
         ket.CNOT(ket.H(q[0]), q[1])
         ket.measure(q)
@@ -61,7 +61,7 @@ class TestIBMDevice:
         """Tests the sample operation using the IBMDevice"""
 
         device = IBMDevice(backend=BACKEND, num_qubits=NUM_QUBITS)
-        ket_process = ket.Process(device.make_configuration())
+        ket_process = ket.Process(device.build())
         q = ket_process.alloc(NUM_QUBITS)
         ket.CNOT(ket.H(q[0]), q[1])
         ket.sample(q)
@@ -89,7 +89,7 @@ class TestIBMDevice:
         hamiltonian = ket.Pauli("Z", q)
 
         device = IBMDevice(backend=BACKEND, num_qubits=NUM_QUBITS)
-        ibm_process = ket.Process(device.make_configuration())
+        ibm_process = ket.Process(device.build())
         t = ibm_process.alloc(NUM_QUBITS)
         ket.CNOT(ket.H(t[0]), t[1])
 
