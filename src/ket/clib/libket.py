@@ -8,6 +8,8 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 from ctypes import (
+    CFUNCTYPE,
+    Structure,
     c_uint32,
     c_void_p,
     c_size_t,
@@ -50,6 +52,16 @@ EXP_VALUE_NOT_ALLOWED = 13
 SAMPLE_NOT_ALLOWED = 14
 MEASURE_NOT_ALLOWED = 15
 UNDEFINED_ERROR = 16
+
+
+class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
+    """C BatchCExecution Structure"""
+
+    _fields_ = [
+        ("submit_execution", CFUNCTYPE(None, POINTER(c_uint8), c_size_t)),
+        ("get_result", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
+        ("get_status", CFUNCTYPE(c_uint8)),
+    ]
 
 
 API_argtypes = {
@@ -103,6 +115,10 @@ API_argtypes = {
     "ket_process_get_dump": (
         [c_void_p, c_size_t, c_size_t],
         [POINTER(c_uint64), c_size_t, c_double, c_double],
+    ),
+    "ket_batch_make_configuration": (
+        [c_size_t, POINTER(BatchCExecution)],
+        [c_void_p],
     ),
 }
 
