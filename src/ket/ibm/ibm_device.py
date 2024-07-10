@@ -110,8 +110,8 @@ class IBMDevice:
             exp_value="Allowed",
             dump="Disable",
             coupling_graph=self.coupling_graph,
-            u4_gate_type="CX",
-            u2_gate_set="All",
+            u4_gate_type="CZ",
+            u2_gate_set="RzSx",
         )
 
     @property

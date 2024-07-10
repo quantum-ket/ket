@@ -123,7 +123,7 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_X, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_X, 0.0, qubit)
     return qubits
 
 
@@ -142,7 +142,7 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Y, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_Y, 0.0, qubit)
     return qubits
 
 
@@ -161,7 +161,7 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Z, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_Z, 0.0, qubit)
     return qubits
 
 
@@ -180,7 +180,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(HADAMARD, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(HADAMARD, 0.0, qubit)
     return qubits
 
 
@@ -197,16 +197,13 @@ H.__doc__ = _gate_docstring(
 def RX(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_X, *params, qubit)
+            qubits.process.apply_gate(ROTATION_X, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -229,16 +226,13 @@ RX.__doc__ = _gate_docstring(
 def RY(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_Y, *params, qubit)
+            qubits.process.apply_gate(ROTATION_Y, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -261,16 +255,13 @@ RY.__doc__ = _gate_docstring(
 def RZ(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_Z, *params, qubit)
+            qubits.process.apply_gate(ROTATION_Z, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -289,16 +280,13 @@ RZ.__doc__ = _gate_docstring(
 def PHASE(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(PHASE_SHIFT, *params, qubit)
+            qubits.process.apply_gate(PHASE_SHIFT, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -532,11 +520,7 @@ def global_phase(
         def inner(*args, ket_process: Process | None = None, **kwargs):
             ket_process = _search_process(ket_process, args, kwargs)
 
-            top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-            use_fraction = abs(pi * top / bottom - theta) < 1e-14
-            params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
-
-            ket_process.apply_global_phase(*params)
+            ket_process.apply_global_phase(theta)
 
             return gate(*args, **kwargs)
 

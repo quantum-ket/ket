@@ -50,7 +50,10 @@ class QiskitBuilder:
                 control = inst["Gate"]["control"]
                 if len(control):
                     gate = gate.control(len(control))
-                data["circuit"].append(gate, control + [inst["Gate"]["target"]])
+                control = [qubit["index"] for qubit in control]
+                data["circuit"].append(
+                    gate, control + [inst["Gate"]["target"]["index"]]
+                )
 
             elif "Measure" in inst:
                 qubits = inst["Measure"]["qubits"]
@@ -62,7 +65,7 @@ class QiskitBuilder:
                 data["observables"].append(self.build_observable(hamiltonian))
 
             elif "Sample" in inst:
-                qubits = inst["Sample"]["qubits"]
+                qubits = [qubit["index"] for qubit in inst["Sample"]["qubits"]]
                 sample_map[inst["Sample"]["output"]] = qubits
                 data["circuit"].measure(qubits, qubits)
 

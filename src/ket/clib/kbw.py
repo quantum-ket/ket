@@ -7,7 +7,9 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ctypes import c_void_p, c_size_t, c_bool, c_uint32
+from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_uint32
+from functools import reduce
+from operator import iconcat
 from typing import Literal
 from os import environ
 from os.path import dirname
@@ -15,7 +17,16 @@ from .wrapper import load_lib, os_lib_name
 
 API_argtypes = {
     "kbw_set_log_level": ([c_uint32], []),
-    "kbw_make_configuration": ([c_size_t, c_bool, c_bool], [c_void_p]),
+    "kbw_make_configuration": (
+        [
+            c_size_t,
+            c_bool,
+            c_bool,
+            POINTER(c_size_t),
+            c_size_t,
+        ],
+        [c_void_p],
+    ),
 }
 
 
@@ -43,11 +54,19 @@ def get_simulator(
     num_qubits: int,
     execution: Literal["live", "batch"] = "live",
     simulator: Literal["sparse", "dense"] = "sparse",
+    coupling_graph: list[tuple[int, int]] | None = None,
 ):
     """Create a configuration"""
 
+    coupling_graph_size = len(coupling_graph) if coupling_graph else 0
+    if coupling_graph:
+        coupling_graph = reduce(iconcat, coupling_graph, [])
+        coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+
     return API["kbw_make_configuration"](
         num_qubits,
-        execution == "live",
         simulator == "sparse",
+        execution == "live",
+        coupling_graph,
+        coupling_graph_size,
     )

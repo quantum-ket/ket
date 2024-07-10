@@ -17,9 +17,9 @@ from cmath import asin, exp, isclose, cos, sin
 from math import acos, sqrt, atan2
 from collections.abc import Sized
 
-from .base import Quant, Process
-from .operations import ctrl, around, dump
-from .gates import RZ, X, Z, H, RY, CNOT, S, global_phase
+from ..base import Quant, Process
+from ..operations import ctrl, around, dump
+from ..gates import RZ, X, Z, H, RY, CNOT, S, global_phase
 
 __all__ = [
     "flip_to_control",

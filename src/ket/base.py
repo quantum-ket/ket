@@ -162,8 +162,6 @@ class Process(LibketProcess):
             defaults to 32; otherwise, defaults to 12.
         simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
-        decompose: Enable quantum gate decomposition (increase execution time).
-            If None, defaults to False.
     """
 
     def __init__(  # pylint: disable=too-many-arguments
@@ -172,7 +170,7 @@ class Process(LibketProcess):
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
-        decompose: Optional[bool] = None,
+        coupling_graph: Optional[list[tuple[int, int]]] = None,
     ):
         if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
             map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
@@ -199,7 +197,7 @@ class Process(LibketProcess):
             )
 
         if configuration is not None and any(
-            map(lambda a: a is not None, [num_qubits, simulator, execution, decompose])
+            map(lambda a: a is not None, [num_qubits, simulator, execution])
         ):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
@@ -217,6 +215,7 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
+                    coupling_graph=coupling_graph,
                 )
             )
 
@@ -253,26 +252,6 @@ class Process(LibketProcess):
 
         qubits_index = [self.allocate_qubit().value for _ in range(num_qubits)]
         return Quant(qubits=qubits_index, process=self)
-
-    def execute(self):
-        """Force the execution of the quantum circuit.
-
-        This method triggers the immediate execution of the prepared quantum circuit. It is
-        essential when live execution is required or when batch execution needs to be initiated.
-
-        Example:
-            >>> from ket import Process
-            >>> p = Process()
-            >>> # ... (quantum circuit preparation)
-            >>> # Force the execution of the quantum circuit
-            >>> p.execute()
-
-        Note:
-            The :meth:`~ket.base.Process.execute` method should be used when the quantum
-            instructions are to be executed immediately, either in live mode or to initiate batch
-            execution.
-        """
-        self.prepare_for_execution()
 
     def _get_ket_process(self):
         return self

@@ -61,9 +61,11 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
     """C BatchCExecution Structure"""
 
     _fields_ = [
-        ("submit_execution", CFUNCTYPE(None, POINTER(c_uint8), c_size_t)),
-        ("get_result", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
-        ("get_status", CFUNCTYPE(c_uint8)),
+        (
+            "submit_execution",
+            CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t),
+        ),
+        ("get_results", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
     ]
 
 
@@ -74,11 +76,11 @@ API_argtypes = {
     "ket_process_delete": ([c_void_p], []),
     "ket_process_allocate_qubit": ([c_void_p], [c_size_t]),
     "ket_process_apply_gate": (
-        [c_void_p, c_int32, c_int32, c_uint32, c_double, c_size_t],
+        [c_void_p, c_int32, c_double, c_size_t],
         [],
     ),
     "ket_process_apply_global_phase": (
-        [c_void_p, c_int32, c_uint32, c_double],
+        [c_void_p, c_double],
         [],
     ),
     "ket_process_measure": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
@@ -102,7 +104,8 @@ API_argtypes = {
     "ket_process_ctrl_unstack": ([c_void_p], []),
     "ket_process_adj_begin": ([c_void_p], []),
     "ket_process_adj_end": ([c_void_p], []),
-    "ket_process_prepare_for_execution": ([c_void_p], []),
+    "ket_process_execute": ([c_void_p], []),
+    "ket_process_transpile": ([c_void_p], []),
     "ket_process_instructions_json": (
         [c_void_p, POINTER(c_uint8), c_size_t],
         [c_size_t],
