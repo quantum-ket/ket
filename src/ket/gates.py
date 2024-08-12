@@ -44,7 +44,6 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 from math import pi
-from fractions import Fraction
 from functools import reduce
 from operator import add
 from typing import Any, Callable

@@ -110,6 +110,10 @@ API_argtypes = {
         [c_void_p, POINTER(c_uint8), c_size_t],
         [c_size_t],
     ),
+    "ket_process_isa_instructions_json": (
+        [c_void_p, POINTER(c_uint8), c_size_t],
+        [c_size_t],
+    ),
     "ket_process_metadata_json": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
     "ket_process_get_qubit_status": ([c_void_p, c_size_t], [c_bool, c_bool]),
     "ket_process_get_measurement": ([c_void_p, c_size_t], [c_bool, c_uint64]),
@@ -131,6 +135,7 @@ API_argtypes = {
             c_int32,
             c_int32,
             c_int32,
+            c_bool,
             POINTER(c_size_t),
             c_size_t,
             c_int32,
@@ -184,9 +189,10 @@ def make_configuration(  # pylint: disable=too-many-arguments
     sample: Literal["Disable", "Allowed", "ValidAfter"],
     exp_value: Literal["Disable", "Allowed", "ValidAfter"],
     dump: Literal["Disable", "Allowed", "ValidAfter"],
+    define_qpu: bool,
     coupling_graph: list[tuple[int, int]] | None,
     u4_gate_type: Literal["CX", "CZ"],
-    u2_gate_set: Literal["All", "RzSx"],
+    u2_gate_set: Literal["All", "ZYZ", "RzSx"],
 ) -> Process:
     """Make a Libket configuration"""
 
@@ -209,8 +215,9 @@ def make_configuration(  # pylint: disable=too-many-arguments
         feature_status(sample),
         feature_status(exp_value),
         feature_status(dump),
+        define_qpu,
         coupling_graph,
         coupling_graph_size,
         1 if u4_gate_type == "CZ" else 0,
-        1 if u2_gate_set == "RzSx" else 0,
+        {"All": 0, "ZYZ": 1, "RzSx": 2}[u2_gate_set],
     )

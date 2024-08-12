@@ -68,11 +68,23 @@ class IBMDevice:
         self.result_json_len = None
         self._formatted_result = None
 
-        @CFUNCTYPE(None, POINTER(c_uint8), c_size_t)
-        def submit_execution(data, size):
+        @CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t)
+        def submit_execution(
+            logical_circuit,
+            logical_circuit_size,
+            physical_circuit,
+            physical_circuit_size,
+        ):
             """Sends the ket circuit instructions from libket to the IBM Client."""
-            instructions = json.loads(bytearray(data[:size]))
-            self._formatted_result = self.client.process_instructions(instructions)
+            logical_circuit = json.loads(
+                bytearray(logical_circuit[:logical_circuit_size])
+            )
+            physical_circuit = json.loads(
+                bytearray(physical_circuit[:physical_circuit_size])
+            )
+            self._formatted_result = self.client.process_instructions(
+                physical_circuit if physical_circuit is not None else logical_circuit
+            )
 
         @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
         def get_result(result_ptr, size):
@@ -89,14 +101,9 @@ class IBMDevice:
             result_ptr[0] = self.result_json
             size[0] = self.result_json_len
 
-        @CFUNCTYPE(c_uint8)
-        def get_status():
-            return 0
-
         self.c_struct = BatchCExecution(
             submit_execution,
             get_result,
-            get_status,
         )
 
     def build(self):
@@ -109,9 +116,10 @@ class IBMDevice:
             sample="Allowed",
             exp_value="Allowed",
             dump="Disable",
+            define_qpu=self.coupling_graph is not None,
             coupling_graph=self.coupling_graph,
-            u4_gate_type="CZ",
-            u2_gate_set="RzSx",
+            u4_gate_type="CX",
+            u2_gate_set="All",
         )
 
     @property

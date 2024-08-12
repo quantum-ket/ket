@@ -297,6 +297,24 @@ class Process(LibketProcess):
 
         return loads(bytearray(self._instructions_buffer[: write_size.value]))
 
+    def get_isa_instructions(self) -> list[dict[str, Any]] | None:
+        """Retrieve transpiled quantum instructions from the quantum process.
+
+        Returns:
+            A list of dictionaries containing quantum instructions extracted from the process
+            if the process has been transpiled, otherwise None.
+
+        """
+        write_size = self.isa_instructions_json(
+            self._instructions_buffer, self._instructions_buffer_size
+        )
+        if write_size.value > self._instructions_buffer_size:
+            self._instructions_buffer_size = write_size.value + 1
+            self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+            return self.get_isa_instructions()
+
+        return loads(bytearray(self._instructions_buffer[: write_size.value]))
+
     def get_metadata(self) -> dict[str, Any]:
         """Retrieve metadata from the quantum process.
 
@@ -633,11 +651,7 @@ class Samples:
         Returns:
             Histogram of sample measurement.
         """
-        if not VISUALIZE:
-            raise RuntimeError(
-                "Visualization optional dependence are required. Install with: "
-                "pip install ket-lang[visualization]"
-            )
+        _check_visualize()
 
         data = {
             "State": list(self.get().keys()),
@@ -651,14 +665,22 @@ class Samples:
         )
 
         fig.update_layout(
+            bargap=0.75,
             xaxis={
                 "tickmode": "linear",
                 "dtick": 1,
             },
-            bargap=0.75,
         )
 
         return fig
 
     def __repr__(self) -> str:
         return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.process))}>"
+
+
+def _check_visualize():
+    if not VISUALIZE:
+        raise RuntimeError(
+            "Visualization optional dependence are required. Install with: "
+            "pip install ket-lang[visualization]"
+        )

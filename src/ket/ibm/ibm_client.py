@@ -74,7 +74,7 @@ class IBMClient:
         with Session(service=self.service, backend=self.backend) as session:
             if sample_map or measurement_map:
                 result_data = (
-                    Sampler(session=session).run([self.isa_circuit]).result()[0].data
+                    Sampler(mode=session).run([self.isa_circuit]).result()[0].data
                 )
                 result = (
                     result_data.c.get_counts()

@@ -17,7 +17,6 @@ except ImportError as exc:
         "QiskitBuilder requires the qiskit module to be used. You can install them"
         "alongside ket by running `pip install ket[ibm]`."
     ) from exc
-from math import pi
 from typing import Any
 
 
@@ -37,27 +36,26 @@ class QiskitBuilder:
         }
 
         for inst in instructions:
-            if "Alloc" in inst:
+            if "Identity" in inst:
                 continue
 
-            elif "Phase" in inst:
-                continue
-
-            elif "Gate" in inst:
+            if "Gate" in inst:
                 gate_type = inst["Gate"]["gate"]
                 gate: Gate = self.get_gate(gate_type)
 
                 control = inst["Gate"]["control"]
                 if len(control):
                     gate = gate.control(len(control))
-                control = [qubit["index"] for qubit in control]
+                control = [self._get_qubit_index(qubit) for qubit in control]
                 data["circuit"].append(
-                    gate, control + [inst["Gate"]["target"]["index"]]
+                    gate, control + [self._get_qubit_index(inst["Gate"]["target"])]
                 )
 
             elif "Measure" in inst:
-                qubits = inst["Measure"]["qubits"]
-                meas_map[inst["Measure"]["output"]] = qubits
+                qubits = [
+                    self._get_qubit_index(qubit) for qubit in inst["Measure"]["qubits"]
+                ]
+                meas_map[inst["Measure"]["index"]] = qubits
                 data["circuit"].measure(qubits, qubits)
 
             elif "ExpValue" in inst:
@@ -65,8 +63,10 @@ class QiskitBuilder:
                 data["observables"].append(self.build_observable(hamiltonian))
 
             elif "Sample" in inst:
-                qubits = [qubit["index"] for qubit in inst["Sample"]["qubits"]]
-                sample_map[inst["Sample"]["output"]] = qubits
+                qubits = [
+                    self._get_qubit_index(qubit) for qubit in inst["Sample"]["qubits"]
+                ]
+                sample_map[inst["Sample"]["index"]] = qubits
                 data["circuit"].measure(qubits, qubits)
 
             elif "Dump" in inst:
@@ -76,6 +76,13 @@ class QiskitBuilder:
                 raise RuntimeError("Unknown operation")
 
         return data
+
+    @staticmethod
+    def _get_qubit_index(qubit):
+        try:
+            return qubit["index"]
+        except KeyError:
+            return qubit["Main"]["index"]
 
     def get_gate(self, gate_type) -> Gate:
         """From the type of the gate, returns the corresponding qiskit gate object."""
@@ -91,16 +98,8 @@ class QiskitBuilder:
         if isinstance(gate_type, dict) and any(
             "Rotation" in key or "Phase" in key for key in list(gate_type.keys())
         ):
-            # gate_type here is a dict
-            rotation_type: str = list(gate_type.keys())[0]
-            rot = gate_type[rotation_type]
-            theta = 0
-            if "Scalar" in rot:
-                theta = rot["Scalar"]
-            else:
-                pi_fraction = rot["PiFraction"]
-                theta = pi * pi_fraction["numer"] / pi_fraction["denom"]
-            return self._get_rotation_or_phase_gate(gate_type, theta)
+            angle = list(gate_type.values())[0]
+            return self._get_rotation_or_phase_gate(gate_type, angle)
 
         raise RuntimeError("Unknown gate")
 
@@ -170,7 +169,7 @@ class QiskitBuilder:
             while i < len(product):
                 qiskit_hamlt_term = ["I"] * self.num_qubits
                 while i < len(product):
-                    current_qubit: int = product[i]["qubit"]
+                    current_qubit: int = self._get_qubit_index(product[i]["qubit"])
                     if qiskit_hamlt_term[current_qubit] != "I":
                         break
                     pauli_type: str = product[i]["pauli"][-1]
