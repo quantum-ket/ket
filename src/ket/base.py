@@ -40,6 +40,7 @@ DEFAULT_PROCESS_CONFIGURATION = {
     "num_qubits": None,
     "simulator": None,
     "execution": None,
+    "coupling_graph": None,
     "force": False,
 }
 
@@ -49,6 +50,7 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments
     num_qubits: Optional[int] = None,
     simulator: Optional[Literal["sparse", "dense"]] = None,
     execution: Optional[Literal["live", "batch"]] = None,
+    coupling_graph: Optional[list[tuple[int, int]]] = None,
     force_configuration: bool = False,
 ):
     """Set default process configurations.
@@ -73,6 +75,7 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments
         "num_qubits": num_qubits,
         "simulator": simulator,
         "execution": execution,
+        "coupling_graph": coupling_graph,
         "force": force_configuration,
     }
 
@@ -194,6 +197,11 @@ class Process(LibketProcess):
                 DEFAULT_PROCESS_CONFIGURATION["execution"]
                 if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
                 else execution
+            )
+            coupling_graph = (
+                DEFAULT_PROCESS_CONFIGURATION["coupling_graph"]
+                if DEFAULT_PROCESS_CONFIGURATION["coupling_graph"] is not None
+                else coupling_graph
             )
 
         if configuration is not None and any(
