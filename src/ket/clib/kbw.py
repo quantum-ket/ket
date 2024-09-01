@@ -7,7 +7,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_uint32
+from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_uint32, c_uint8
 from functools import reduce
 from operator import iconcat
 from typing import Literal
@@ -17,6 +17,7 @@ from .wrapper import load_lib, os_lib_name
 
 API_argtypes = {
     "kbw_set_log_level": ([c_uint32], []),
+    "kbw_build_info": ([], [POINTER(c_uint8), c_size_t]),
     "kbw_make_configuration": (
         [
             c_size_t,

@@ -72,6 +72,7 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
 API_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
     "ket_set_log_level": ([c_uint32], []),
+    "ket_build_info": ([], [POINTER(c_uint8), c_size_t]),
     "ket_process_new": ([c_void_p], [c_void_p]),
     "ket_process_delete": ([c_void_p], []),
     "ket_process_allocate_qubit": ([c_void_p], [c_size_t]),

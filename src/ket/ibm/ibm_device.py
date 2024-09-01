@@ -40,7 +40,7 @@ class IBMDevice:
         service: QiskitRuntimeService | None = None,
         num_qubits: int | None = None,
         *,
-        use_qiskit_mapping: bool = True,
+        use_qiskit_transpiler: bool = True,
     ) -> None:
         """
         Initializes the IBMDevice object.
@@ -59,8 +59,17 @@ class IBMDevice:
         )
         self.client = IBMClient(self.num_qubits, backend, service)
 
-        if backend.coupling_map and not use_qiskit_mapping:
-            self.coupling_graph = list(backend.coupling_map.graph.edge_list())
+        if not use_qiskit_transpiler:
+            self.coupling_graph = (
+                list(backend.coupling_map.graph.edge_list())
+                if backend.coupling_map
+                else [
+                    [i, j]
+                    for i in range(num_qubits)
+                    for j in range(num_qubits)
+                    if i != j
+                ]
+            )
         else:
             self.coupling_graph = None
 
