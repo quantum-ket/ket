@@ -563,7 +563,6 @@ class QuantumState:
             y="Probability",
             color="Phase",
             range_color=(-pi, pi),
-            range_y=(0, 1.0),
         )
 
         fig.update_layout(
