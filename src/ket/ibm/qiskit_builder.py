@@ -67,6 +67,9 @@ class QiskitBuilder:
                     self._get_qubit_index(qubit) for qubit in inst["Sample"]["qubits"]
                 ]
                 sample_map[inst["Sample"]["index"]] = qubits
+                sample_map["shots"] = max(
+                    sample_map.get("shots", 2048), inst["Sample"]["shots"]
+                )
                 data["circuit"].measure(qubits, qubits)
 
             elif "Dump" in inst:

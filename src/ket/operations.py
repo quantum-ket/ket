@@ -396,7 +396,7 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
-    return Samples(qubits, shots)
+    return Samples(qubits, int(shots))
 
 
 def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:

@@ -362,9 +362,10 @@ def SWAP(  # pylint: disable=invalid-name missing-function-docstring
     qubit_a: Quant, qubit_b: Quant
 ) -> tuple[Quant, Quant]:
     """Apply a SWAP gate."""
-    return cat(CNOT, lambda a, b: (b, a), CNOT, lambda a, b: (b, a), CNOT)(
-        qubit_a, qubit_b
-    )
+    with around(CNOT, qubit_a, qubit_b):
+        CNOT(qubit_b, qubit_a)
+
+    return qubit_a, qubit_b
 
 
 SWAP.__doc__ = _gate_docstring(

@@ -11,7 +11,6 @@ from __future__ import annotations
 try:
     from qiskit import QuantumCircuit
     from qiskit.providers import Backend
-    from qiskit_ibm_runtime import QiskitRuntimeService
 except ImportError as exc:
     raise ImportError(
         "IBMDevice requires the qiskit module to be used. You can install them"
@@ -29,7 +28,6 @@ class IBMDevice:
 
     Attributes:
         backend: The backend to be used for the quantum circuit.
-        service: The Qiskit runtime service to be used for the quantum circuit.
         num_qubits: The number of qubits to be used for the quantum circuit.
         client: The IBMClient object to process the instructions.
     """
@@ -37,10 +35,8 @@ class IBMDevice:
     def __init__(
         self,
         backend: Backend,
-        service: QiskitRuntimeService | None = None,
-        num_qubits: int | None = None,
         *,
-        use_qiskit_transpiler: bool = True,
+        use_qiskit_transpiler: bool = False,
     ) -> None:
         """
         Initializes the IBMDevice object.
@@ -48,16 +44,10 @@ class IBMDevice:
         Parameters:
         ---
         backend (Backend): The backend to be used for the quantum circuit.
-        service (QiskitRuntimeService, optional): The Qiskit runtime service to be used
-        for the quantum circuit. Defaults to None.
-        num_qubits (int, optional): The number of qubits to be used for the quantum
-        circuit. Defaults to the max number of qubits available to the backend.
         """
 
-        self.num_qubits = (
-            backend.configuration().n_qubits if not num_qubits else num_qubits
-        )
-        self.client = IBMClient(self.num_qubits, backend, service)
+        self.num_qubits = backend.configuration().n_qubits
+        self.client = IBMClient(self.num_qubits, backend)
 
         if not use_qiskit_transpiler:
             self.coupling_graph = (
@@ -65,16 +55,16 @@ class IBMDevice:
                 if backend.coupling_map
                 else [
                     [i, j]
-                    for i in range(num_qubits)
-                    for j in range(num_qubits)
+                    for i in range(self.num_qubits)
+                    for j in range(self.num_qubits)
                     if i != j
                 ]
             )
         else:
             self.coupling_graph = None
 
-        self.result_json = None
-        self.result_json_len = None
+        self._result_json = None
+        self._result_json_len = None
         self._formatted_result = None
 
         @CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t)
@@ -102,13 +92,13 @@ class IBMDevice:
             result_json = json.dumps(result_dict).encode("utf-8")
             result_len = len(result_json)
 
-            self.result_json = (c_uint8 * result_len)(*result_json)
-            self.result_json_len = result_len
+            self._result_json = (c_uint8 * result_len)(*result_json)
+            self._result_json_len = result_len
             # Set the result pointer and size, both of which must remain valid inside
             # python until the libket process has finished. That's why they're class
             # attributes.
-            result_ptr[0] = self.result_json
-            size[0] = self.result_json_len
+            result_ptr[0] = self._result_json
+            size[0] = self._result_json_len
 
         self.c_struct = BatchCExecution(
             submit_execution,
@@ -145,8 +135,3 @@ class IBMDevice:
     def backend(self) -> Backend:
         """Backend object for the IBM device."""
         return self.client.backend
-
-    @property
-    def service(self) -> QiskitRuntimeService | None:
-        """IBM runtime service used for the cloud connection."""
-        return self.client.service
