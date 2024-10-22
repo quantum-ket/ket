@@ -324,8 +324,10 @@ def draw(gate: Callable[[Quant], None], num_qubits: int, **kwargs):
     Returns:
         Qiskit circuit diagram of the quantum gate.
     """
-    from ..ibm import IBMDevice
-    from qiskit.providers.basic_provider.basic_simulator import BasicSimulator
+    from ..ibm import IBMDevice  # pylint: disable=import-outside-toplevel
+    from qiskit.providers.basic_provider.basic_simulator import (  # pylint: disable=import-outside-toplevel
+        BasicSimulator,
+    )
 
     device = IBMDevice(BasicSimulator(), num_qubits, use_qiskit_transpiler=True)
     p = Process(device.build())
