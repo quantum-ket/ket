@@ -325,9 +325,16 @@ def draw(gate: Callable[[Quant], None], num_qubits: int, **kwargs):
         Qiskit circuit diagram of the quantum gate.
     """
     from ..ibm import IBMDevice  # pylint: disable=import-outside-toplevel
-    from qiskit.providers.basic_provider.basic_simulator import (  # pylint: disable=import-outside-toplevel
-        BasicSimulator,
-    )
+
+    try:
+        from qiskit.providers.basic_provider.basic_simulator import (  # pylint: disable=import-outside-toplevel
+            BasicSimulator,
+        )
+    except ImportError as exc:
+        raise ImportError(
+            "ket.lib.draw requires the qiskit module to be used. You can install them"
+            "alongside ket by running `pip install ket[ibm]`."
+        ) from exc
 
     device = IBMDevice(BasicSimulator(), num_qubits, use_qiskit_transpiler=True)
     p = Process(device.build())
