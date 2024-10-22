@@ -205,9 +205,11 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
         return 2
 
     coupling_graph_size = len(coupling_graph) if coupling_graph else 0
-    if coupling_graph:
+    if coupling_graph_size > 0:
         coupling_graph = reduce(iconcat, coupling_graph, [])
         coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+    else:
+        coupling_graph = None
 
     return API["ket_make_configuration"](
         num_qubits,

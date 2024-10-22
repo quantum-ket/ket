@@ -35,6 +35,7 @@ class IBMDevice:
     def __init__(
         self,
         backend: Backend,
+        num_qubits: int | None = None,
         *,
         use_qiskit_transpiler: bool = False,
     ) -> None:
@@ -46,7 +47,9 @@ class IBMDevice:
         backend (Backend): The backend to be used for the quantum circuit.
         """
 
-        self.num_qubits = backend.configuration().n_qubits
+        self.num_qubits = (
+            num_qubits if num_qubits is not None else backend.configuration().n_qubits
+        )
         self.client = IBMClient(self.num_qubits, backend)
 
         if not use_qiskit_transpiler:

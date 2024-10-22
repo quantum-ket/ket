@@ -30,6 +30,7 @@ __all__ = [
     "prepare_pauli",
     "dump_matrix",
     "unitary",
+    "draw",
 ]
 
 
@@ -310,3 +311,25 @@ def unitary(matrix: list[list[complex]]) -> Callable[[Quant], Quant]:
         return qubits
 
     return inner
+
+
+def draw(gate: Callable[[Quant], None], num_qubits: int, **kwargs):
+    """Draw a quantum gate using Qiskit.
+
+    Args:
+        gate: Quantum gate function.
+        num_qubits: Number of qubits.
+        **kwargs: Keyword arguments to pass to the Qiskit drawer.
+
+    Returns:
+        Qiskit circuit diagram of the quantum gate.
+    """
+    from ..ibm import IBMDevice
+    from qiskit.providers.basic_provider.basic_simulator import BasicSimulator
+
+    device = IBMDevice(BasicSimulator(), num_qubits, use_qiskit_transpiler=True)
+    p = Process(device.build())
+    q = p.alloc(num_qubits)
+    gate(q)
+    p.execute()
+    return device.circuit.draw(**kwargs)
