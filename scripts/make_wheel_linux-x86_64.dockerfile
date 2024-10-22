@@ -17,7 +17,7 @@ COPY src/ket/clib/libs/kbw/ /workdir/
 WORKDIR /workdir/
 RUN . "$HOME/.cargo/env" && cargo build --release
 
-FROM python:3-slim AS package_amd64
+FROM python:3.11-slim AS package_amd64
 RUN pip install build auditwheel patchelf
 WORKDIR /workdir
 COPY setup.cfg setup.py README.md LICENSE MANIFEST.in ./

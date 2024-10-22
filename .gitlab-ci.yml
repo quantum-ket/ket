@@ -23,19 +23,6 @@ Build x86_64 Wheels:
     paths:
       - wheelhouse/*.whl
 
-#Build aarch64 Wheels:
-#  image: docker:latest
-#  stage: build
-#  services:
-#    - docker:dind
-#  script:
-#    - ./scripts/make_wheel_aarch64.sh
-#  artifacts:
-#    paths:
-#      - wheelhouse/*.whl
-#  only:
-#    - master
-
 Package Source Code:
   image: python:3.11-slim
   stage: build
