@@ -17,16 +17,14 @@ from collections import defaultdict
 from typing import Literal
 from ctypes import c_size_t
 
-from .base import Quant
+from .base import Quant, _check_visualize
 
 try:
     import numpy as np
     import plotly.graph_objs as go
     import plotly.express as px
-
-    VISUALIZE = True
 except ImportError:
-    VISUALIZE = False
+    pass
 
 try:
     from IPython import get_ipython
@@ -278,7 +276,7 @@ class QuantumState:
 
         Note:
             This method requires additional dependencies from ``ket-lang[visualization]``.
-            
+
             Install with: ``pip install ket-lang[visualization]``.
 
         Returns:
@@ -287,11 +285,7 @@ class QuantumState:
 
         if len(self.qubits) != 1:
             raise ValueError("Bloch sphere plot is available only for 1 qubit")
-        if not VISUALIZE:
-            raise RuntimeError(
-                "Visualization optional dependence are required. Install with: "
-                "pip install ket-lang[visualization]"
-            )
+        _check_visualize()
 
         ket = np.array(
             [
@@ -357,6 +351,13 @@ class QuantumState:
                     "visible": False,
                 },
                 "aspectmode": "cube",
+                "camera": {
+                    "eye": {
+                        "x": 0.8,
+                        "y": 0.8,
+                        "z": 0.8,
+                    },
+                },
             },
             showlegend=False,
         )
@@ -554,11 +555,7 @@ class QuantumState:
         Returns:
             Histogram of the quantum state.
         """
-        if not VISUALIZE:
-            raise RuntimeError(
-                "Visualization optional dependence are required. Install with: "
-                "pip install ket-lang[visualization]"
-            )
+        _check_visualize()
 
         data = {
             "State": list(self.get().keys()),
@@ -572,7 +569,6 @@ class QuantumState:
             y="Probability",
             color="Phase",
             range_color=(-pi, pi),
-            range_y=(0, 1.0),
         )
 
         fig.update_layout(

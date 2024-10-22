@@ -17,7 +17,6 @@ except ImportError as exc:
         "QiskitBuilder requires the qiskit module to be used. You can install them"
         "alongside ket by running `pip install ket[ibm]`."
     ) from exc
-from math import pi
 from typing import Any
 
 
@@ -35,30 +34,28 @@ class QiskitBuilder:
             "circuit": self.circuit,
             "observables": [],
         }
-        qubit_map = list(range(self.num_qubits))
-        qubit_stack = list(range(self.num_qubits))
 
         for inst in instructions:
-            if "Alloc" in inst:
-                qubit_map[inst["Alloc"]["target"]] = qubit_stack.pop(0)
+            if "Identity" in inst:
+                continue
 
-            elif "Free" in inst:
-                qubit_stack.append(qubit_map[inst["Free"]["target"]])
-
-            elif "Gate" in inst:
+            if "Gate" in inst:
                 gate_type = inst["Gate"]["gate"]
                 gate: Gate = self.get_gate(gate_type)
 
-                control = [qubit_map[qubit] for qubit in inst["Gate"]["control"]]
+                control = inst["Gate"]["control"]
                 if len(control):
                     gate = gate.control(len(control))
+                control = [self._get_qubit_index(qubit) for qubit in control]
                 data["circuit"].append(
-                    gate, control + [qubit_map[inst["Gate"]["target"]]]
+                    gate, control + [self._get_qubit_index(inst["Gate"]["target"])]
                 )
 
             elif "Measure" in inst:
-                qubits = [qubit_map[qubit] for qubit in inst["Measure"]["qubits"]]
-                meas_map[inst["Measure"]["output"]] = qubits
+                qubits = [
+                    self._get_qubit_index(qubit) for qubit in inst["Measure"]["qubits"]
+                ]
+                meas_map[inst["Measure"]["index"]] = qubits
                 data["circuit"].measure(qubits, qubits)
 
             elif "ExpValue" in inst:
@@ -66,8 +63,13 @@ class QiskitBuilder:
                 data["observables"].append(self.build_observable(hamiltonian))
 
             elif "Sample" in inst:
-                qubits = [qubit_map[qubit] for qubit in inst["Sample"]["qubits"]]
-                sample_map[inst["Sample"]["output"]] = qubits
+                qubits = [
+                    self._get_qubit_index(qubit) for qubit in inst["Sample"]["qubits"]
+                ]
+                sample_map[inst["Sample"]["index"]] = qubits
+                sample_map["shots"] = max(
+                    sample_map.get("shots", 2048), inst["Sample"]["shots"]
+                )
                 data["circuit"].measure(qubits, qubits)
 
             elif "Dump" in inst:
@@ -77,6 +79,13 @@ class QiskitBuilder:
                 raise RuntimeError("Unknown operation")
 
         return data
+
+    @staticmethod
+    def _get_qubit_index(qubit):
+        try:
+            return qubit["index"]
+        except KeyError:
+            return qubit["Main"]["index"]
 
     def get_gate(self, gate_type) -> Gate:
         """From the type of the gate, returns the corresponding qiskit gate object."""
@@ -92,16 +101,8 @@ class QiskitBuilder:
         if isinstance(gate_type, dict) and any(
             "Rotation" in key or "Phase" in key for key in list(gate_type.keys())
         ):
-            # gate_type here is a dict
-            rotation_type: str = list(gate_type.keys())[0]
-            rot = gate_type[rotation_type]
-            theta = 0
-            if "Scalar" in rot:
-                theta = rot["Scalar"]
-            else:
-                pi_fraction = rot["PiFraction"]
-                theta = pi * pi_fraction["top"] / pi_fraction["bottom"]
-            return self._get_rotation_or_phase_gate(gate_type, theta)
+            angle = list(gate_type.values())[0]
+            return self._get_rotation_or_phase_gate(gate_type, angle)
 
         raise RuntimeError("Unknown gate")
 
@@ -171,7 +172,7 @@ class QiskitBuilder:
             while i < len(product):
                 qiskit_hamlt_term = ["I"] * self.num_qubits
                 while i < len(product):
-                    current_qubit: int = product[i]["qubit"]
+                    current_qubit: int = self._get_qubit_index(product[i]["qubit"])
                     if qiskit_hamlt_term[current_qubit] != "I":
                         break
                     pauli_type: str = product[i]["pauli"][-1]

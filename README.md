@@ -127,7 +127,7 @@ To get started with Ket development, follow these steps:
     Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.75 using the following command:
     
     ```shell
-    rustup default 1.75
+    rustup default 1.82
     ```
 
 2. **Clone and Compile**
@@ -168,7 +168,7 @@ To get started with Ket development, follow these steps:
     Install Ket in editable mode:
 
     ```shell
-    pip install -e .
+    pip install -e .[full]
     ```
 
 6. **Run Tests**

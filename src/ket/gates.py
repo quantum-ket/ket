@@ -44,7 +44,6 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 from math import pi
-from fractions import Fraction
 from functools import reduce
 from operator import add
 from typing import Any, Callable
@@ -123,7 +122,7 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_X, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_X, 0.0, qubit)
     return qubits
 
 
@@ -142,7 +141,7 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Y, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_Y, 0.0, qubit)
     return qubits
 
 
@@ -161,7 +160,7 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Z, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_Z, 0.0, qubit)
     return qubits
 
 
@@ -180,7 +179,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(HADAMARD, 1, 1, 0.0, qubit)
+        qubits.process.apply_gate(HADAMARD, 0.0, qubit)
     return qubits
 
 
@@ -197,16 +196,13 @@ H.__doc__ = _gate_docstring(
 def RX(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_X, *params, qubit)
+            qubits.process.apply_gate(ROTATION_X, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -229,16 +225,13 @@ RX.__doc__ = _gate_docstring(
 def RY(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_Y, *params, qubit)
+            qubits.process.apply_gate(ROTATION_Y, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -261,16 +254,13 @@ RY.__doc__ = _gate_docstring(
 def RZ(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_Z, *params, qubit)
+            qubits.process.apply_gate(ROTATION_Z, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -289,16 +279,13 @@ RZ.__doc__ = _gate_docstring(
 def PHASE(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-    top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-    use_fraction = abs(pi * top / bottom - theta) < 1e-14
-    params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(PHASE_SHIFT, *params, qubit)
+            qubits.process.apply_gate(PHASE_SHIFT, theta, qubit)
         return qubits
 
     if qubits is None:
@@ -375,9 +362,10 @@ def SWAP(  # pylint: disable=invalid-name missing-function-docstring
     qubit_a: Quant, qubit_b: Quant
 ) -> tuple[Quant, Quant]:
     """Apply a SWAP gate."""
-    return cat(CNOT, lambda a, b: (b, a), CNOT, lambda a, b: (b, a), CNOT)(
-        qubit_a, qubit_b
-    )
+    with around(CNOT, qubit_a, qubit_b):
+        CNOT(qubit_b, qubit_a)
+
+    return qubit_a, qubit_b
 
 
 SWAP.__doc__ = _gate_docstring(
@@ -458,6 +446,17 @@ def RYY(  # pylint: disable=invalid-name missing-function-docstring
     return inner(qubits_a, qubits_b)
 
 
+RYY.__doc__ = _gate_docstring(
+    "ZZ rotation",
+    r"\begin{bmatrix}"
+    r"\cos\frac{\theta}{2} & 0 & 0 & i\sin\frac{\theta}{2} \\"
+    r"0 & \cos\frac{\theta}{2} & -i\sin\frac{\theta}{2} & 0 \\"
+    r"0 & -i\sin\frac{\theta}{2} & \cos\frac{\theta}{2} & 0 \\"
+    r"i\sin\frac{\theta}{2} & 0 & 0 & \cos\frac{\theta}{2}"
+    r"\end{bmatrix}",
+)
+
+
 def U3(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, phi: float, lambda_: float, qubit: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
@@ -521,11 +520,7 @@ def global_phase(
         def inner(*args, ket_process: Process | None = None, **kwargs):
             ket_process = _search_process(ket_process, args, kwargs)
 
-            top, bottom = Fraction(theta / pi).limit_denominator().as_integer_ratio()
-            use_fraction = abs(pi * top / bottom - theta) < 1e-14
-            params = (top, bottom, 0.0) if use_fraction else (0, 0, theta)
-
-            ket_process.apply_global_phase(*params)
+            ket_process.apply_global_phase(theta)
 
             return gate(*args, **kwargs)
 

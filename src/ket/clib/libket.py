@@ -20,6 +20,9 @@ from ctypes import (
     c_uint64,
     c_double,
 )
+from functools import reduce
+from operator import iconcat
+from typing import Literal
 import weakref
 from os import environ
 from os.path import dirname
@@ -58,25 +61,27 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
     """C BatchCExecution Structure"""
 
     _fields_ = [
-        ("submit_execution", CFUNCTYPE(None, POINTER(c_uint8), c_size_t)),
-        ("get_result", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
-        ("get_status", CFUNCTYPE(c_uint8)),
+        (
+            "submit_execution",
+            CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t),
+        ),
+        ("get_results", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
     ]
 
 
 API_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
     "ket_set_log_level": ([c_uint32], []),
+    "ket_build_info": ([], [POINTER(c_uint8), c_size_t]),
     "ket_process_new": ([c_void_p], [c_void_p]),
     "ket_process_delete": ([c_void_p], []),
     "ket_process_allocate_qubit": ([c_void_p], [c_size_t]),
-    "ket_process_free_qubit": ([c_void_p, c_void_p], []),
     "ket_process_apply_gate": (
-        [c_void_p, c_int32, c_int32, c_uint32, c_double, c_size_t],
+        [c_void_p, c_int32, c_double, c_size_t],
         [],
     ),
     "ket_process_apply_global_phase": (
-        [c_void_p, c_int32, c_uint32, c_double],
+        [c_void_p, c_double],
         [],
     ),
     "ket_process_measure": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
@@ -96,10 +101,17 @@ API_argtypes = {
     "ket_process_dump": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
     "ket_process_ctrl_push": ([c_void_p, POINTER(c_size_t), c_size_t], []),
     "ket_process_ctrl_pop": ([c_void_p], []),
+    "ket_process_ctrl_stack": ([c_void_p], []),
+    "ket_process_ctrl_unstack": ([c_void_p], []),
     "ket_process_adj_begin": ([c_void_p], []),
     "ket_process_adj_end": ([c_void_p], []),
-    "ket_process_prepare_for_execution": ([c_void_p], []),
+    "ket_process_execute": ([c_void_p], []),
+    "ket_process_transpile": ([c_void_p], []),
     "ket_process_instructions_json": (
+        [c_void_p, POINTER(c_uint8), c_size_t],
+        [c_size_t],
+    ),
+    "ket_process_isa_instructions_json": (
         [c_void_p, POINTER(c_uint8), c_size_t],
         [c_size_t],
     ),
@@ -116,8 +128,20 @@ API_argtypes = {
         [c_void_p, c_size_t, c_size_t],
         [POINTER(c_uint64), c_size_t, c_double, c_double],
     ),
-    "ket_batch_make_configuration": (
-        [c_size_t, POINTER(BatchCExecution)],
+    "ket_make_configuration": (
+        [
+            c_size_t,
+            POINTER(BatchCExecution),
+            c_int32,
+            c_int32,
+            c_int32,
+            c_int32,
+            c_bool,
+            POINTER(c_size_t),
+            c_size_t,
+            c_int32,
+            c_int32,
+        ],
         [c_void_p],
     ),
 }
@@ -157,3 +181,44 @@ class Process:
 
     def __repr__(self) -> str:
         return "<Libket 'process'>"
+
+
+def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    num_qubits: int,
+    batch_execution,
+    measure: Literal["Disable", "Allowed", "ValidAfter"],
+    sample: Literal["Disable", "Allowed", "ValidAfter"],
+    exp_value: Literal["Disable", "Allowed", "ValidAfter"],
+    dump: Literal["Disable", "Allowed", "ValidAfter"],
+    define_qpu: bool,
+    coupling_graph: list[tuple[int, int]] | None,
+    u4_gate_type: Literal["CX", "CZ"],
+    u2_gate_set: Literal["All", "ZYZ", "RzSx"],
+) -> Process:
+    """Make a Libket configuration"""
+
+    def feature_status(value):
+        if value == "Disable":
+            return 0
+        if value == "Allowed":
+            return 1
+        return 2
+
+    coupling_graph_size = len(coupling_graph) if coupling_graph else 0
+    if coupling_graph:
+        coupling_graph = reduce(iconcat, coupling_graph, [])
+        coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+
+    return API["ket_make_configuration"](
+        num_qubits,
+        batch_execution,
+        feature_status(measure),
+        feature_status(sample),
+        feature_status(exp_value),
+        feature_status(dump),
+        define_qpu,
+        coupling_graph,
+        coupling_graph_size,
+        1 if u4_gate_type == "CZ" else 0,
+        {"All": 0, "ZYZ": 1, "RzSx": 2}[u2_gate_set],
+    )

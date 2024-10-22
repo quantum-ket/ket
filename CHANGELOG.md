@@ -7,6 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.8.0](https://pypi.org/project/ket-lang/0.0.0)
+
+### Added
+
+- Added IBM device support.
+
+### Updated
+
+- Updated Libket to 0.5.0.
+- Updated KBW to 0.4.0.
+
 ## [0.7.1](https://pypi.org/project/ket-lang/0.7.1)
 
 ### Added

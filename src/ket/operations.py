@@ -204,11 +204,11 @@ def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
 
     """
 
-    def inner(*args, ket_process: Process | None = None, **kwargs):
+    def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
         ket_process = _search_process(ket_process, args, kwargs)
 
         with inverse(ket_process):
-            gate(*args, **kwargs)
+            return gate(*args, **kwargs)
 
     return inner
 
@@ -308,7 +308,7 @@ def kron(*gates) -> Callable[[Any], Any]:
 
 @contextmanager
 def around(
-    gate: Callable[[Any], Any], *arg, ket_process: Process | None = None, **kwargs
+    gate: Callable[[Any], Any], *args, ket_process: Process | None = None, **kwargs
 ):
     r"""Applying and then reversing quantum gates.
 
@@ -340,11 +340,17 @@ def around(
 
     """
 
-    gate(*arg, **kwargs)
+    ket_process = _search_process(ket_process, args, kwargs)
+
+    ket_process.ctrl_stack()
+    gate(*args, **kwargs)
+    ket_process.ctrl_unstack()
     try:
         yield
     finally:
-        adj(gate)(*arg, ket_process=ket_process, **kwargs)
+        ket_process.ctrl_stack()
+        adj(gate)(*args, ket_process=ket_process, **kwargs)
+        ket_process.ctrl_unstack()
 
 
 def measure(qubits: Quant) -> Measurement:
@@ -390,7 +396,7 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
-    return Samples(qubits, shots)
+    return Samples(qubits, int(shots))
 
 
 def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:

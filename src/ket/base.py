@@ -19,6 +19,13 @@ from typing import Literal, Optional, Any
 from .clib.libket import Process as LibketProcess
 from .clib.kbw import get_simulator
 
+try:
+    import plotly.graph_objs as go
+    import plotly.express as px
+
+    VISUALIZE = True
+except ImportError:
+    VISUALIZE = False
 
 __all__ = [
     "Process",
@@ -33,17 +40,17 @@ DEFAULT_PROCESS_CONFIGURATION = {
     "num_qubits": None,
     "simulator": None,
     "execution": None,
+    "coupling_graph": None,
     "force": False,
-    "decompose": None,
 }
 
 
-def set_default_process_configuration(  # pylint: disable=too-many-arguments
+def set_default_process_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     configuration=None,
     num_qubits: Optional[int] = None,
     simulator: Optional[Literal["sparse", "dense"]] = None,
     execution: Optional[Literal["live", "batch"]] = None,
-    decompose: Optional[bool] = None,
+    coupling_graph: Optional[list[tuple[int, int]]] = None,
     force_configuration: bool = False,
 ):
     """Set default process configurations.
@@ -68,8 +75,8 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments
         "num_qubits": num_qubits,
         "simulator": simulator,
         "execution": execution,
+        "coupling_graph": coupling_graph,
         "force": force_configuration,
-        "decompose": decompose,
     }
 
     DEFAULT_PROCESS_CONFIGURATION = new_configuration
@@ -158,17 +165,15 @@ class Process(LibketProcess):
             defaults to 32; otherwise, defaults to 12.
         simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
-        decompose: Enable quantum gate decomposition (increase execution time).
-            If None, defaults to False.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         configuration=None,
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
-        decompose: Optional[bool] = None,
+        coupling_graph: Optional[list[tuple[int, int]]] = None,
     ):
         if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
             map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
@@ -193,14 +198,14 @@ class Process(LibketProcess):
                 if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
                 else execution
             )
-            decompose = (
-                DEFAULT_PROCESS_CONFIGURATION["decompose"]
-                if DEFAULT_PROCESS_CONFIGURATION["decompose"] is not None
-                else decompose
+            coupling_graph = (
+                DEFAULT_PROCESS_CONFIGURATION["coupling_graph"]
+                if DEFAULT_PROCESS_CONFIGURATION["coupling_graph"] is not None
+                else coupling_graph
             )
 
         if configuration is not None and any(
-            map(lambda a: a is not None, [num_qubits, simulator, execution, decompose])
+            map(lambda a: a is not None, [num_qubits, simulator, execution])
         ):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
@@ -218,7 +223,7 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
-                    decompose=bool(decompose),
+                    coupling_graph=coupling_graph,
                 )
             )
 
@@ -255,26 +260,6 @@ class Process(LibketProcess):
 
         qubits_index = [self.allocate_qubit().value for _ in range(num_qubits)]
         return Quant(qubits=qubits_index, process=self)
-
-    def execute(self):
-        """Force the execution of the quantum circuit.
-
-        This method triggers the immediate execution of the prepared quantum circuit. It is
-        essential when live execution is required or when batch execution needs to be initiated.
-
-        Example:
-            >>> from ket import Process
-            >>> p = Process()
-            >>> # ... (quantum circuit preparation)
-            >>> # Force the execution of the quantum circuit
-            >>> p.execute()
-
-        Note:
-            The :meth:`~ket.base.Process.execute` method should be used when the quantum
-            instructions are to be executed immediately, either in live mode or to initiate batch
-            execution.
-        """
-        self.prepare_for_execution()
 
     def _get_ket_process(self):
         return self
@@ -317,6 +302,24 @@ class Process(LibketProcess):
             self._instructions_buffer_size = write_size.value + 1
             self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
             return self.get_instructions()
+
+        return loads(bytearray(self._instructions_buffer[: write_size.value]))
+
+    def get_isa_instructions(self) -> list[dict[str, Any]] | None:
+        """Retrieve transpiled quantum instructions from the quantum process.
+
+        Returns:
+            A list of dictionaries containing quantum instructions extracted from the process
+            if the process has been transpiled, otherwise None.
+
+        """
+        write_size = self.isa_instructions_json(
+            self._instructions_buffer, self._instructions_buffer_size
+        )
+        if write_size.value > self._instructions_buffer_size:
+            self._instructions_buffer_size = write_size.value + 1
+            self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+            return self.get_isa_instructions()
 
         return loads(bytearray(self._instructions_buffer[: write_size.value]))
 
@@ -407,13 +410,6 @@ class Quant:
             selected_quant = result_quant.at([0, 1])
             print(selected_quant)  # <Ket 'Quant' [0, 1] pid=0x...>
 
-            # Free all qubits in a Quant object
-            result_quant.free()
-
-            # Check if all qubits in a Quant object are free
-            is_free = result_quant.is_free()
-            print(is_free)  # True
-
     Supported operations:
 
     - Addition (``+``): Concatenates two :class:`~ket.base.Quant` objects.
@@ -424,7 +420,6 @@ class Quant:
       object.
     - Reversal (``reversed(qubits)``): Returns a new :class:`~ket.base.Quant` object with reversed
       qubits.
-    - Context Manager (``with qubits:``): Ensures that all qubits are free at the end of the scope.
     - Length (``len(qubits)``): Returns the number of qubits in the :class:`~ket.base.Quant` object.
 
     """
@@ -474,29 +469,6 @@ class Quant:
 
         return Quant(qubits=[self.qubits[i] for i in index], process=self.process)
 
-    def free(self):
-        r"""Release the qubits.
-
-        This method frees the allocated qubits, assuming they are in the state
-        :math:`\left|0\right>` before the call.
-
-        Warning:
-            No check is performed to verify if the qubits are in the state
-            :math:`\left|0\right>`. Releasing qubits in other states cause undefined behavior.
-        """
-        for qubit in self.qubits:
-            self.process.free_qubit(qubit)
-
-    def is_free(self) -> bool:
-        """Check if all allocated qubits are in the 'free' state.
-
-        Returns:
-            ``True`` if all qubits are free, ``False`` otherwise.
-        """
-        return all(
-            not self.process.get_qubit_status(qubit)[0].value for qubit in self.qubits
-        )
-
     def __reversed__(self):
         return Quant(qubits=list(reversed(self.qubits)), process=self.process)
 
@@ -524,15 +496,6 @@ class Quant:
 
     def __iter__(self):
         return self._QuantIter(self)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(
-        self, type, value, tb
-    ):  # pylint: disable=redefined-builtin, invalid-name
-        if not self.is_free():
-            raise RuntimeError("non-free quant at the end of scope")
 
     def __len__(self):
         return len(self.qubits)
@@ -682,5 +645,50 @@ class Samples:
             self.process.execute()
         return self.value
 
+    def histogram(self) -> go.Figure:
+        """Generate a histogram representing the sample.
+
+        This method creates a histogram visualizing the probability distribution
+        of the sample.
+
+        Note:
+            This method requires additional dependencies from ``ket-lang[visualization]``.
+
+            Install with: ``pip install ket-lang[visualization]``.
+
+        Returns:
+            Histogram of sample measurement.
+        """
+        _check_visualize()
+
+        data = {
+            "State": list(self.get().keys()),
+            "Count": list(self.get().values()),
+        }
+
+        fig = px.bar(
+            data,
+            x="State",
+            y="Count",
+        )
+
+        fig.update_layout(
+            bargap=0.75,
+            xaxis={
+                "tickmode": "linear",
+                "dtick": 1,
+            },
+        )
+
+        return fig
+
     def __repr__(self) -> str:
         return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.process))}>"
+
+
+def _check_visualize():
+    if not VISUALIZE:
+        raise RuntimeError(
+            "Visualization optional dependence are required. Install with: "
+            "pip install ket-lang[visualization]"
+        )

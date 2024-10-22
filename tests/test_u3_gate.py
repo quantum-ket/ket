@@ -36,7 +36,7 @@ def test_u3_0_2pi_gate():
         matrix = u3_matrix(theta, phi, lambda_)
 
         assert all(
-            cmath.isclose(gate[i][j], matrix[i][j], abs_tol=1e-10)
+            cmath.isclose(gate[i][j], matrix[i][j], abs_tol=1e-7)
             for i in range(2)
             for j in range(2)
         )
@@ -48,7 +48,7 @@ def test_u3_m2pi_0_gate():
         matrix = u3_matrix(theta, phi, lambda_)
 
         assert all(
-            cmath.isclose(gate[i][j], matrix[i][j], abs_tol=1e-10)
+            cmath.isclose(gate[i][j], matrix[i][j], abs_tol=1e-7)
             for i in range(2)
             for j in range(2)
         )

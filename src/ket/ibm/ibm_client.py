@@ -12,7 +12,7 @@ try:
     from qiskit import QuantumCircuit
     from qiskit.providers import Backend
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-    from qiskit_ibm_runtime import QiskitRuntimeService, Session
+    from qiskit_ibm_runtime import Session
     from qiskit_ibm_runtime import SamplerV2 as Sampler
     from qiskit_ibm_runtime import EstimatorV2 as Estimator
 except ImportError as exc:
@@ -33,7 +33,6 @@ class IBMClient:
 
     Attributes:
         backend: The backend to be used for the quantum circuit.
-        service: The Qiskit runtime service to be used for the quantum circuit.
         qiskit_builder: The QiskitBuilder object to build the quantum circuit.
 
     Methods:
@@ -41,11 +40,14 @@ class IBMClient:
     """
 
     def __init__(
-        self, num_qubits: int, backend: Backend, service: QiskitRuntimeService | None
+        self,
+        num_qubits: int,
+        backend: Backend,
     ) -> None:
         self.backend = backend
-        self.service = service
         self.qiskit_builder = QiskitBuilder(num_qubits)
+        self.isa_circuit = None
+        self.result = None
 
     def process_instructions(
         self, instructions: list[dict[str, Any]]
@@ -60,15 +62,28 @@ class IBMClient:
             instructions, measurement_map, sample_map
         )
         pm = generate_preset_pass_manager(
-            target=self.backend.target, optimization_level=1
+            target=self.backend.target,
+            optimization_level=1,
+            initial_layout=(
+                list(range(self.qiskit_builder.num_qubits))
+                if self.backend.coupling_map
+                else None
+            ),
         )
-        isa_circuit = pm.run(builder_data["circuit"])
+        self.isa_circuit = pm.run(builder_data["circuit"])
 
-        with Session(service=self.service, backend=self.backend) as session:
+        with Session(backend=self.backend) as session:
             if sample_map or measurement_map:
-                result_data = (
-                    Sampler(session=session).run([isa_circuit]).result()[0].data
+                self.result = (
+                    Sampler(mode=session)
+                    .run(
+                        [self.isa_circuit],
+                        shots=sample_map.get("shots", 2048),
+                    )
+                    .result()
                 )
+                result_data = self.result[0].data
+
                 result = (
                     result_data.c.get_counts()
                     if hasattr(result_data, "c")
@@ -79,10 +94,10 @@ class IBMClient:
             # BUG: The following code is not working as expected. The EstimatorV2
             # class is not always returning the expected results.
             for observable in builder_data["observables"]:
-                isa_observable = observable.apply_layout(isa_circuit.layout)
+                isa_observable = observable.apply_layout(self.isa_circuit.layout)
                 result = (
-                    Estimator(session=session)
-                    .run([(isa_circuit, isa_observable)])
+                    Estimator(mode=session)
+                    .run([(self.isa_circuit, isa_observable)])
                     .result()[0]
                     .data.evs
                 ).tolist()
@@ -93,6 +108,9 @@ class IBMClient:
                     raw_results["exp_values"].extend(result)
                 else:
                     raw_results["exp_values"].append(result)
+
+        if "shots" in sample_map:
+            del sample_map["shots"]
 
         return self.format_result(raw_results, measurement_map, sample_map)
 

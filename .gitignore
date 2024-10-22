@@ -14,7 +14,6 @@ wheelhouse
 *.so
 .coverage
 venv
-.reuse/dep5
 .vscode/
 .gitlab-ci-local/
 src/ket/clib/libs/kbw/

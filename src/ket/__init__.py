@@ -91,6 +91,22 @@ from .quantumstate import *
 from .quantumstate import __all__ as all_state
 from . import lib
 
-__version__ = "0.7.2.dev0"
+__version__ = "0.8.0b1"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state + ["lib"]
+
+
+def ket_version() -> list[str]:
+    """Return the version of the Ket platform components."""
+    from .clib.libket import API as libket  # pylint: disable=import-outside-toplevel
+    from .clib.kbw import API as kbw  # pylint: disable=import-outside-toplevel
+
+    libket_v, size = libket["ket_build_info"]()
+    libket_v = bytearray(libket_v[: size.value])
+    libket_v = libket_v.decode("utf-8")
+
+    kbw_v, size = kbw["kbw_build_info"]()
+    kbw_v = bytearray(kbw_v[: size.value])
+    kbw_v = kbw_v.decode("utf-8")
+
+    return [f"Ket v{__version__}", libket_v, kbw_v]
