@@ -183,7 +183,7 @@ class Process:
         return "<Libket 'process'>"
 
 
-def make_configuration(  # pylint: disable=too-many-arguments
+def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     batch_execution,
     measure: Literal["Disable", "Allowed", "ValidAfter"],

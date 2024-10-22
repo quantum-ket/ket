@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from functools import partial
 from ket import Process, H, RZZ, RX, Pauli, exp_value, sample
 
@@ -34,4 +38,4 @@ for _ in range(num_layers):
 result = sample(qubits)
 
 print(beta)
-result.histogram().write_image("falqon.svg")
+result.histogram().show()

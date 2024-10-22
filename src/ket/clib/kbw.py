@@ -7,7 +7,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_uint32, c_uint8
+from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_int32, c_uint32, c_uint8
 from functools import reduce
 from operator import iconcat
 from typing import Literal
@@ -21,7 +21,7 @@ API_argtypes = {
     "kbw_make_configuration": (
         [
             c_size_t,
-            c_bool,
+            c_int32,
             c_bool,
             POINTER(c_size_t),
             c_size_t,
@@ -51,10 +51,18 @@ def set_log(level: int):
     API["kbw_set_log_level"](level)
 
 
+SIMULATOR = {
+    "dense": 0,
+    "dense v1": 0,
+    "sparse": 1,
+    "dense v2": 2,
+}
+
+
 def get_simulator(
     num_qubits: int,
     execution: Literal["live", "batch"] = "live",
-    simulator: Literal["sparse", "dense"] = "sparse",
+    simulator: Literal["sparse", "dense", "dense v2"] = "sparse",
     coupling_graph: list[tuple[int, int]] | None = None,
 ):
     """Create a configuration"""
@@ -66,7 +74,7 @@ def get_simulator(
 
     return API["kbw_make_configuration"](
         num_qubits,
-        simulator == "sparse",
+        SIMULATOR[simulator.lower()],
         execution == "live",
         coupling_graph,
         coupling_graph_size,

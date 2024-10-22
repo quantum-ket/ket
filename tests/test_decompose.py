@@ -38,8 +38,6 @@ def linspace(start, stop, num):
 
 
 def test_decomposition_su2():
-    ket.set_default_process_configuration(force_configuration=True, simulator="dense")
-
     n = 7
 
     for gate, mat_gate in ROTATION_GATES.items():

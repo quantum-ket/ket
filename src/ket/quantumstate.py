@@ -287,7 +287,6 @@ class QuantumState:
             raise ValueError("Bloch sphere plot is available only for 1 qubit")
         _check_visualize()
 
-
         ket = np.array(
             [
                 [self.get()[0] if 0 in self.get() else 0.0],
@@ -352,6 +351,13 @@ class QuantumState:
                     "visible": False,
                 },
                 "aspectmode": "cube",
+                "camera": {
+                    "eye": {
+                        "x": 0.8,
+                        "y": 0.8,
+                        "z": 0.8,
+                    },
+                },
             },
             showlegend=False,
         )
