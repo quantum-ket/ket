@@ -12,13 +12,24 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-Build x86_64 Wheels:
+Build Linux x86_64 Wheels:
   image: docker:latest
   stage: build
   services:
     - docker:dind
   script:
-    - ./scripts/make_wheel_x86_64.sh
+    - ./scripts/wheel-linux-x86_64.sh
+  artifacts:
+    paths:
+      - wheelhouse/*.whl
+
+Build Windows x86_64 Wheels:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  script:
+    - ./scripts/wheel-windows-x86_64.sh
   artifacts:
     paths:
       - wheelhouse/*.whl
