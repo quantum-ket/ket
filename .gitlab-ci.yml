@@ -37,7 +37,7 @@ Build x86_64 Wheels:
 #    - master
 
 Package Source Code:
-  image: python:3-slim
+  image: python:3.11-slim
   stage: build
   script:
     - pip install build
@@ -47,7 +47,7 @@ Package Source Code:
       - dist/ket_lang*.tar.gz
 
 Lint:
-  image: python:3-slim
+  image: python:3.11-slim
   stage: lint
   script:
     - pip install pipx
@@ -55,7 +55,7 @@ Lint:
     - pipx run reuse lint
 
 Test:
-  image: python:3-slim
+  image: python:3.11-slim
   stage: test
   script:
     - pip install `ls wheelhouse/ket_lang*manylinux_2_28_x86_64.whl`[ibm] pytest pytest-cov
@@ -65,7 +65,7 @@ Test:
       - htmlcov
 
 PyPI Upload:
-  image: python:alpine3.16
+  image: python:3.11-alpine
   stage: deploy
   script:
     - pip install twine
