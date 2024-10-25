@@ -48,7 +48,7 @@ DEFAULT_PROCESS_CONFIGURATION = {
 def set_default_process_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     configuration=None,
     num_qubits: Optional[int] = None,
-    simulator: Optional[Literal["sparse", "dense"]] = None,
+    simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
     execution: Optional[Literal["live", "batch"]] = None,
     coupling_graph: Optional[list[tuple[int, int]]] = None,
     force_configuration: bool = False,
@@ -171,7 +171,7 @@ class Process(LibketProcess):
         self,
         configuration=None,
         num_qubits: Optional[int] = None,
-        simulator: Optional[Literal["sparse", "dense"]] = None,
+        simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
         coupling_graph: Optional[list[tuple[int, int]]] = None,
     ):
@@ -645,7 +645,7 @@ class Samples:
             self.process.execute()
         return self.value
 
-    def histogram(self) -> go.Figure:
+    def histogram(self, **kwargs) -> go.Figure:
         """Generate a histogram representing the sample.
 
         This method creates a histogram visualizing the probability distribution
@@ -670,6 +670,7 @@ class Samples:
             data,
             x="State",
             y="Count",
+            **kwargs,
         )
 
         fig.update_layout(

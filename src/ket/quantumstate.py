@@ -541,7 +541,7 @@ class QuantumState:
 
         return Math("+".join(math).replace("+-", "-"))
 
-    def histogram(self) -> go.Figure:
+    def histogram(self, **kwargs) -> go.Figure:
         """Generate a histogram representing the quantum state.
 
         This method creates a histogram visualizing the probability distribution
@@ -569,6 +569,7 @@ class QuantumState:
             y="Probability",
             color="Phase",
             range_color=(-pi, pi),
+            **kwargs,
         )
 
         fig.update_layout(
