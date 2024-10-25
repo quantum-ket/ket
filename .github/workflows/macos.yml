@@ -25,13 +25,15 @@ jobs:
       - name: Compile Rust Libs
         run: |
           rustup default 1.82
-          
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
+
           cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
           cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
-          
+
           cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
           cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
-          
+
           lipo -create -output src/ket/clib/libs/libket.dylib \
               src/ket/clib/libs/libket/target/x86_64-apple-darwin/release/libket.dylib \
               src/ket/clib/libs/libket/target/aarch64-apple-darwin/release/libket.dylib
