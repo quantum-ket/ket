@@ -109,8 +109,11 @@ class Pauli:
             qubits_list += qubits.qubits
         return pauli_list, qubits_list
 
+    def __neg__(self) -> Pauli:
+        return -1.0 * self
+
     def __mul__(self, other: float | Pauli) -> Pauli:
-        if isinstance(other, float):
+        if isinstance(other, (float, int)):
             return Pauli(
                 None,
                 None,
@@ -119,6 +122,8 @@ class Pauli:
                 _qubits_list=self.qubits_list,
                 _coef=self.coef * other,
             )
+        if isinstance(other, Hamiltonian):
+            return other.__mul__(self)
 
         if self.process is not other.process:
             raise ValueError("different Ket processes")
@@ -131,6 +136,36 @@ class Pauli:
             _qubits_list=self.qubits_list + other.qubits_list,
             _coef=self.coef * other.coef,
         )
+
+    def __div__(self, other: float) -> Pauli:
+        return self.__mul__(1.0 / other)
+
+    @staticmethod
+    def x(qubits: Quant) -> Pauli:
+        """Pauli X operator.
+
+        Args:
+            qubits: Qubits to apply the Pauli operator to.
+        """
+        return Pauli("X", qubits)
+
+    @staticmethod
+    def y(qubits: Quant) -> Pauli:
+        """Pauli Y operator.
+
+        Args:
+            qubits: Qubits to apply the Pauli operator to.
+        """
+        return Pauli("Y", qubits)
+
+    @staticmethod
+    def z(qubits: Quant) -> Pauli:
+        """Pauli Z operator.
+
+        Args:
+            qubits: Qubits to apply the Pauli operator to.
+        """
+        return Pauli("Z", qubits)
 
     def __rmul__(self, other: float) -> Pauli:
         return Pauli(
@@ -147,6 +182,9 @@ class Pauli:
             raise ValueError("different Ket processes")
 
         return Hamiltonian([self, other], process=self.process)
+
+    def __sub__(self, other) -> Hamiltonian:
+        return self + (-1 * other)
 
     def __radd__(self, other: int | float) -> Pauli:
         if other != 0:
@@ -186,6 +224,9 @@ class Hamiltonian:
 
         return Hamiltonian(self.pauli_products + other.pauli_products, self.process)
 
+    def __sub__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
+        return self + (-1 * other)
+
     def __radd__(self, other: int | float) -> Hamiltonian:
         if other != 0:
             raise ValueError("cannot add Hamiltonian with float or int")
@@ -198,6 +239,12 @@ class Hamiltonian:
         )
 
     __rmul__ = __mul__
+
+    def __truediv__(self, other: float) -> Hamiltonian:
+        return self.__mul__(1.0 / other)
+
+    def __neg__(self) -> Hamiltonian:
+        return -1.0 * self
 
     def __repr__(self) -> str:
         return (

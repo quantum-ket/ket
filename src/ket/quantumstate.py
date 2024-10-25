@@ -521,6 +521,8 @@ class QuantumState:
 
         math = []
         for state, amp in self.get().items():
+            if abs(amp) < 1e-13:
+                continue
 
             real_str = float_to_math(amp.real, False)
             imag_str = float_to_math(amp.imag, True)

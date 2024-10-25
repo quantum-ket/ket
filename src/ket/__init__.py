@@ -93,7 +93,7 @@ from . import lib
 
 __version__ = "0.8.0b3"
 
-__all__ = all_base + all_func + all_gate + all_expv + all_state + ["lib"]
+__all__ = all_base + all_func + all_gate + all_expv + all_state
 
 
 def ket_version() -> list[str]:

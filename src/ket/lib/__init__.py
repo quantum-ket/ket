@@ -337,7 +337,7 @@ def draw(gate: Callable[[Quant], None], num_qubits: int, *, args=(), **kwargs):
         ) from exc
 
     device = IBMDevice(BasicSimulator(), num_qubits, use_qiskit_transpiler=True)
-    p = Process(device.build())
+    p = Process(device.configure())
     q = p.alloc(num_qubits)
     gate(*args, q)
     p.execute()

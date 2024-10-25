@@ -616,6 +616,7 @@ class Samples:
             (c_size_t * len(qubits.qubits))(*qubits.qubits), len(qubits.qubits), shots
         ).value
         self._value = None
+        self.shots = shots
 
     def _check(self):
         if self._value is None:

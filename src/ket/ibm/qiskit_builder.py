@@ -178,7 +178,7 @@ class QiskitBuilder:
                     pauli_type: str = product[i]["pauli"][-1]
                     qiskit_hamlt_term[current_qubit] = pauli_type
                     i += 1
-                qiskit_hmlt_product.append("".join(qiskit_hamlt_term))
+                qiskit_hmlt_product.append("".join(reversed(qiskit_hamlt_term)))
 
             qiskit_hamiltonian.extend(qiskit_hmlt_product)
             qiskit_coeffs.extend(

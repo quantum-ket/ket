@@ -108,7 +108,7 @@ class IBMDevice:
             get_result,
         )
 
-    def build(self):
+    def configure(self):
         """Set up the configuration for the ket process inside libket."""
 
         return make_configuration(
