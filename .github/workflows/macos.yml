@@ -44,7 +44,7 @@ jobs:
 
           rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
       - name: Install Python Dependencies
-        run: python3 -m pip install setuptools wheel twine
+        run: python3 -m pip install setuptools wheel twine --break-system-packages
       - name: Build Wheel
         run: python3 setup.py bdist_wheel -p macosx_10_14_universal2
       - name: Archive Wheel
