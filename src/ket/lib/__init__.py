@@ -137,7 +137,10 @@ def prepare_w(qubits: Quant) -> Quant:
 
 
 def dump_matrix(
-    gate: Callable, size: int = 1, simulator: Literal["sparse", "dense"] = "sparse"
+    gate: Callable,
+    num_qubits: int | list[int] = 1,
+    args=(),
+    simulator: Literal["sparse", "dense"] = "sparse",
 ) -> list[list[complex]]:
     """Get the matrix representation of a quantum gate.
 
@@ -146,31 +149,40 @@ def dump_matrix(
 
     Args:
         gate: Quantum gate operation to obtain the matrix for.
-        size: Number of qubits.
+        num_qubits: Number of qubits.
+        args: Classical arguments to pass to the gate function.
         simulator: Simulator type to use.
 
     Returns:
         Matrix representation of the quantum gate.
     """
 
-    process = Process(num_qubits=2 * size, execution="batch", simulator=simulator)
+    if isinstance(num_qubits, Iterable):
+        qubit_args = num_qubits
+    else:
+        qubit_args = [num_qubits]
 
-    mat = [[0.0j for _ in range(2**size)] for _ in range(2**size)]
+    num_qubits = sum(num_qubits) if isinstance(num_qubits, Iterable) else num_qubits
 
-    row = process.alloc(size)
-    column = process.alloc(size)
+    process = Process(num_qubits=2 * num_qubits, execution="batch", simulator=simulator)
+
+    mat = [[0.0j for _ in range(2**num_qubits)] for _ in range(2**num_qubits)]
+
+    qubit_args = [process.alloc(n) for n in qubit_args]
+    row = reduce(add, qubit_args)
+    column = process.alloc(num_qubits)
 
     H(column)
     CNOT(column, row)
 
-    gate(row)
+    gate(*args, *qubit_args)
 
     state = dump(column + row)
 
     for state, amp in state.get().items():
-        column = state >> size
-        row = state & ((1 << size) - 1)
-        mat[row][column] = amp * sqrt(2**size)
+        column = state >> num_qubits
+        row = state & ((1 << num_qubits) - 1)
+        mat[row][column] = amp * sqrt(2**num_qubits)
 
     return mat
 
@@ -325,6 +337,7 @@ def draw(
     Args:
         gate: Quantum gate function.
         num_qubits: Number of qubits.
+        args: Classical arguments to pass to the gate function.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
     Returns:

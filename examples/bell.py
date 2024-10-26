@@ -5,18 +5,19 @@
 
 """Bell state preparation."""
 import ket
+from math import sqrt
 
+import ket.lib
 
-p = ket.Process()
-a = p.alloc()
-b = p.alloc()
+process = ket.Process()
+a, b = process.alloc(2)
 
-ket.H(a)
-ket.ctrl(a, ket.X)(b)
+ket.X(a + b)
+ket.CNOT(ket.H(a), b)
 
-print(ket.dump(a + b).show())
-print(ket.sample(a + b).value)
-print(ket.exp_value(ket.Pauli("X", a + b)).value)
-print(ket.exp_value(ket.Pauli("Y", a + b)).value)
-print(ket.exp_value(ket.Pauli("Z", a + b)).value)
-print(ket.measure(a + b).value)
+a0b0 = ket.Pauli.z(a) * -((ket.Pauli.x(b) + ket.Pauli.z(b)) / sqrt(2))
+a0b1 = ket.Pauli.z(a) * ((ket.Pauli.x(b) - ket.Pauli.z(b)) / sqrt(2))
+a1b0 = ket.Pauli.x(a) * -((ket.Pauli.x(b) + ket.Pauli.z(b)) / sqrt(2))
+a1b1 = ket.Pauli.x(a) * ((ket.Pauli.x(b) - ket.Pauli.z(b)) / sqrt(2))
+
+print(ket.exp_value(a0b0 + a0b1 + a1b0 - a1b1).get())

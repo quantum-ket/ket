@@ -5,6 +5,7 @@
 from math import sqrt, pi, cos, sin
 from cmath import exp, isclose
 import ket
+from ket import lib
 
 GATES = {
     ket.X: [[0, 1], [1, 0]],
@@ -45,7 +46,7 @@ def test_decomposition_su2():
             matrix = mat_gate(ang)
 
             ctrl_gate = lambda q: ket.ctrl(q[:-1], gate(ang))(q[-1])
-            result_matrix = ket.lib.dump_matrix(ctrl_gate, size=n)
+            result_matrix = ket.lib.dump_matrix(ctrl_gate, num_qubits=n)
 
             gate_matrix = [
                 [result_matrix[-2][-2], result_matrix[-2][-1]],
@@ -82,7 +83,7 @@ def test_decomposition_c_t():
 
     for ket_gate, matrix in GATES.items():
         gate = lambda q: ket.ctrl(q[:-1], ket_gate)(q[-1])
-        result_matrix = ket.lib.dump_matrix(gate, size=n)
+        result_matrix = ket.lib.dump_matrix(gate, num_qubits=n)
 
         gate_matrix = [
             [result_matrix[-2][-2], result_matrix[-2][-1]],
@@ -118,10 +119,10 @@ def test_decomposition_t_c():
         gate = lambda q: ket.ctrl(q[1:], ket_gate)(q[0])
 
         ket.set_default_process_configuration(force_configuration=True)
-        decompose_matrix = ket.lib.dump_matrix(gate, size=n)
+        decompose_matrix = lib.dump_matrix(gate, num_qubits=n)
 
         ket.set_default_process_configuration(force_configuration=True)
-        not_decompose_matrix = ket.lib.dump_matrix(gate, size=n)
+        not_decompose_matrix = lib.dump_matrix(gate, num_qubits=n)
 
         assert all(
             isclose(decompose_matrix[i][j], not_decompose_matrix[i][j], abs_tol=1e-10)

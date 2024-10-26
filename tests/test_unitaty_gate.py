@@ -61,7 +61,7 @@ def make_ctrl_gate(matrix):
 
 def ctrl_validate(matrix):
     gate = lambda q: ket.ctrl(q[0], ket.lib.unitary(matrix))(q[1])
-    gate = ket.lib.dump_matrix(gate, size=2)
+    gate = ket.lib.dump_matrix(gate, num_qubits=2)
 
     matrix = make_ctrl_gate(matrix)
 

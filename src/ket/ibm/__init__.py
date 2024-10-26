@@ -111,14 +111,14 @@ class IBMDevice:
 
     def configure(self):
         """Set up Ket process.
-        
+
         Example:
 
             .. code-block:: python
 
                 device = IBMDevice(backend)
                 process = Process(device.configure())
-            
+
 
         """
 
