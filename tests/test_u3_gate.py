@@ -6,7 +6,7 @@ from itertools import product
 import math
 import cmath
 import ket
-
+from ket import lib
 
 def u3_matrix(theta: float, phi: float, lambda_: float) -> list:
     return [
@@ -32,7 +32,7 @@ def linspace(start, stop, num):
 
 def test_u3_0_2pi_gate():
     for theta, phi, lambda_ in product(linspace(0, 2 * math.pi, 10), repeat=3):
-        gate = ket.lib.dump_matrix(ket.U3(theta, phi, lambda_))
+        gate = lib.dump_matrix(ket.U3(theta, phi, lambda_))
         matrix = u3_matrix(theta, phi, lambda_)
 
         assert all(
@@ -44,7 +44,7 @@ def test_u3_0_2pi_gate():
 
 def test_u3_m2pi_0_gate():
     for theta, phi, lambda_ in product(linspace(-2 * math.pi, 0.0, 10), repeat=3):
-        gate = ket.lib.dump_matrix(lambda q: ket.U3(theta, phi, lambda_, q))
+        gate = lib.dump_matrix(lambda q: ket.U3(theta, phi, lambda_, q))
         matrix = u3_matrix(theta, phi, lambda_)
 
         assert all(
