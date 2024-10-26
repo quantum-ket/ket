@@ -15,7 +15,7 @@ from operator import add
 from typing import Callable, Literal
 from cmath import asin, exp, isclose, cos, sin
 from math import acos, sqrt, atan2
-from collections.abc import Sized
+from collections.abc import Sized, Iterable
 
 from ..base import Quant, Process
 from ..operations import ctrl, around, dump
@@ -313,7 +313,13 @@ def unitary(matrix: list[list[complex]]) -> Callable[[Quant], Quant]:
     return inner
 
 
-def draw(gate: Callable[[Quant], None], num_qubits: int, *, args=(), **kwargs):
+def draw(
+    gate: Callable[[Quant], None],
+    num_qubits: int | list[int],
+    *,
+    args=(),
+    **kwargs,
+):
     """Draw a quantum gate using Qiskit.
 
     Args:
@@ -336,9 +342,16 @@ def draw(gate: Callable[[Quant], None], num_qubits: int, *, args=(), **kwargs):
             "alongside ket by running `pip install ket[ibm]`."
         ) from exc
 
-    device = IBMDevice(BasicSimulator(), num_qubits, use_qiskit_transpiler=True)
+    device = IBMDevice(
+        BasicSimulator(),
+        sum(num_qubits) if isinstance(num_qubits, Iterable) else num_qubits,
+        use_qiskit_transpiler=True,
+    )
     p = Process(device.configure())
-    q = p.alloc(num_qubits)
-    gate(*args, q)
+    if isinstance(num_qubits, Iterable):
+        q = [p.alloc(n) for n in num_qubits]
+    else:
+        q = [p.alloc(num_qubits)]
+    gate(*args, *q)
     p.execute()
     return device.circuit.draw(**kwargs)
