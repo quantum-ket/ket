@@ -5,11 +5,11 @@ SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+# Ket Quantum Programming
+
 [![PyPI](https://img.shields.io/pypi/v/ket-lang.svg)](https://pypi.org/project/ket-lang/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![REUSE status](https://api.reuse.software/badge/gitlab.com/quantum-ket/ket)](https://api.reuse.software/info/gitlab.com/quantum-ket/ket)
-
-# Ket Quantum Programming
 
 [[_TOC_]]
 
@@ -21,7 +21,7 @@ Ket's goal is to streamline the development of hardware-independent classical qu
 
 ## Installation :arrow_down:
 
-Ket requires Python 3.8 or newer and is available for Linux, Windows, and macOS. If you are not using x86_64 (example ARM), you must install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
+Ket requires Python 3.9 or newer and is available for Linux, Windows, and macOS (both Apple silicon and Intel). If you are using a non-x86_64 (Intel/AMD) CPU, such as ARM, on Linux or Windows, you will need to install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
 
 You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To do so, copy and paste the following command into your terminal:
 
@@ -123,9 +123,9 @@ if __name__ == "__main__":
 To get started with Ket development, follow these steps:
 
 1. **Rust Installation**
-   
-    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.75 using the following command:
-    
+  
+    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.82 using the following command:
+
     ```shell
     rustup default 1.82
     ```
@@ -157,7 +157,7 @@ To get started with Ket development, follow these steps:
 4. **Install Dependencies**
 
     Upgrade pip and install development requirements:
-    
+
     ```shell
     pip install -U pip
     pip install -r requirements_dev.txt
@@ -174,7 +174,7 @@ To get started with Ket development, follow these steps:
 6. **Run Tests**
 
     To ensure everything is correctly installed, run the tests:
-    
+
     ```shell
     pytest
     ```
