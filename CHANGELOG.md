@@ -7,7 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
-## [0.8.0](https://pypi.org/project/ket-lang/0.0.0)
+## [0.8.1](https://pypi.org/project/ket-lang/0.8.1)
+
+### Added
+
+- Added Pauli I for Hamiltonian construction.
+
+## [0.8.0](https://pypi.org/project/ket-lang/0.8.0)
 
 ### Added
 

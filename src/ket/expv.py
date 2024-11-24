@@ -85,7 +85,7 @@ class Pauli:
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        pauli: Literal["X", "Y", "Z"],
+        pauli: Literal["X", "Y", "Z", "I"],
         qubits: Quant,
         *,
         _process: Process | None = None,
@@ -166,6 +166,15 @@ class Pauli:
             qubits: Qubits to apply the Pauli operator to.
         """
         return Pauli("Z", qubits)
+
+    @staticmethod
+    def i(qubits: Quant) -> Pauli:
+        """Pauli I operator.
+
+        Args:
+            qubits: Qubits to apply the Pauli I operator to.
+        """
+        return Pauli("I", qubits)
 
     def __rmul__(self, other: float) -> Pauli:
         return Pauli(
@@ -289,7 +298,15 @@ class ExpValue:
         hamiltonian_ptr = API["ket_hamiltonian_new"]()
         for pauli_product in hamiltonian.pauli_products:
             pauli, qubits = pauli_product._flat()
-            pauli = [self.pauli_map[p] for p in pauli]
+            pauli_qubits = list(
+                zip(
+                    *[(self.pauli_map[p], q) for p, q in zip(pauli, qubits) if p != "I"]
+                )
+            )
+            if not pauli_qubits:
+                self._value = 1.0
+                return
+            pauli, qubits = pauli_qubits
             API["ket_hamiltonian_add"](
                 hamiltonian_ptr,
                 (c_int32 * len(pauli))(*pauli),
