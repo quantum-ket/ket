@@ -457,6 +457,32 @@ RYY.__doc__ = _gate_docstring(
 )
 
 
+def RBS(  # pylint: disable=invalid-name missing-function-docstring
+    theta: float, qubits_a: Quant | None, qubits_b: Quant | None
+) -> tuple[Quant, Quant] | Callable[[Quant, Quant], tuple[Quant, Quant]]:
+    def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
+        for qubit_a, qubit_b in zip(qubits_a, qubits_b):
+            with around(cat(kron(H, H), CNOT), qubit_a, qubit_b):
+                RY(theta / 2, qubit_a)
+                RY(-theta / 2, qubit_b)
+        return qubits_a, qubits_b
+
+    if qubits_a is None and qubits_b is None:
+        return inner
+    return inner(qubits_a, qubits_b)
+
+
+RBS.__doc__ = _gate_docstring(
+    "Reconfigurable Beam Splitter (RBS) gate",
+    r"\begin{bmatrix}"
+    r"1 & 0 & 0 & 0 \\"
+    r"0 & \cos\theta & \sin\theta & 0 \\"
+    r"0 & -\sin\theta & \cos\theta & 0 \\"
+    r"0 & 0 & 0 & 1"
+    r"\end{bmatrix}",
+)
+
+
 def U3(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, phi: float, lambda_: float, qubit: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:

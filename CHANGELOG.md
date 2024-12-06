@@ -12,6 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 ### Added
 
 - Added Pauli I for Hamiltonian construction.
+- Added Reconfigurable Beam Splitter (RBS) gate.
 
 ## [0.8.0](https://pypi.org/project/ket-lang/0.8.0)
 
