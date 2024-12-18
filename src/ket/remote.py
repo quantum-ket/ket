@@ -46,7 +46,7 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
     .. note::
 
         This class requires the `requests` library to be installed. You can install it with:
-        ```pip install requests```
+        ``pip install requests``
 
     Example:
 
@@ -133,8 +133,8 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         interact with the server.
 
         Args:
-            **kwargs: Keyword arguments specifying connection parameters. The required
-            arguments depend on the remote server's API.
+            kwargs: Keyword arguments specifying connection parameters. The required
+                    arguments depend on the remote server's API.
 
         Returns:
             Configuration object: The configuration required to initialize a process.
