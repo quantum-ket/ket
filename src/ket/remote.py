@@ -90,7 +90,7 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
             - `None`: Assumes the private key is unencrypted. Defaults to `None`.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         url: str,
         verify_ssl=None,
