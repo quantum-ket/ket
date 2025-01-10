@@ -23,6 +23,17 @@ except ImportError:
     requests = None
     REQUESTS_AVAILABLE = False
 
+try:
+    import jwt
+    from cryptography.hazmat.primitives import serialization
+    import getpass
+    from os import PathLike, path
+    from datetime import datetime, timezone, timedelta
+
+    JWT_AVAILABLE = True
+except ImportError:
+    JWT_AVAILABLE = False
+
 
 class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """Remote quantum execution.
@@ -48,6 +59,10 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         This class requires the `requests` library to be installed. You can install it with:
         ``pip install requests``
 
+        For private key authentication, requires the `PyJWT` and `bcrypt` libraries.
+        Install with:
+        ```pip install PyJWT[crypto] bcrypt```
+
     Example:
 
         .. code-block:: python
@@ -64,9 +79,25 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
     Args:
         url: The URL of the remote server.
         timeout: The timeout for the requests. Defaults to None.
+        verify_ssl: Flag to disable SSL certificate verification.
+            This value is passed directly to the requests.get() call.
+            Defaults to `None`.
+        private_key: Path to an OpenSSH RSA private key for authentication.
+            If set to `None`, authentication will not be performed. Defaults to `None`.
+        passphrase: Passphrase to decrypt the private key:
+            - `True`: Prompts the user to enter the passphrase interactively.
+            - `bytes`: Provides the passphrase directly as a byte string.
+            - `None`: Assumes the private key is unencrypted. Defaults to `None`.
     """
 
-    def __init__(self, url: str, timeout: int | None = None):
+    def __init__(
+        self,
+        url: str,
+        verify_ssl=None,
+        timeout: int | None = None,
+        private_key: PathLike | None = None,
+        passphrase: bool | bytes | None = None,
+    ):
         if not REQUESTS_AVAILABLE:
             raise ImportError("requests is not installed, run `pip install requests`")
         self._url = url
@@ -77,6 +108,37 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         self._result_json = bytearray()
         self._result_len = 0
         self._args = None
+        self._verify_ssl = verify_ssl
+
+        if private_key is not None:
+            if not JWT_AVAILABLE:
+                raise ImportError(
+                    "jwt is not installed, run `pip install PyJWT[crypto] bcrypt`"
+                )
+
+            if isinstance(passphrase, bool):
+                if passphrase:
+                    passphrase = bytes(
+                        getpass.getpass(f"passphrase for {private_key}:"), "utf-8"
+                    )
+                else:
+                    passphrase = None
+
+            with open(path.expandvars(path.expanduser(private_key)), "rb") as key_file:
+                private_key = serialization.load_ssh_private_key(
+                    key_file.read(), password=passphrase
+                )
+            self._token = jwt.encode(
+                {
+                    "iss": "org.quantumket.ket",
+                    "exp": datetime.now(tz=timezone.utc)
+                    + timedelta(seconds=timeout if timeout is not None else 604800),
+                },
+                private_key,
+                algorithm="PS256",
+            )
+        else:
+            self._token = None
 
         @CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t)
         def submit_execution(
@@ -110,6 +172,7 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         url = f"{self._url}/run"
         response = requests.get(
             url,
+            verify=self._verify_ssl,
             json=(self._logical_circuit, self._physical_circuit, self._args),
             timeout=self._timeout,
         )
@@ -141,10 +204,13 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         """
 
         self._args = {k: str(v) for k, v in kwargs.items()}
+        if self._token is not None:
+            self._args["token"] = self._token
 
         url = f"{self._url}/get"
         response = requests.get(
             url,
+            verify=self._verify_ssl,
             json=self._args,
             timeout=self._timeout,
         )
