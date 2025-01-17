@@ -56,12 +56,9 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
 
     .. note::
 
-        This class requires the `requests` library to be installed. You can install it with:
-        ``pip install requests``
+        This module requires additional dependencies from ``ket-lang[remote]``.
 
-        For private key authentication, requires the `PyJWT` and `bcrypt` libraries.
-        Install with:
-        ```pip install PyJWT[crypto] bcrypt```
+        Install with: ``pip install ket-lang[remote]``.
 
     Example:
 
@@ -80,14 +77,15 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         url: The URL of the remote server.
         timeout: The timeout for the requests. Defaults to None.
         verify_ssl: Flag to disable SSL certificate verification.
-            This value is passed directly to the requests.get() call.
-            Defaults to `None`.
+            This value is passed directly to the ``requests.get()`` call.
+            Defaults to :obj:`None`.
         private_key: Path to an OpenSSH RSA private key for authentication.
-            If set to `None`, authentication will not be performed. Defaults to `None`.
+            If set to :obj:`None`, authentication will not be performed. Defaults to :obj:`None`.
         passphrase: Passphrase to decrypt the private key:
-            - `True`: Prompts the user to enter the passphrase interactively.
-            - `bytes`: Provides the passphrase directly as a byte string.
-            - `None`: Assumes the private key is unencrypted. Defaults to `None`.
+
+            - :obj:`True`: Prompts the user to enter the passphrase interactively;
+            - :class:`bytes`: Provides the passphrase directly as a byte string;
+            - :obj:`None`: Assumes the private key is unencrypted. Defaults to :obj:`None`.
     """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments

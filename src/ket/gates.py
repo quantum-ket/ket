@@ -84,6 +84,7 @@ __all__ = [
     "RYY",
     "SX",
     "global_phase",
+    "RBS",
 ]
 
 
@@ -473,7 +474,7 @@ def RBS(  # pylint: disable=invalid-name missing-function-docstring
 
 
 RBS.__doc__ = _gate_docstring(
-    "Reconfigurable Beam Splitter (RBS) gate",
+    "Reconfigurable Beam Splitter (RBS)",
     r"\begin{bmatrix}"
     r"1 & 0 & 0 & 0 \\"
     r"0 & \cos\theta & \sin\theta & 0 \\"

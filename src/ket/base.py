@@ -58,14 +58,16 @@ def set_default_process_configuration(  # pylint: disable=too-many-arguments,too
     Configures default parameters for quantum processes using the specified options.
 
     Args:
-        configuration: Configuration definition for third-party quantum execution. Defaults to None.
-        num_qubits: Number of qubits for the KBW simulator. Defaults to None.
-        simulator: Simulation mode for the KBW simulator. Defaults to None.
-        execution: Execution mode for the KBW simulator. Defaults to None.
-        decompose: Enable quantum gate decomposition (increase execution time). Defaults to None.
+        configuration: Configuration definition for third-party quantum execution.
+            Defaults to :obj:`None`.
+        num_qubits: Number of qubits for the KBW simulator. Defaults to :obj:`None`.
+        simulator: Simulation mode for the KBW simulator. Defaults to :obj:`None`.
+        execution: Execution mode for the KBW simulator. Defaults to :obj:`None`.
+        decompose: Enable quantum gate decomposition (increase execution time).
+            Defaults to :obj:`None`.
         force_configuration: If set to True, the parameters defined in the
-            :class:`~ket.base.Process` constructor will overwrite those that are not None. Defaults
-            to False.
+            :class:`~ket.base.Process` constructor will overwrite those that are
+            not None. Defaults to :obj:`False`.
     """
 
     global DEFAULT_PROCESS_CONFIGURATION  # pylint: disable=global-statement
@@ -160,7 +162,8 @@ class Process(LibketProcess):
 
 
     Args:
-        configuration: Configuration definition for third-party quantum execution. Defaults to None.
+        configuration: Configuration definition for third-party quantum execution.
+            Defaults to :obj:`None`.
         num_qubits: Number of qubits for the KBW simulator. If None and ``simulator=="sparse"``,
             defaults to 32; otherwise, defaults to 12.
         simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.

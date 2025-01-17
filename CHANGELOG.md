@@ -7,6 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.8.2](https://pypi.org/project/ket-lang/0.8.2)
+
+### Added
+
+- Added authentication to the Remote class.
+
 ## [0.8.1](https://pypi.org/project/ket-lang/0.8.1)
 
 ### Added

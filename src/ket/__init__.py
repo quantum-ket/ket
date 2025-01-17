@@ -90,7 +90,7 @@ from .expv import __all__ as all_expv
 from .quantumstate import *
 from .quantumstate import __all__ as all_state
 
-__version__ = "0.8.2b1"
+__version__ = "0.8.2rc1"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state
 
