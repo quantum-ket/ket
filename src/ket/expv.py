@@ -296,6 +296,8 @@ class ExpValue:
         self.process = hamiltonian.process
 
         hamiltonian_ptr = API["ket_hamiltonian_new"]()
+        products_count = 0
+        self._I_coef = 0.0
         for pauli_product in hamiltonian.pauli_products:
             pauli, qubits = pauli_product._flat()
             pauli_qubits = list(
@@ -304,8 +306,8 @@ class ExpValue:
                 )
             )
             if not pauli_qubits:
-                self._value = 1.0
-                return
+                self._I_coef += pauli_product.coef
+                continue
             pauli, qubits = pauli_qubits
             API["ket_hamiltonian_add"](
                 hamiltonian_ptr,
@@ -315,15 +317,19 @@ class ExpValue:
                 len(qubits),
                 pauli_product.coef,
             )
+            products_count += 1
 
-        self.index = self.process.exp_value(hamiltonian_ptr).value
-        self._value = None
+        if products_count > 0:
+            self.index = self.process.exp_value(hamiltonian_ptr).value
+            self._value = None
+        else:
+            self._value = self._I_coef
 
     def _check(self):
         if self._value is None:
             available, value = self.process.get_exp_value(self.index)
             if available.value:
-                self._value = value.value
+                self._value = value.value + self._I_coef
 
     @property
     def value(self) -> float | None:
