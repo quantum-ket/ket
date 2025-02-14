@@ -386,7 +386,7 @@ SWAP.__doc__ = _gate_docstring(
 
 
 def RXX(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits_a: Quant | None, qubits_b: Quant | None
+    theta: float, qubits_a: Quant | None = None, qubits_b: Quant | None = None
 ) -> tuple[Quant, Quant] | Callable[[Quant, Quant], tuple[Quant, Quant]]:
     def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
         for qubit_a, qubit_b in zip(qubits_a, qubits_b):
@@ -410,7 +410,7 @@ RXX.__doc__ = _gate_docstring(
 
 
 def RZZ(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits_a: Quant | None, qubits_b: Quant | None
+    theta: float, qubits_a: Quant | None = None, qubits_b: Quant | None = None
 ) -> tuple[Quant, Quant] | Callable[[Quant, Quant], tuple[Quant, Quant]]:
     def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
         for qubit_a, qubit_b in zip(qubits_a, qubits_b):
@@ -434,7 +434,7 @@ RZZ.__doc__ = _gate_docstring(
 
 
 def RYY(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits_a: Quant | None, qubits_b: Quant | None
+    theta: float, qubits_a: Quant | None = None, qubits_b: Quant | None = None
 ) -> tuple[Quant, Quant] | Callable[[Quant, Quant], tuple[Quant, Quant]]:
     def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
         for qubit_a, qubit_b in zip(qubits_a, qubits_b):
@@ -459,7 +459,7 @@ RYY.__doc__ = _gate_docstring(
 
 
 def RBS(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits_a: Quant | None, qubits_b: Quant | None
+    theta: float, qubits_a: Quant | None = None, qubits_b: Quant | None = None
 ) -> tuple[Quant, Quant] | Callable[[Quant, Quant], tuple[Quant, Quant]]:
     def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
         for qubit_a, qubit_b in zip(qubits_a, qubits_b):

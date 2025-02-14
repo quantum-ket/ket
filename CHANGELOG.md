@@ -7,6 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.8.3](https://pypi.org/project/ket-lang/0.8.3)
+
+### Added
+
+- Fixed issue related to the Pauli I-only term in the Hamiltonian.
+- Allow RXX, RYY, RZZ, and RBS with classical parameters only.
+
 ## [0.8.2](https://pypi.org/project/ket-lang/0.8.2)
 
 ### Added
