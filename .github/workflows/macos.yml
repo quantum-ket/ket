@@ -48,7 +48,7 @@ jobs:
       - name: Build Wheel
         run: python3 setup.py bdist_wheel -p macosx_10_14_universal2
       - name: Archive Wheel
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macosx
           path: dist
