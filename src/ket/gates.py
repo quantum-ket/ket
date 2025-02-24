@@ -26,8 +26,8 @@ Example:
         from math import pi
         from ket import *
 
-        s_gate = PHASE(pi/2)
-        t_gate = PHASE(pi/4)
+        s_gate = P(pi/2)
+        t_gate = P(pi/4)
 
         p = Process()
         q = p.alloc()
@@ -47,6 +47,7 @@ from math import pi
 from functools import reduce
 from operator import add
 from typing import Any, Callable
+import warnings
 
 from .clib.libket import (
     HADAMARD,
@@ -72,12 +73,14 @@ __all__ = [
     "RY",
     "RZ",
     "PHASE",
+    "P",
     "S",
     "T",
     "SD",
     "TD",
     "U3",
     "CNOT",
+    "CZ",
     "SWAP",
     "RXX",
     "RZZ",
@@ -93,7 +96,7 @@ def _gate_docstring(name, matrix, effect=None) -> str:
     
     .. csv-table::
         :delim: ;
-        :header: Matrix{", Effect" if effect is not None else ""}
+        :header: Matrix{"; Effect" if effect is not None else ""}
 
         :math:`{matrix}`{f"; :math:`{effect}`" if effect is not None else ""}
     """
@@ -277,7 +280,7 @@ RZ.__doc__ = _gate_docstring(
 )
 
 
-def PHASE(  # pylint: disable=invalid-name missing-function-docstring
+def P(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
@@ -294,6 +297,17 @@ def PHASE(  # pylint: disable=invalid-name missing-function-docstring
     return inner(qubits)
 
 
+def PHASE(  # pylint: disable=invalid-name missing-function-docstring
+    theta: float, qubits: Quant | None = None
+) -> Quant | Callable[[Quant], Quant]:
+    warnings.warn(
+        "PHASE is deprecated and will be removed in future versions. Use P(theta, qubits) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return P(theta, qubits)
+
+
 PHASE.__doc__ = _gate_docstring(
     "Phase shift",
     r"\begin{bmatrix} 1 & 0 \\ 0 & e^{i\theta} \end{bmatrix}",
@@ -302,7 +316,15 @@ PHASE.__doc__ = _gate_docstring(
 )
 
 
-S = PHASE(pi / 2)
+P.__doc__ = _gate_docstring(
+    "Phase shift",
+    r"\begin{bmatrix} 1 & 0 \\ 0 & e^{i\theta} \end{bmatrix}",
+    r"\begin{matrix} P\left|0\right> = & \left|0\right> \\"
+    r"P\left|1\right> = & e^{i\theta}\left|1\right> \end{matrix}",
+)
+
+
+S = P(pi / 2)
 S.__doc__ = _gate_docstring(
     "S",
     r"\begin{bmatrix} 1 & 0 \\ 0 & i \end{bmatrix}",
@@ -310,7 +332,7 @@ S.__doc__ = _gate_docstring(
     r"S\left|1\right> = & i\left|1\right> \end{matrix}",
 )
 
-SD = PHASE(-pi / 2)
+SD = P(-pi / 2)
 SD.__doc__ = _gate_docstring(
     "S-dagger",
     r"\begin{bmatrix} 1 & 0 \\ 0 & -i \end{bmatrix}",
@@ -318,7 +340,7 @@ SD.__doc__ = _gate_docstring(
     r"S^\dagger\left|1\right> = & -i\left|1\right> \end{matrix}",
 )
 
-T = PHASE(pi / 4)
+T = P(pi / 4)
 T.__doc__ = _gate_docstring(
     "T",
     r"\begin{bmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{bmatrix}",
@@ -326,7 +348,7 @@ T.__doc__ = _gate_docstring(
     r"T\left|1\right> = & e^{i\pi/4}\left|1\right> \end{matrix}",
 )
 
-TD = PHASE(-pi / 4)
+TD = P(-pi / 4)
 TD.__doc__ = _gate_docstring(
     "T-dagger",
     r"\begin{bmatrix} 1 & 0 \\ 0 & e^{-i\pi/4} \end{bmatrix}",
@@ -355,6 +377,30 @@ CNOT.__doc__ = _gate_docstring(
     r"\text{CNOT}\left|11\right> = & \left|10\right> \\"
     r"\text{CNOT}\left|\text{c}\right>\left|\text{t}\right> ="
     r"& \left|\text{c}\right> \left|\text{c}\oplus\text{t}\right>"
+    r"\end{matrix}",
+)
+
+
+def CZ(  # pylint: disable=invalid-name missing-function-docstring
+    *qubits: list[Quant],
+) -> list[Quant, Quant]:
+    for q in zip(*qubits):
+        ctrl(q[:-1], X)(q[-1])
+    return qubits
+
+
+CZ.__doc__ = _gate_docstring(
+    "Multi-Controlled Z",
+    r"\begin{bmatrix}"
+    r"1 & 0 & \cdots & 0 & 0 \\ 0 & 1 & \cdots & 0 & 0 \\"
+    r"\vdots & \vdots & \ddots & \vdots & \vdots \\ 0 & 0 & \cdots & 1 & 0 \\"
+    r"0 & 0 & \cdots & 0 & -1"
+    r"\end{bmatrix}",
+    r"\begin{matrix}"
+    r"\text{CZ}\left|0\cdots0\right> = & \left|0\cdots0\right> \\"
+    r"\text{CZ}\left|0\cdots1\right> = & \left|0\cdots1\right> \\"
+    r"\text{CZ}\left|1\cdots0\right> = & \left|1\cdots0\right> \\"
+    r"\text{CZ}\left|1\cdots1\right> = & -\left|1\cdots1\right> \\"
     r"\end{matrix}",
 )
 
