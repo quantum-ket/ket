@@ -677,14 +677,6 @@ class Samples:
             **kwargs,
         )
 
-        fig.update_layout(
-            bargap=0.75,
-            xaxis={
-                "tickmode": "linear",
-                "dtick": 1,
-            },
-        )
-
         return fig
 
     def __repr__(self) -> str:
