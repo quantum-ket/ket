@@ -140,18 +140,17 @@ def dump_matrix(
     gate: Callable,
     num_qubits: int | list[int] = 1,
     args=(),
-    simulator: Literal["sparse", "dense"] = "sparse",
+    process: Process | None = None,
 ) -> list[list[complex]]:
     """Get the matrix representation of a quantum gate.
 
-    This function calculates the matrix representation of a quantum gate using
-    the specified simulator.
+    This function calculates the matrix representation of a quantum gate.
 
     Args:
         gate: Quantum gate operation to obtain the matrix for.
         num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
-        simulator: Simulator type to use.
+        process: Quantum process used to generate the matrix.
 
     Returns:
         Matrix representation of the quantum gate.
@@ -164,7 +163,12 @@ def dump_matrix(
 
     num_qubits = sum(num_qubits) if isinstance(num_qubits, Iterable) else num_qubits
 
-    process = Process(num_qubits=2 * num_qubits, execution="batch", simulator=simulator)
+    if process is None:
+        process = Process(
+            num_qubits=2 * num_qubits,
+            execution="batch",
+            simulator="sparse",
+        )
 
     mat = [[0.0j for _ in range(2**num_qubits)] for _ in range(2**num_qubits)]
 
@@ -325,6 +329,39 @@ def unitary(matrix: list[list[complex]]) -> Callable[[Quant], Quant]:
     return inner
 
 
+DRAW_STYLE = {
+    "textcolor": "#0f1f2e",
+    "gatetextcolor": "#f4f8ff",
+    "subtextcolor": "#f4f8ff",
+    "linecolor": "#0f1f2e",
+    "creglinecolor": "#6b7682",
+    "gatefacecolor": "#0f7cfb",
+    "barrierfacecolor": "#c6cdd5",
+    "backgroundcolor": "#f4f8ff",
+    "displaytext": {
+        "u1": "P",
+        "rx": "RX",
+        "ry": "RY",
+        "rz": "RZ",
+    },
+    "displaycolor": {
+        "u1": ["#008699", "#f4f8ff"],
+        "x": ["#0f7cfb", "#f4f8ff"],
+        "y": ["#0c63c9", "#f4f8ff"],
+        "z": ["#009cb3", "#f4f8ff"],
+        "h": ["#3f96fc", "#f4f8ff"],
+        "rx": ["#063264", "#f4f8ff"],
+        "ry": ["#094a97", "#f4f8ff"],
+        "rz": ["#008699", "#f4f8ff"],
+        "cx": ["#0f7cfb", "#f4f8ff"],
+        "ccx": ["#0f7cfb", "#f4f8ff"],
+        "mcx": ["#0f7cfb", "#f4f8ff"],
+        "cy": ["#0c63c9", "#f4f8ff"],
+        "cz": ["#009cb3", "#f4f8ff"],
+    },
+}
+
+
 def draw(
     gate: Callable[[Quant], None],
     num_qubits: int | list[int],
@@ -367,4 +404,4 @@ def draw(
         q = [p.alloc(num_qubits)]
     gate(*args, *q)
     p.execute()
-    return device.circuit.draw(**kwargs)
+    return device.circuit.draw(**kwargs, style=DRAW_STYLE)
