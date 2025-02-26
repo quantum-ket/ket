@@ -21,6 +21,13 @@ from ..base import Quant, Process
 from ..operations import ctrl, around, dump
 from ..gates import RZ, X, Z, H, RY, CNOT, S, global_phase
 
+try:
+    from IPython import get_ipython
+
+    IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+except ImportError:
+    IN_NOTEBOOK = False
+
 __all__ = [
     "flip_to_control",
     "phase_oracle",
@@ -367,6 +374,7 @@ def draw(
     num_qubits: int | list[int],
     *,
     args=(),
+    title: str | None = None,
     **kwargs,
 ):
     """Draw a quantum gate using Qiskit.
@@ -404,4 +412,13 @@ def draw(
         q = [p.alloc(num_qubits)]
     gate(*args, *q)
     p.execute()
-    return device.circuit.draw(**kwargs, style=DRAW_STYLE)
+
+    if "output" not in kwargs and IN_NOTEBOOK:
+        kwargs["output"] = "mpl"
+    if "style" not in kwargs:
+        kwargs["style"] = DRAW_STYLE
+
+    fig = device.circuit.draw(**kwargs)
+    if title is not None:
+        fig.suptitle(title)
+    return fig
