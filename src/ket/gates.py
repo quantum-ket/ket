@@ -43,6 +43,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 from math import pi
 from functools import reduce
 from operator import add
@@ -590,6 +591,7 @@ def global_phase(
     """
 
     def _global_phase(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
+        @functools.wraps(gate)
         def inner(*args, ket_process: Process | None = None, **kwargs):
             ket_process = _search_process(ket_process, args, kwargs)
 

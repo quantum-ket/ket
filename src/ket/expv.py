@@ -337,7 +337,7 @@ class ExpValue:
         self._check()
         return self._value
 
-    def get(self) -> dict[int, int]:
+    def get(self) -> float:
         """Retrieve the expected values.
 
         If the value is not available, the quantum process will execute to get the result.
