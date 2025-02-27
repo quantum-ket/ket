@@ -31,7 +31,7 @@ def qft(qubits: ket.Quant, invert: bool = True):
         # Apply controlled phase shift gates to the last qubit with each of the remaining qubits.
         for i, ctrl_qubit in enumerate(reversed(head)):
             with ket.control(ctrl_qubit):
-                ket.PHASE(pi / 2 ** (i + 1), tail)
+                ket.P(pi / 2 ** (i + 1), tail)
 
         # Recursively apply QFT to the remaining qubits.
         qft(head, invert=False)
@@ -86,7 +86,7 @@ def oracle(phase: float, i: int, tgr):
         i (int): The index value.
         tgr (quant): The target qubit.
     """
-    ket.PHASE(2 * pi * phase * 2**i, tgr)
+    ket.P(2 * pi * phase * 2**i, tgr)
 
 
 estimate_pi = partial(phase_estimator, partial(oracle, pi / 10))

@@ -32,56 +32,7 @@ __all__ = [
     "Quant",
     "Measurement",
     "Samples",
-    "set_default_process_configuration",
 ]
-
-DEFAULT_PROCESS_CONFIGURATION = {
-    "configuration": None,
-    "num_qubits": None,
-    "simulator": None,
-    "execution": None,
-    "coupling_graph": None,
-    "force": False,
-}
-
-
-def set_default_process_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    configuration=None,
-    num_qubits: Optional[int] = None,
-    simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
-    execution: Optional[Literal["live", "batch"]] = None,
-    coupling_graph: Optional[list[tuple[int, int]]] = None,
-    force_configuration: bool = False,
-):
-    """Set default process configurations.
-
-    Configures default parameters for quantum processes using the specified options.
-
-    Args:
-        configuration: Configuration definition for third-party quantum execution.
-            Defaults to :obj:`None`.
-        num_qubits: Number of qubits for the KBW simulator. Defaults to :obj:`None`.
-        simulator: Simulation mode for the KBW simulator. Defaults to :obj:`None`.
-        execution: Execution mode for the KBW simulator. Defaults to :obj:`None`.
-        decompose: Enable quantum gate decomposition (increase execution time).
-            Defaults to :obj:`None`.
-        force_configuration: If set to True, the parameters defined in the
-            :class:`~ket.base.Process` constructor will overwrite those that are
-            not None. Defaults to :obj:`False`.
-    """
-
-    global DEFAULT_PROCESS_CONFIGURATION  # pylint: disable=global-statement
-
-    new_configuration = {
-        "configuration": configuration,
-        "num_qubits": num_qubits,
-        "simulator": simulator,
-        "execution": execution,
-        "coupling_graph": coupling_graph,
-        "force": force_configuration,
-    }
-
-    DEFAULT_PROCESS_CONFIGURATION = new_configuration
 
 
 class Process(LibketProcess):
@@ -177,35 +128,8 @@ class Process(LibketProcess):
         simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
         coupling_graph: Optional[list[tuple[int, int]]] = None,
+        gradient: bool = False,
     ):
-        if DEFAULT_PROCESS_CONFIGURATION["force"] or all(
-            map(lambda a: a is None, [configuration, num_qubits, simulator, execution])
-        ):
-            configuration = (
-                DEFAULT_PROCESS_CONFIGURATION["configuration"]
-                if DEFAULT_PROCESS_CONFIGURATION["configuration"] is not None
-                else configuration
-            )
-            num_qubits = (
-                DEFAULT_PROCESS_CONFIGURATION["num_qubits"]
-                if DEFAULT_PROCESS_CONFIGURATION["num_qubits"] is not None
-                else num_qubits
-            )
-            simulator = (
-                DEFAULT_PROCESS_CONFIGURATION["simulator"]
-                if DEFAULT_PROCESS_CONFIGURATION["simulator"] is not None
-                else simulator
-            )
-            execution = (
-                DEFAULT_PROCESS_CONFIGURATION["execution"]
-                if DEFAULT_PROCESS_CONFIGURATION["execution"] is not None
-                else execution
-            )
-            coupling_graph = (
-                DEFAULT_PROCESS_CONFIGURATION["coupling_graph"]
-                if DEFAULT_PROCESS_CONFIGURATION["coupling_graph"] is not None
-                else coupling_graph
-            )
 
         if configuration is not None and any(
             map(lambda a: a is not None, [num_qubits, simulator, execution])
@@ -227,6 +151,7 @@ class Process(LibketProcess):
                     simulator=simulator,
                     execution="live" if execution is None else execution,
                     coupling_graph=coupling_graph,
+                    gradient=gradient,
                 )
             )
 
@@ -369,6 +294,11 @@ class Process(LibketProcess):
             return self.get_metadata()
 
         return loads(bytearray(self._metadata_buffer[: write_size.value]))
+
+    def parameters(self, *param) -> list[Parameter]:
+        return [
+            Parameter(process=self, index=self.set_parameter(p), value=p) for p in param
+        ]
 
     def __repr__(self) -> str:
         return f"<Ket 'Process' id={hex(id(self))}>"
@@ -689,3 +619,48 @@ def _check_visualize():
             "Visualization optional dependence are required. Install with: "
             "pip install ket-lang[visualization]"
         )
+
+
+class Parameter:
+    def __init__(self, process, index, value, multiplier=1):
+        self._process = process
+        self._index = index
+        self.value = value
+        self._multiplier = multiplier
+        self._gradient = None
+
+    def __mul__(self, other: float) -> Parameter:
+        other = float(other)
+        return Parameter(
+            self._process,
+            self._index,
+            self.value,
+            self._multiplier * other,
+        )
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other: float) -> Parameter:
+        other = float(other)
+        return Parameter(
+            self._process,
+            self._index,
+            self.value,
+            self._multiplier / other,
+        )
+
+    def __neg__(self) -> Parameter:
+        return Parameter(
+            self._process,
+            self._index,
+            self.value,
+            -self._multiplier,
+        )
+
+    @property
+    def gradient(self) -> float | None:
+        if self._gradient is None:
+            available, value = self._process.get_gradient(self._index)
+            if available.value:
+                self._gradient = value.value
+        return self._gradient

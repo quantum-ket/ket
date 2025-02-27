@@ -20,11 +20,12 @@ API_argtypes = {
     "kbw_build_info": ([], [POINTER(c_uint8), c_size_t]),
     "kbw_make_configuration": (
         [
-            c_size_t,
-            c_int32,
-            c_bool,
-            POINTER(c_size_t),
-            c_size_t,
+            c_size_t,  # num_qubits
+            c_int32,  # simulator
+            c_bool,  # use_live
+            POINTER(c_size_t),  # coupling_graph
+            c_bool,  # coupling_graph_size
+            c_size_t,  # gradient
         ],
         [c_void_p],
     ),
@@ -64,8 +65,11 @@ def get_simulator(
     execution: Literal["live", "batch"] = "live",
     simulator: Literal["sparse", "dense", "dense v2"] = "sparse",
     coupling_graph: list[tuple[int, int]] | None = None,
+    gradient: bool = False,
 ):
     """Create a configuration"""
+    if gradient:
+        execution = "batch"
 
     coupling_graph_size = len(coupling_graph) if coupling_graph else 0
     if coupling_graph:
@@ -78,4 +82,5 @@ def get_simulator(
         execution == "live",
         coupling_graph,
         coupling_graph_size,
+        gradient,
     )

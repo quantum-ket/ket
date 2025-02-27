@@ -9,7 +9,7 @@ import pytest
 
 
 def validate(matrix):
-    from ket.lib import _extract_phase
+    from ket.qulib import _extract_phase
 
     gate = ket.lib.dump_matrix(ket.lib.unitary(matrix))
 

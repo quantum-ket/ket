@@ -5,7 +5,7 @@
 from math import sqrt, pi, cos, sin
 from cmath import exp, isclose
 import ket
-from ket import lib
+from ket import qulib
 
 GATES = {
     ket.X: [[0, 1], [1, 0]],
@@ -119,10 +119,10 @@ def test_decomposition_t_c():
         gate = lambda q: ket.ctrl(q[1:], ket_gate)(q[0])
 
         ket.set_default_process_configuration(force_configuration=True)
-        decompose_matrix = lib.dump_matrix(gate, num_qubits=n)
+        decompose_matrix = qulib.dump_matrix(gate, num_qubits=n)
 
         ket.set_default_process_configuration(force_configuration=True)
-        not_decompose_matrix = lib.dump_matrix(gate, num_qubits=n)
+        not_decompose_matrix = qulib.dump_matrix(gate, num_qubits=n)
 
         assert all(
             isclose(decompose_matrix[i][j], not_decompose_matrix[i][j], abs_tol=1e-10)

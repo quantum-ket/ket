@@ -66,6 +66,7 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
             CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t),
         ),
         ("get_results", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
+        ("clear", CFUNCTYPE(None)),
     ]
 
 
@@ -77,9 +78,18 @@ API_argtypes = {
     "ket_process_delete": ([c_void_p], []),
     "ket_process_allocate_qubit": ([c_void_p], [c_size_t]),
     "ket_process_apply_gate": (
-        [c_void_p, c_int32, c_double, c_size_t],
+        [
+            c_void_p,  # process
+            c_int32,  # gate
+            c_double,  # angle
+            c_bool,  # use_param
+            c_size_t,  # param_index
+            c_size_t,  # target
+        ],
         [],
     ),
+    "ket_process_set_parameter": ([c_void_p, c_double], [c_size_t]),
+    "ket_process_get_gradient": ([c_void_p, c_size_t], [c_bool, c_double]),
     "ket_process_apply_global_phase": (
         [c_void_p, c_double],
         [],
@@ -130,17 +140,18 @@ API_argtypes = {
     ),
     "ket_make_configuration": (
         [
-            c_size_t,
-            POINTER(BatchCExecution),
-            c_int32,
-            c_int32,
-            c_int32,
-            c_int32,
-            c_bool,
-            POINTER(c_size_t),
-            c_size_t,
-            c_int32,
-            c_int32,
+            c_size_t,  # num_qubits
+            POINTER(BatchCExecution),  # batch_execution
+            c_int32,  # measure
+            c_int32,  # sample
+            c_int32,  # exp_value
+            c_int32,  # dump
+            c_int32,  # gradient
+            c_bool,  # define_qpu
+            POINTER(c_size_t),  # coupling_graph
+            c_size_t,  # coupling_graph_size
+            c_int32,  # u4_gate
+            c_int32,  # u2_gates
         ],
         [c_void_p],
     ),
@@ -183,6 +194,9 @@ class Process:
         return "<Libket 'process'>"
 
 
+_FEATURE_STATUS = {"Disable": 0, "Allowed": 1, "ValidAfter": 2}
+
+
 def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     batch_execution,
@@ -190,19 +204,13 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
     sample: Literal["Disable", "Allowed", "ValidAfter"],
     exp_value: Literal["Disable", "Allowed", "ValidAfter"],
     dump: Literal["Disable", "Allowed", "ValidAfter"],
+    gradient: Literal["Disable", "ParameterShift", "Dispatched"],
     define_qpu: bool,
     coupling_graph: list[tuple[int, int]] | None,
     u4_gate_type: Literal["CX", "CZ"],
     u2_gate_set: Literal["All", "ZYZ", "RzSx"],
 ) -> Process:
     """Make a Libket configuration"""
-
-    def feature_status(value):
-        if value == "Disable":
-            return 0
-        if value == "Allowed":
-            return 1
-        return 2
 
     coupling_graph_size = len(coupling_graph) if coupling_graph else 0
     if coupling_graph_size > 0:
@@ -212,15 +220,16 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
         coupling_graph = None
 
     return API["ket_make_configuration"](
-        num_qubits,
-        batch_execution,
-        feature_status(measure),
-        feature_status(sample),
-        feature_status(exp_value),
-        feature_status(dump),
-        define_qpu,
-        coupling_graph,
-        coupling_graph_size,
-        1 if u4_gate_type == "CZ" else 0,
-        {"All": 0, "ZYZ": 1, "RzSx": 2}[u2_gate_set],
+        num_qubits,  # num_qubits
+        batch_execution,  # batch_execution
+        _FEATURE_STATUS[measure],  # measure
+        _FEATURE_STATUS[sample],  # sample
+        _FEATURE_STATUS[exp_value],  # exp_value
+        _FEATURE_STATUS[dump],  # dump
+        {"Disable": 0, "ParameterShift": 1, "Dispatched": 2}[gradient],  # gradient
+        define_qpu,  # define_qpu
+        coupling_graph,  # coupling_graph
+        coupling_graph_size,  # coupling_graph_size
+        1 if u4_gate_type == "CZ" else 0,  # u4_gate
+        {"All": 0, "ZYZ": 1, "RzSx": 2}[u2_gate_set],  # u2_gates
     )

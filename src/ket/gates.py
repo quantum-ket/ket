@@ -61,7 +61,7 @@ from .clib.libket import (
     PHASE_SHIFT,
 )
 
-from .base import Process, Quant
+from .base import Process, Quant, Parameter
 from .operations import _search_process, ctrl, cat, kron, around
 
 __all__ = [
@@ -127,7 +127,7 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_X, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_X, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -146,7 +146,7 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Y, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_Y, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -165,7 +165,7 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Z, 0.0, qubit)
+        qubits.process.apply_gate(PAULI_Z, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -184,7 +184,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(add, qubits)
 
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(HADAMARD, 0.0, qubit)
+        qubits.process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -199,7 +199,7 @@ H.__doc__ = _gate_docstring(
 
 
 def RX(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits: Quant | None = None
+    theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
     def inner(qubits: Quant) -> Quant:
@@ -207,7 +207,22 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_X, theta, qubit)
+            if isinstance(theta, Parameter):
+                qubits.process.apply_gate(
+                    ROTATION_X,
+                    theta._multiplier,
+                    True,
+                    theta._index,
+                    qubit,
+                )
+            else:
+                qubits.process.apply_gate(
+                    ROTATION_X,
+                    theta,
+                    False,
+                    0,
+                    qubit,
+                )
         return qubits
 
     if qubits is None:
@@ -236,7 +251,22 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_Y, theta, qubit)
+            if isinstance(theta, Parameter):
+                qubits.process.apply_gate(
+                    ROTATION_Y,
+                    theta._multiplier,
+                    True,
+                    theta._index,
+                    qubit,
+                )
+            else:
+                qubits.process.apply_gate(
+                    ROTATION_Y,
+                    theta,
+                    False,
+                    0,
+                    qubit,
+                )
         return qubits
 
     if qubits is None:
@@ -265,7 +295,22 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(ROTATION_Z, theta, qubit)
+            if isinstance(theta, Parameter):
+                qubits.process.apply_gate(
+                    ROTATION_Z,
+                    theta._multiplier,
+                    True,
+                    theta._index,
+                    qubit,
+                )
+            else:
+                qubits.process.apply_gate(
+                    ROTATION_Z,
+                    theta,
+                    False,
+                    0,
+                    qubit,
+                )
         return qubits
 
     if qubits is None:
@@ -290,7 +335,22 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(add, qubits)
 
         for qubit in qubits.qubits:
-            qubits.process.apply_gate(PHASE_SHIFT, theta, qubit)
+            if isinstance(theta, Parameter):
+                qubits.process.apply_gate(
+                    PHASE_SHIFT,
+                    theta._multiplier,
+                    True,
+                    theta._index,
+                    qubit,
+                )
+            else:
+                qubits.process.apply_gate(
+                    PHASE_SHIFT,
+                    theta,
+                    False,
+                    0,
+                    qubit,
+                )
         return qubits
 
     if qubits is None:
@@ -386,7 +446,7 @@ def CZ(  # pylint: disable=invalid-name missing-function-docstring
     *qubits: list[Quant],
 ) -> list[Quant, Quant]:
     for q in zip(*qubits):
-        ctrl(q[:-1], X)(q[-1])
+        ctrl(q[:-1], Z)(q[-1])
     return qubits
 
 

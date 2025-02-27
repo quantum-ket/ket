@@ -7,8 +7,6 @@
 import ket
 from math import sqrt
 
-import ket.lib
-
 process = ket.Process()
 a, b = process.alloc(2)
 
