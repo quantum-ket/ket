@@ -21,12 +21,14 @@ from ctypes import (
     c_double,
 )
 from functools import reduce
+import json
 from operator import iconcat
 from typing import Literal
 import weakref
 from os import environ
 from os.path import dirname
 from .wrapper import load_lib, os_lib_name
+from abc import ABC, abstractmethod
 
 
 HADAMARD = 0
@@ -63,7 +65,15 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
     _fields_ = [
         (
             "submit_execution",
-            CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t),
+            CFUNCTYPE(
+                None,
+                POINTER(c_uint8),
+                c_size_t,
+                POINTER(c_uint8),
+                c_size_t,
+                POINTER(c_double),
+                c_size_t,
+            ),
         ),
         ("get_results", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
         ("clear", CFUNCTYPE(None)),
@@ -194,6 +204,77 @@ class Process:
         return "<Libket 'process'>"
 
 
+class BatchExecution(ABC):
+    def __init__(self):
+        @CFUNCTYPE(
+            None,
+            POINTER(c_uint8),
+            c_size_t,
+            POINTER(c_uint8),
+            c_size_t,
+            POINTER(c_double),
+            c_size_t,
+        )
+        def submit_execution(
+            logical_circuit,
+            logical_circuit_size,
+            physical_circuit,
+            physical_circuit_size,
+            parameters,
+            parameters_size,
+        ):
+            logical_circuit = json.loads(
+                bytearray(logical_circuit[:logical_circuit_size])
+            )
+            physical_circuit = json.loads(
+                bytearray(physical_circuit[:physical_circuit_size])
+            )
+            parameters = parameters[:parameters_size]
+            self.submit_execution(logical_circuit, physical_circuit, parameters)
+
+        self._result_json = None
+        self._result_len = None
+
+        @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
+        def get_result(result_ptr, size):
+            result = self.get_result()
+            self._result_json = json.dumps(result).encode("utf-8")
+            self._result_len = len(self._result_json)
+            self._result_json = (c_uint8 * self._result_len)(*self._result_json)
+            result_ptr[0] = self._result_json
+            size[0] = self._result_len
+
+        @CFUNCTYPE(None)
+        def clear():
+            self.clear()
+
+        self.c_struct = BatchCExecution(
+            submit_execution,
+            get_result,
+            clear,
+        )
+
+    @abstractmethod
+    def submit_execution(
+        self,
+        logical_circuit: dict,
+        physical_circuit: dict | None,
+        parameters: list[float],
+    ):
+        pass
+
+    @abstractmethod
+    def get_result(self) -> dict:
+        pass
+
+    @abstractmethod
+    def clear(self):
+        pass
+
+    def configure(self, **kwargs):
+        return make_configuration(batch_execution=self.c_struct, **kwargs)
+
+
 _FEATURE_STATUS = {"Disable": 0, "Allowed": 1, "ValidAfter": 2}
 
 
@@ -204,7 +285,7 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
     sample: Literal["Disable", "Allowed", "ValidAfter"],
     exp_value: Literal["Disable", "Allowed", "ValidAfter"],
     dump: Literal["Disable", "Allowed", "ValidAfter"],
-    gradient: Literal["Disable", "ParameterShift", "Dispatched"],
+    gradient: Literal["Disable", "ParameterShift", "SupportsGradient"],
     define_qpu: bool,
     coupling_graph: list[tuple[int, int]] | None,
     u4_gate_type: Literal["CX", "CZ"],
@@ -226,7 +307,9 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
         _FEATURE_STATUS[sample],  # sample
         _FEATURE_STATUS[exp_value],  # exp_value
         _FEATURE_STATUS[dump],  # dump
-        {"Disable": 0, "ParameterShift": 1, "Dispatched": 2}[gradient],  # gradient
+        {"Disable": 0, "ParameterShift": 1, "SupportsGradient": 2}[
+            gradient
+        ],  # gradient
         define_qpu,  # define_qpu
         coupling_graph,  # coupling_graph
         coupling_graph_size,  # coupling_graph_size

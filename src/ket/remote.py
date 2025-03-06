@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t
-from .clib.libket import BatchCExecution, make_configuration
+from .clib.libket import BatchExecution
 
 try:
     import requests
@@ -35,7 +35,9 @@ except ImportError:
     JWT_AVAILABLE = False
 
 
-class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
+class Remote(
+    BatchExecution
+):  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """Remote quantum execution.
 
     The :class:`~ket.remote.Remote` class enables the execution of quantum circuits
@@ -96,11 +98,10 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         private_key: PathLike | None = None,
         passphrase: bool | bytes | None = None,
     ):
+        super().__init__()
         if not REQUESTS_AVAILABLE:
             raise ImportError("requests is not installed, run `pip install requests`")
         self._url = url
-        self._logical_circuit = None
-        self._physical_circuit = None
         self._result = None
         self._timeout = timeout
         self._result_json = bytearray()
@@ -138,46 +139,29 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         else:
             self._token = None
 
-        @CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t)
-        def submit_execution(
-            logical_circuit,
-            logical_circuit_size,
-            physical_circuit,
-            physical_circuit_size,
-        ):
-            self._logical_circuit = json.loads(
-                bytearray(logical_circuit[:logical_circuit_size])
-            )
-            self._physical_circuit = json.loads(
-                bytearray(physical_circuit[:physical_circuit_size])
-            )
-            self._submit()
-
-        @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
-        def get_result(result_ptr, size):
-            self._result_json = json.dumps(self._result).encode("utf-8")
-            self._result_len = len(self._result_json)
-            self._result_json = (c_uint8 * self._result_len)(*self._result_json)
-            result_ptr[0] = self._result_json
-            size[0] = self._result_len
-
-        self.c_struct = BatchCExecution(
-            submit_execution,
-            get_result,
-        )
-
-    def _submit(self):
+    def submit_execution(
+        self,
+        logical_circuit: dict,
+        physical_circuit: dict | None,
+        parameters: list[float],
+    ):
         url = f"{self._url}/run"
         response = requests.get(
             url,
             verify=self._verify_ssl,
-            json=(self._logical_circuit, self._physical_circuit, self._args),
+            json=(logical_circuit, physical_circuit, parameters, self._args),
             timeout=self._timeout,
         )
         if response.status_code == 200:
             self._result = response.json()
         else:
             raise RuntimeError(f"Error: {response.status_code} - {response.text}")
+
+    def get_result(self) -> dict:
+        return self._result
+
+    def clear(self):
+        pass
 
     def connect(
         self,
@@ -217,4 +201,4 @@ class Remote:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         else:
             raise RuntimeError(f"Error: {response.status_code} - {response.text}")
 
-        return make_configuration(batch_execution=self.c_struct, **result)
+        return super().configure(**result)
