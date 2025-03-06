@@ -24,8 +24,8 @@ API_argtypes = {
             c_int32,  # simulator
             c_bool,  # use_live
             POINTER(c_size_t),  # coupling_graph
-            c_bool,  # coupling_graph_size
-            c_size_t,  # gradient
+            c_size_t,  # coupling_graph_size
+            c_bool,  # gradient
         ],
         [c_void_p],
     ),
@@ -72,15 +72,16 @@ def get_simulator(
         execution = "batch"
 
     coupling_graph_size = len(coupling_graph) if coupling_graph else 0
+
     if coupling_graph:
         coupling_graph = reduce(iconcat, coupling_graph, [])
         coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
 
     return API["kbw_make_configuration"](
-        num_qubits,
-        SIMULATOR[simulator.lower()],
-        execution == "live",
-        coupling_graph,
-        coupling_graph_size,
-        gradient,
+        num_qubits,  # num_qubits
+        SIMULATOR[simulator.lower()],  # simulator
+        execution == "live",  # use_live
+        coupling_graph,  # coupling_graph
+        coupling_graph_size,  # coupling_graph_size
+        gradient,  # gradient
     )
