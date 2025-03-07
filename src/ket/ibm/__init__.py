@@ -1,4 +1,4 @@
-""" Module providing functionality to interact with IBM Quantum and IBM Cloud devices.
+"""Module providing functionality to interact with IBM Quantum and IBM Cloud devices.
 
 Note:
     This module requires additional dependencies from ``ket-lang[ibm]``.
@@ -133,6 +133,7 @@ class IBMDevice:
             coupling_graph=self.coupling_graph,
             u4_gate_type="CX",
             u2_gate_set="All",
+            gradient="Disable",
         )
 
     @property

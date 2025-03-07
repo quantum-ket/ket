@@ -295,7 +295,15 @@ class Process(LibketProcess):
 
         return loads(bytearray(self._metadata_buffer[: write_size.value]))
 
-    def parameters(self, *param) -> list[Parameter]:
+    def param(self, *param) -> list[Parameter]:
+        """Register a parameter for gradient calculation.
+
+        Args:
+            *param: Variable-length argument list of floats.
+
+        Returns:
+            A list of :class:`~ket.base.Parameter` objects.
+        """
         return [
             Parameter(process=self, index=self.set_parameter(p), value=p) for p in param
         ]
@@ -622,6 +630,12 @@ def _check_visualize():
 
 
 class Parameter:
+    """Parameter for gradient calculation.
+
+    This class represents a parameter for gradient calculation in a quantum process. It should not
+    be instanced directly, but rather obtained from the :func:`~ket.operations.parameter`
+    """
+
     def __init__(self, process, index, value, multiplier=1):
         self._process = process
         self._index = index
@@ -658,7 +672,8 @@ class Parameter:
         )
 
     @property
-    def gradient(self) -> float | None:
+    def grad(self) -> float | None:
+        """Retrieve the gradient value if available."""
         if self._gradient is None:
             available, value = self._process.get_gradient(self._index)
             if available.value:

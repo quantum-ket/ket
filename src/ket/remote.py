@@ -1,6 +1,6 @@
 """Remote quantum execution module.
 
-This module provides a tool to execute quantum code on a remote server. It includes 
+This module provides a tool to execute quantum code on a remote server. It includes
 the :class:`~ket.remote.Remote` class, which facilitates the connection to a remote
 server.
 """
@@ -11,8 +11,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t
+
 from .clib.libket import BatchExecution
 
 try:

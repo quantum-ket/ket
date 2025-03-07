@@ -27,8 +27,9 @@ from typing import Literal
 import weakref
 from os import environ
 from os.path import dirname
-from .wrapper import load_lib, os_lib_name
 from abc import ABC, abstractmethod
+
+from .wrapper import load_lib, os_lib_name
 
 
 HADAMARD = 0
@@ -205,6 +206,8 @@ class Process:
 
 
 class BatchExecution(ABC):
+    """Base class for constructing batch target executions."""
+
     def __init__(self):
         @CFUNCTYPE(
             None,
@@ -215,7 +218,7 @@ class BatchExecution(ABC):
             POINTER(c_double),
             c_size_t,
         )
-        def submit_execution(
+        def submit_execution(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             logical_circuit,
             logical_circuit_size,
             physical_circuit,
@@ -261,17 +264,18 @@ class BatchExecution(ABC):
         physical_circuit: dict | None,
         parameters: list[float],
     ):
-        pass
+        """Get the quantum circuit to execute."""
 
     @abstractmethod
     def get_result(self) -> dict:
-        pass
+        """Get the result of the quantum circuit execution."""
 
     @abstractmethod
     def clear(self):
-        pass
+        """Clear the data to start a new execution."""
 
     def configure(self, **kwargs):
+        """Configure the batch execution."""
         return make_configuration(batch_execution=self.c_struct, **kwargs)
 
 

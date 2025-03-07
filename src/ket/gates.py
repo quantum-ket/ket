@@ -210,9 +210,9 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     ROTATION_X,
-                    theta._multiplier,
+                    theta._multiplier,  # pylint: disable=protected-access
                     True,
-                    theta._index,
+                    theta._index,  # pylint: disable=protected-access
                     qubit,
                 )
             else:
@@ -254,9 +254,9 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     ROTATION_Y,
-                    theta._multiplier,
+                    theta._multiplier,  # pylint: disable=protected-access
                     True,
-                    theta._index,
+                    theta._index,  # pylint: disable=protected-access
                     qubit,
                 )
             else:
@@ -298,9 +298,9 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     ROTATION_Z,
-                    theta._multiplier,
+                    theta._multiplier,  # pylint: disable=protected-access
                     True,
-                    theta._index,
+                    theta._index,  # pylint: disable=protected-access
                     qubit,
                 )
             else:
@@ -338,9 +338,9 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     PHASE_SHIFT,
-                    theta._multiplier,
+                    theta._multiplier,  # pylint: disable=protected-access
                     True,
-                    theta._index,
+                    theta._index,  # pylint: disable=protected-access
                     qubit,
                 )
             else:
