@@ -46,7 +46,7 @@ def test_decomposition_su2():
             matrix = mat_gate(ang)
 
             ctrl_gate = lambda q: ket.ctrl(q[:-1], gate(ang))(q[-1])
-            result_matrix = ket.lib.dump_matrix(ctrl_gate, num_qubits=n)
+            result_matrix = ket.qulib.dump_matrix(ctrl_gate, num_qubits=n)
 
             gate_matrix = [
                 [result_matrix[-2][-2], result_matrix[-2][-1]],
@@ -83,7 +83,7 @@ def test_decomposition_c_t():
 
     for ket_gate, matrix in GATES.items():
         gate = lambda q: ket.ctrl(q[:-1], ket_gate)(q[-1])
-        result_matrix = ket.lib.dump_matrix(gate, num_qubits=n)
+        result_matrix = ket.qulib.dump_matrix(gate, num_qubits=n)
 
         gate_matrix = [
             [result_matrix[-2][-2], result_matrix[-2][-1]],
@@ -118,10 +118,8 @@ def test_decomposition_t_c():
     for ket_gate in GATES.keys():
         gate = lambda q: ket.ctrl(q[1:], ket_gate)(q[0])
 
-        ket.set_default_process_configuration(force_configuration=True)
         decompose_matrix = qulib.dump_matrix(gate, num_qubits=n)
 
-        ket.set_default_process_configuration(force_configuration=True)
         not_decompose_matrix = qulib.dump_matrix(gate, num_qubits=n)
 
         assert all(
