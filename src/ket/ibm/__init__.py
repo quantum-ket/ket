@@ -25,7 +25,7 @@ except ImportError as exc:
     ) from exc
 
 import json
-from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t
+from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t, c_double
 from ..clib.libket import BatchCExecution, make_configuration
 from .ibm_client import IBMClient
 
@@ -51,7 +51,8 @@ class IBMDevice:
         self.num_qubits = (
             num_qubits if num_qubits is not None else backend.configuration().n_qubits
         )
-        self.client = IBMClient(self.num_qubits, backend)
+        self.client = None
+        self._backend = backend
 
         if not use_qiskit_transpiler:
             self.coupling_graph = (
@@ -71,12 +72,22 @@ class IBMDevice:
         self._result_json_len = None
         self._formatted_result = None
 
-        @CFUNCTYPE(None, POINTER(c_uint8), c_size_t, POINTER(c_uint8), c_size_t)
+        @CFUNCTYPE(
+            None,
+            POINTER(c_uint8),
+            c_size_t,
+            POINTER(c_uint8),
+            c_size_t,
+            POINTER(c_double),
+            c_size_t,
+        )
         def submit_execution(
             logical_circuit,
             logical_circuit_size,
             physical_circuit,
             physical_circuit_size,
+            _parameters,
+            _parameters_size,
         ):
             """Sends the ket circuit instructions from libket to the IBM Client."""
             logical_circuit = json.loads(
@@ -85,11 +96,16 @@ class IBMDevice:
             physical_circuit = json.loads(
                 bytearray(physical_circuit[:physical_circuit_size])
             )
+            self.client = IBMClient(self.num_qubits, self._backend)
             self._formatted_result = self.client.process_instructions(
                 physical_circuit if physical_circuit is not None else logical_circuit
             )
 
-        @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
+        @CFUNCTYPE(
+            None,
+            POINTER(POINTER(c_uint8)),
+            POINTER(c_size_t),
+        )
         def get_result(result_ptr, size):
             """Sends the processing result from the IBM Client back to libket."""
             result_dict = self._formatted_result
@@ -104,9 +120,14 @@ class IBMDevice:
             result_ptr[0] = self._result_json
             size[0] = self._result_json_len
 
+        @CFUNCTYPE(None)
+        def clear():
+            pass
+
         self.c_struct = BatchCExecution(
             submit_execution,
             get_result,
+            clear,
         )
 
     def configure(self):
@@ -149,4 +170,4 @@ class IBMDevice:
     @property
     def backend(self) -> Backend:
         """Backend object for the IBM device."""
-        return self.client.backend
+        return self._backend

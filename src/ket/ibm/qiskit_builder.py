@@ -1,4 +1,4 @@
-""" Builder for qiskit quantum circuits. """
+"""Builder for qiskit quantum circuits."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ class QiskitBuilder:
         if isinstance(gate_type, dict) and any(
             "Rotation" in key or "Phase" in key for key in list(gate_type.keys())
         ):
-            angle = list(gate_type.values())[0]
+            angle = list(gate_type.values())[0]["Value"]
             return self._get_rotation_or_phase_gate(gate_type, angle)
 
         raise RuntimeError("Unknown gate")

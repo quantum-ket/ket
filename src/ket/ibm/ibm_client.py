@@ -124,7 +124,7 @@ class IBMClient:
             "exp_values": [],
             "samples": [0] * len(sample_map),
             "dumps": [],
-            "execution_time": None,
+            "gradients": None,
         }
 
         if meas_map:
