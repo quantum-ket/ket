@@ -278,6 +278,89 @@ class BatchExecution(ABC):
         """Configure the batch execution."""
         return make_configuration(batch_execution=self.c_struct, **kwargs)
 
+    @staticmethod
+    def get_qubit_index(qubit):
+        """Get the qubit index from the qubit object."""
+        match qubit:
+            case {"Main": {"index": index}}:
+                ...
+            case {"index": index}:
+                ...
+            case _:
+                raise ValueError(f"Invalid qubit: {qubit}")
+        return index
+
+    @staticmethod
+    def get_gate_and_angle(gate):
+        """Get the gate and possible angle from the gate object."""
+        if isinstance(gate, str):
+            return gate, {}
+        return list(gate.items())[0]
+
+    def process_instructions(self, instructions: dict):
+        """Parse the instructions to execute."""
+        for instruction in instructions:
+            match instruction:
+                case {"Gate": {"control": control, "gate": gate, "target": target}}:
+                    control = list(map(self.get_qubit_index, control))
+                    target = self.get_qubit_index(target)
+                    gate, param = self.get_gate_and_angle(gate)
+                    match gate:
+                        case "Hadamard":
+                            self.hadamard(target, control, **param),
+                        case "PauliX":
+                            self.pauli_x(target, control, **param),
+                        case "PauliY":
+                            self.pauli_y(target, control, **param),
+                        case "PauliZ":
+                            self.pauli_z(target, control, **param),
+                        case "RotationX":
+                            self.rotation_x(target, control, **param),
+                        case "RotationY":
+                            self.rotation_y(target, control, **param),
+                        case "RotationZ":
+                            self.rotation_z(target, control, **param),
+                        case "Phase":
+                            self.phase(target, control, **param),
+                case {"ExpValue": {"hamiltonian": hamiltonian}}:
+                    self.exp_value(hamiltonian)
+
+    @abstractmethod
+    def pauli_x(self, target, control):
+        """Apply a Pauli-X gate to the target qubit."""
+
+    @abstractmethod
+    def pauli_y(self, target, control):
+        """Apply a Pauli-Y gate to the target qubit."""
+
+    @abstractmethod
+    def pauli_z(self, target, control):
+        """Apply a Pauli-Z gate to the target qubit."""
+
+    @abstractmethod
+    def hadamard(self, target, control):
+        """Apply a Pauli-Z gate to the target qubit."""
+
+    @abstractmethod
+    def rotation_x(self, target, control, **kwargs):
+        """Apply a X-Rotation gate to the target qubit."""
+
+    @abstractmethod
+    def rotation_y(self, target, control, **kwargs):
+        """Apply a Y-Rotation gate to the target qubit."""
+
+    @abstractmethod
+    def rotation_z(self, target, control, **kwargs):
+        """Apply a Z-Rotation gate to the target qubit."""
+
+    @abstractmethod
+    def phase(self, target, control, **kwargs):
+        """Apply a Phase gate to the target qubit."""
+
+    @abstractmethod
+    def exp_value(self, hamiltonian):
+        """Compute the expectation value."""
+
 
 _FEATURE_STATUS = {"Disable": 0, "Allowed": 1, "ValidAfter": 2}
 

@@ -295,7 +295,7 @@ class Process(LibketProcess):
 
         return loads(bytearray(self._metadata_buffer[: write_size.value]))
 
-    def param(self, *param) -> list[Parameter]:
+    def param(self, *param) -> list[Parameter] | Parameter:
         """Register a parameter for gradient calculation.
 
         Args:
@@ -304,9 +304,12 @@ class Process(LibketProcess):
         Returns:
             A list of :class:`~ket.base.Parameter` objects.
         """
-        return [
+        parameters = [
             Parameter(process=self, index=self.set_parameter(p), value=p) for p in param
         ]
+        if len(param) == 1:
+            return parameters[0]
+        return parameters
 
     def __repr__(self) -> str:
         return f"<Ket 'Process' id={hex(id(self))}>"
