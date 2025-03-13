@@ -1,19 +1,35 @@
+"""QuForge Interface for Ket
+
+The class :class:~ket.quforge.QuForgeKet enables the use of QuForge, an efficient
+qudit simulator, within Ket. This simulator supports expected value calculation
+and gradient evaluation, making it a great choice for Quantum Machine Learning.
+"""
+
 # SPDX-FileCopyrightText: 2025 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import cmath
-import math
-from operator import mul
-from pprint import pprint
-from .clib.libket import BatchExecution
-from functools import reduce, partial
 from typing import Literal
+from functools import reduce, partial
 from quforge import quforge as qf
 import torch
+from .clib.libket import BatchExecution
 
 
-class QuForgeKet(BatchExecution):
+class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attributes
+    """QuForge Interface for Ket
+
+    This simulator supports expected value calculation and gradient evaluation,
+    making it a great choice for Quantum Machine Learning.
+
+    Args:
+         num_qubits: Number of qubits to simulate.
+         device: Specifies whether to run the simulation on the CPU or GPU. Defaults to "cpu".
+         sparse: If True, uses a sparse representation for improved performance on large systems.
+             Defaults to True.
+         gradient: Enables gradient evaluation for optimization tasks. Defaults to True.
+    """
+
     def __init__(
         self,
         num_qubits: int,
@@ -171,7 +187,14 @@ class QuForgeKet(BatchExecution):
         self.gradient = None
         self.parameters = None
 
-    def configure(self):
+    def config(self):
+        """Configures a Process to use QuForge.
+
+        The return value of this function must be passed to a :class:`~ket.base.Process`
+        constructor. The result should not be reused, and the QuForgeKet instance must remain alive
+        until the end of the process's lifetime.
+        """
+
         self.clear()
         return super().configure(
             num_qubits=self.num_qubits,

@@ -32,7 +32,7 @@ from .ibm_client import IBMClient
 __all__ = ["IBMDevice"]
 
 
-class IBMDevice:
+class IBMDevice:  # pylint: disable=too-many-instance-attributes
     """IBM Qiskit backend for Ket process.
 
     Args:

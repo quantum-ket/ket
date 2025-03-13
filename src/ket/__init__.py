@@ -26,12 +26,12 @@ Examples:
         def grover(size: int, oracle) -> int:
             p = ket.Process(simulator="dense", num_qubits=size)
 
-            s = ket.H(p.alloc(size)) 
+            s = ket.H(p.alloc(size))
 
-            steps = int((pi / 4) * sqrt(2**size))  
+            steps = int((pi / 4) * sqrt(2**size))
 
             for _ in range(steps):
-                oracle(s) 
+                oracle(s)
                 with ket.around(ket.H, s):
                     ket.phase_oracle(0, s)
 
@@ -70,7 +70,7 @@ Examples:
         message(alice)     # alice = |–⟩
 
         bob = teleport(alice, *bell(p.alloc(2)))  # bob  <- alice
-        
+
         ket.H(bob)         # bob   = |1⟩
         bob_m = ket.measure(bob)
         print("Expected measure 1, result =", bob_m.value)
@@ -91,7 +91,7 @@ from .quantumstate import *
 from .quantumstate import __all__ as all_state
 from . import qulib
 
-__version__ = "0.9.0.dev5"
+__version__ = "0.9.0b0"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state + ["qulib"]
 

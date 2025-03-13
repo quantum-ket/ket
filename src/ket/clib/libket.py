@@ -307,21 +307,21 @@ class BatchExecution(ABC):
                     gate, param = self.get_gate_and_angle(gate)
                     match gate:
                         case "Hadamard":
-                            self.hadamard(target, control, **param),
+                            self.hadamard(target, control, **param)
                         case "PauliX":
-                            self.pauli_x(target, control, **param),
+                            self.pauli_x(target, control, **param)
                         case "PauliY":
-                            self.pauli_y(target, control, **param),
+                            self.pauli_y(target, control, **param)
                         case "PauliZ":
-                            self.pauli_z(target, control, **param),
+                            self.pauli_z(target, control, **param)
                         case "RotationX":
-                            self.rotation_x(target, control, **param),
+                            self.rotation_x(target, control, **param)
                         case "RotationY":
-                            self.rotation_y(target, control, **param),
+                            self.rotation_y(target, control, **param)
                         case "RotationZ":
-                            self.rotation_z(target, control, **param),
+                            self.rotation_z(target, control, **param)
                         case "Phase":
-                            self.phase(target, control, **param),
+                            self.phase(target, control, **param)
                 case {"ExpValue": {"hamiltonian": hamiltonian}}:
                     self.exp_value(hamiltonian)
 

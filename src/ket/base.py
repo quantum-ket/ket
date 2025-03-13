@@ -636,13 +636,13 @@ class Parameter:
     """Parameter for gradient calculation.
 
     This class represents a parameter for gradient calculation in a quantum process. It should not
-    be instanced directly, but rather obtained from the :func:`~ket.operations.parameter`
+    be instanced directly, but rather obtained from the :meth:`~ket.base.Process.param`
     """
 
     def __init__(self, process, index, value, multiplier=1):
         self._process = process
         self._index = index
-        self.value = value
+        self._param = value
         self._multiplier = multiplier
         self._gradient = None
 
@@ -651,7 +651,7 @@ class Parameter:
         return Parameter(
             self._process,
             self._index,
-            self.value,
+            self._param,
             self._multiplier * other,
         )
 
@@ -662,7 +662,7 @@ class Parameter:
         return Parameter(
             self._process,
             self._index,
-            self.value,
+            self._param,
             self._multiplier / other,
         )
 
@@ -670,9 +670,25 @@ class Parameter:
         return Parameter(
             self._process,
             self._index,
-            self.value,
+            self._param,
             -self._multiplier,
         )
+
+    def __repr__(self):
+        return (
+            f"<Ket 'Parameter' param={self._param}, value={self.value},"
+            + f" index={self._index}, pid={hex(id(self._process))}>"
+        )
+
+    @property
+    def value(self) -> float:
+        """Retrieve the parameter actual value."""
+        return self._param * self._multiplier
+
+    @property
+    def param(self) -> float:
+        """Retrieve the original value of the parameter."""
+        return self._param
 
     @property
     def grad(self) -> float | None:
