@@ -325,39 +325,30 @@ class BatchExecution(ABC):
                 case {"ExpValue": {"hamiltonian": hamiltonian}}:
                     self.exp_value(hamiltonian)
 
-    @abstractmethod
     def pauli_x(self, target, control):
         """Apply a Pauli-X gate to the target qubit."""
 
-    @abstractmethod
     def pauli_y(self, target, control):
         """Apply a Pauli-Y gate to the target qubit."""
 
-    @abstractmethod
     def pauli_z(self, target, control):
         """Apply a Pauli-Z gate to the target qubit."""
 
-    @abstractmethod
     def hadamard(self, target, control):
         """Apply a Pauli-Z gate to the target qubit."""
 
-    @abstractmethod
     def rotation_x(self, target, control, **kwargs):
         """Apply a X-Rotation gate to the target qubit."""
 
-    @abstractmethod
     def rotation_y(self, target, control, **kwargs):
         """Apply a Y-Rotation gate to the target qubit."""
 
-    @abstractmethod
     def rotation_z(self, target, control, **kwargs):
         """Apply a Z-Rotation gate to the target qubit."""
 
-    @abstractmethod
     def phase(self, target, control, **kwargs):
         """Apply a Phase gate to the target qubit."""
 
-    @abstractmethod
     def exp_value(self, hamiltonian):
         """Compute the expectation value."""
 

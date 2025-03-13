@@ -5,6 +5,7 @@
 import cmath
 import math
 from operator import mul
+from pprint import pprint
 from .clib.libket import BatchExecution
 from functools import reduce, partial
 from typing import Literal
@@ -21,7 +22,6 @@ class QuForgeKet(BatchExecution):
         gradient: bool = True,
     ):
         super().__init__()
-        self.circuit = None
 
         self.initial_state = qf.State(
             "-".join(["0"] * num_qubits), dim=2, device=device
@@ -32,30 +32,15 @@ class QuForgeKet(BatchExecution):
         self.sparse = sparse
         self.gradient_enabled = gradient
 
-        self.p_z = torch.tensor(
-            [[1, 0], [0, -1]], device=self.device, dtype=torch.complex64
-        )  # qf.Z(dim=2, device=device).M
-        if sparse:
-            self.p_z = self.p_z.to_sparse()
-        self.p_x = torch.tensor(
-            [[0, 1], [1, 0]], device=self.device, dtype=torch.complex64
-        )  # qf.X(dim=2, device=device).M
-        if sparse:
-            self.p_x = self.p_x.to_sparse()
-        self.p_y = torch.tensor(
-            [[0, -1j], [1j, 0]], device=self.device, dtype=torch.complex64
-        )
-        if sparse:
-            self.p_y = self.p_y.to_sparse()
+        self.p_z = qf.Z(dim=2, device=device)
+        self.p_x = qf.X(dim=2, device=device)
+        self.p_y = qf.Y(dim=2, device=device)
         self.p_i = qf.eye(dim=2, device=device, sparse=sparse)
 
-        self.p_cx = torch.tensor(
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]],
-            device=self.device,
-            dtype=torch.complex64,
-        )
         if sparse:
-            self.p_cx = self.p_cx.to_sparse()
+            self.p_z = self.p_z.M.to_sparse()
+            self.p_x = self.p_x.M.to_sparse()
+            self.p_y = self.p_y.M.to_sparse()
 
         self.pauli_map = {
             "X": self.p_x,
@@ -64,7 +49,9 @@ class QuForgeKet(BatchExecution):
             "I": self.p_i,
         }
 
+        self.circuit = None
         self.exp_result = None
+        self.gradient = None
         self.parameters = None
 
     def pauli_x(self, target, control):
@@ -78,12 +65,12 @@ class QuForgeKet(BatchExecution):
     def pauli_y(self, target, control):
         """Apply a Pauli-Y gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
-        self.circuit.Custom(M=self.p_y, index=[target])
+        self.circuit.Y(index=[target])
 
     def pauli_z(self, target, control):
         """Apply a Pauli-Z gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
-        self.circuit.Custom(M=self.p_z, index=[target])
+        self.circuit.Z(index=[target])
 
     def hadamard(self, target, control):
         """Apply a Hadamard gate to the target qubit."""
@@ -97,11 +84,9 @@ class QuForgeKet(BatchExecution):
             case {"Value": value}:
                 ...
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+
+                assert isinstance(self.parameters[index], torch.Tensor), "tensor assert"
                 value = self.parameters[index] * multiplier
-                self.gradient_index[len(self.circuit.circuit)] = (
-                    index,
-                    multiplier,
-                )
 
         self.circuit.RX(index=[target], angle=value)
 
@@ -113,10 +98,6 @@ class QuForgeKet(BatchExecution):
                 ...
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
                 value = self.parameters[index] * multiplier
-                self.gradient_index[len(self.circuit.circuit)] = (
-                    index,
-                    multiplier,
-                )
 
         self.circuit.RY(index=[target], angle=value)
 
@@ -128,26 +109,12 @@ class QuForgeKet(BatchExecution):
                 ...
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
                 value = self.parameters[index] * multiplier
-                self.gradient_index[len(self.circuit.circuit)] = (
-                    index,
-                    multiplier,
-                )
+
         self.circuit.RZ(index=[target], angle=value)
 
     def phase(self, target, control, **kwargs):
         """Apply a phase gate to the target qubit."""
-        assert len(control) == 0, "Control qubits are not supported"
-        match kwargs:
-            case {"Value": value}:
-                ...
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
-                self.gradient_index[len(self.circuit.circuit)] = (
-                    index,
-                    multiplier,
-                )
-
-        self.circuit.RZ(index=[target], angle=value)
+        self.rotation_z(target, control, **kwargs)
 
     def exp_value(self, hamiltonian):
         """Compute the expectation value."""
@@ -160,7 +127,6 @@ class QuForgeKet(BatchExecution):
             h_partial = ["I" for _ in range(self.num_qubits)]
             for p in pauli:
                 h_partial[self.get_qubit_index(p["qubit"])] = p["pauli"][-1]
-            # h_partial.reverse()
             h_partial = list(map(lambda x: self.pauli_map[x], h_partial))
             h_partial = c * reduce(partial(qf.kron, sparse=self.sparse), h_partial)
 
@@ -175,23 +141,6 @@ class QuForgeKet(BatchExecution):
         self.exp_result = float(expected_value[0])
 
         self.gradient = [p.grad.sum().item() for p in self.parameters]
-
-        # gradient_index_count = {}
-
-        #
-        # for gate_index, (index, multiplier) in self.gradient_index.items():
-        #    gradient_index_count[index] = (
-        #        gradient_index_count.get(index, 1.0) * multiplier
-        #    )
-        #    grad = self.circuit.circuit[gate_index].angle.grad
-        #    grad_c = grad * multiplier
-        #
-        #    if self.gradient[index] is None:
-        #        self.gradient[index] = grad_c
-        #    else:
-        #        self.gradient[index] += grad_c
-        #
-        # self.gradient = [float(torch.sum(g)) for i, g in enumerate(self.gradient)]
 
     def submit_execution(self, logical_circuit, _, parameters):
         self.gradient = [None for _ in range(len(parameters))]
@@ -219,7 +168,6 @@ class QuForgeKet(BatchExecution):
         )
 
         self.exp_result = None
-        self.gradient_index = {}
         self.gradient = None
         self.parameters = None
 
@@ -237,13 +185,3 @@ class QuForgeKet(BatchExecution):
             u4_gate_type="CX",
             u2_gate_set="All",
         )
-
-
-def quforge(
-    num_qubits: int,
-    device: Literal["cpu", "gpu"] = "cpu",
-    sparse: bool = True,
-    gradient: bool = True,
-):
-    qf = QuForgeKet(num_qubits, device, sparse, gradient)
-    return qf.configure()
