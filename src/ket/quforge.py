@@ -11,9 +11,15 @@ and gradient evaluation, making it a great choice for Quantum Machine Learning.
 
 from typing import Literal
 from functools import reduce, partial
-from quforge import quforge as qf
-import torch
 from .clib.libket import BatchExecution
+
+try:
+    from quforge import quforge as qf
+    import torch
+
+    QUFORGE_AVAILABLE = True
+except:
+    QUFORGE_AVAILABLE = False
 
 
 class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attributes
@@ -37,6 +43,11 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         sparse: bool = True,
         gradient: bool = True,
     ):
+        if not QUFORGE_AVAILABLE:
+            raise RuntimeError(
+                "QuForge is not available. Please install it with: pip install ket-lang[qml]"
+            )
+
         super().__init__()
 
         self.initial_state = qf.State(
@@ -100,8 +111,6 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
             case {"Value": value}:
                 ...
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-
-                assert isinstance(self.parameters[index], torch.Tensor), "tensor assert"
                 value = self.parameters[index] * multiplier
 
         self.circuit.RX(index=[target], angle=value)
