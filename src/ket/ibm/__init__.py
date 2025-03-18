@@ -18,6 +18,7 @@ from __future__ import annotations
 try:
     from qiskit import QuantumCircuit
     from qiskit.providers import Backend
+    from qiskit.circuit import library
 except ImportError as exc:
     raise ImportError(
         "IBMDevice requires the qiskit module to be used. You can install them"
@@ -26,7 +27,7 @@ except ImportError as exc:
 
 import json
 from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t, c_double
-from ..clib.libket import BatchCExecution, make_configuration
+from ..clib.libket import BatchCExecution, make_configuration, BatchExecution
 from .ibm_client import IBMClient
 
 __all__ = ["IBMDevice"]
@@ -171,3 +172,97 @@ class IBMDevice:  # pylint: disable=too-many-instance-attributes
     def backend(self) -> Backend:
         """Backend object for the IBM device."""
         return self._backend
+
+
+class IBMDeviceForDraw(BatchExecution):
+    """IBMDevice use for qulib.draw"""
+
+    def __init__(
+        self,
+        num_qubits: int,
+        decompose: bool = False,
+    ):
+        super().__init__()
+        self.circuit = QuantumCircuit(num_qubits)
+        self.num_qubits = num_qubits
+        self.decompose = decompose
+
+    def clear(self):
+        pass
+
+    def submit_execution(self, logical_circuit, _fc, _p):
+        self.process_instructions(logical_circuit)
+
+    def get_result(self):
+        return {
+            "measurements": [],
+            "exp_values": [],
+            "samples": [],
+            "dumps": [],
+            "gradients": None,
+        }
+
+    def pauli_x(self, target, control):
+        gate = library.XGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def pauli_y(self, target, control):
+        gate = library.YGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def pauli_z(self, target, control):
+        gate = library.ZGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def hadamard(self, target, control):
+        gate = library.HGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def rotation_x(self, target, control, **kwargs):
+        gate = library.RXGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def rotation_y(self, target, control, **kwargs):
+        gate = library.RYGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def rotation_z(self, target, control, **kwargs):
+        gate = library.RZGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def phase(self, target, control, **kwargs):
+        gate = library.PhaseGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+
+    def config(
+        self,
+    ):
+        """Configure process"""
+        return super().configure(
+            num_qubits=self.num_qubits,
+            measure="Disable",
+            sample="Disable",
+            exp_value="Disable",
+            dump="Disable",
+            gradient="Disable",
+            define_qpu=self.decompose,
+            coupling_graph=None,
+            u4_gate_type="CX",
+            u2_gate_set="All",
+        )

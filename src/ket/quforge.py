@@ -18,7 +18,7 @@ try:
     import torch
 
     QUFORGE_AVAILABLE = True
-except:
+except ImportError:
     QUFORGE_AVAILABLE = False
 
 
@@ -141,7 +141,7 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         """Apply a phase gate to the target qubit."""
         self.rotation_z(target, control, **kwargs)
 
-    def exp_value(self, hamiltonian):
+    def exp_value(self, _, hamiltonian):
         """Compute the expectation value."""
         coef = hamiltonian["coefficients"]
         products = hamiltonian["products"]

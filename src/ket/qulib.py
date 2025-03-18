@@ -17,9 +17,9 @@ from cmath import asin, exp, isclose, cos, sin
 from math import acos, sqrt, atan2
 from collections.abc import Sized, Iterable
 
-from ..base import Quant, Process
-from ..operations import ctrl, around, dump
-from ..gates import RZ, X, Z, H, RY, CNOT, S, global_phase
+from .base import Quant, Process
+from .operations import ctrl, around, dump
+from .gates import RZ, X, Z, H, RY, CNOT, S, global_phase
 
 try:
     from IPython import get_ipython
@@ -374,6 +374,7 @@ def draw(
     num_qubits: int | list[int],
     *,
     args=(),
+    decompose: bool = False,
     title: str | None = None,
     **kwargs,
 ):
@@ -383,29 +384,19 @@ def draw(
         gate: Quantum gate function.
         num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
+        decompose: Decompose controlled gates. Defaults to False.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
     Returns:
         Qiskit circuit diagram of the quantum gate.
     """
-    from ..ibm import IBMDevice  # pylint: disable=import-outside-toplevel
+    from .ibm import IBMDeviceForDraw  # pylint: disable=import-outside-toplevel
 
-    try:
-        from qiskit.providers.basic_provider.basic_simulator import (  # pylint: disable=import-outside-toplevel
-            BasicSimulator,
-        )
-    except ImportError as exc:
-        raise ImportError(
-            "ket.lib.draw requires the qiskit module to be used. You can install them"
-            "alongside ket by running `pip install ket[ibm]`."
-        ) from exc
-
-    device = IBMDevice(
-        BasicSimulator(),
+    device = IBMDeviceForDraw(
         sum(num_qubits) if isinstance(num_qubits, Iterable) else num_qubits,
-        use_qiskit_transpiler=True,
+        decompose,
     )
-    p = Process(device.configure())
+    p = Process(device.config())
     if isinstance(num_qubits, Iterable):
         q = [p.alloc(n) for n in num_qubits]
     else:

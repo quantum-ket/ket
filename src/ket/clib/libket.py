@@ -322,35 +322,69 @@ class BatchExecution(ABC):
                             self.rotation_z(target, control, **param)
                         case "Phase":
                             self.phase(target, control, **param)
-                case {"ExpValue": {"hamiltonian": hamiltonian}}:
-                    self.exp_value(hamiltonian)
+                case {"ExpValue": {"index": index, "hamiltonian": hamiltonian}}:
+                    self.exp_value(index, hamiltonian)
+                case {"Measure": {"index": index, "qubits": qubits}}:
+                    qubits = list(map(self.get_qubit_index, qubits))
+                    self.measure(index, qubits)
+                case {"Sample": {"index": index, "qubits": qubits, "shots": shots}}:
+                    qubits = list(map(self.get_qubit_index, qubits))
+                    self.sample(index, qubits, shots)
+                case {"Dump": {"index": index, "qubits": qubits}}:
+                    qubits = list(map(self.get_qubit_index, qubits))
+                    self.dump(index, qubits)
+                case "Identity":
+                    continue
+                case _:
+                    raise ValueError(f"Invalid instruction: {instruction}")
 
     def pauli_x(self, target, control):
         """Apply a Pauli-X gate to the target qubit."""
+        raise NotImplementedError("Pauli-X gate not implemented")
 
     def pauli_y(self, target, control):
         """Apply a Pauli-Y gate to the target qubit."""
+        raise NotImplementedError("Pauli-Y gate not implemented")
 
     def pauli_z(self, target, control):
         """Apply a Pauli-Z gate to the target qubit."""
+        raise NotImplementedError("Pauli-Z gate not implemented")
 
     def hadamard(self, target, control):
         """Apply a Pauli-Z gate to the target qubit."""
+        raise NotImplementedError("Hadamard gate not implemented")
 
     def rotation_x(self, target, control, **kwargs):
         """Apply a X-Rotation gate to the target qubit."""
+        raise NotImplementedError("X-Rotation gate not implemented")
 
     def rotation_y(self, target, control, **kwargs):
         """Apply a Y-Rotation gate to the target qubit."""
+        raise NotImplementedError("Y-Rotation gate not implemented")
 
     def rotation_z(self, target, control, **kwargs):
         """Apply a Z-Rotation gate to the target qubit."""
+        raise NotImplementedError("Z-Rotation gate not implemented")
 
     def phase(self, target, control, **kwargs):
         """Apply a Phase gate to the target qubit."""
+        raise NotImplementedError("Phase gate not implemented")
 
-    def exp_value(self, hamiltonian):
+    def exp_value(self, index, hamiltonian):
         """Compute the expectation value."""
+        raise NotImplementedError("Expectation value not implemented")
+
+    def measure(self, index, qubits) -> int:
+        """Measure the qubits."""
+        raise NotImplementedError("Measurement not implemented")
+
+    def sample(self, index, qubits, shots):
+        """Sample the qubits."""
+        raise NotImplementedError("Sampling not implemented")
+
+    def dump(self, index, qubits):
+        """Dump the qubits."""
+        raise NotImplementedError("Dump not implemented")
 
 
 _FEATURE_STATUS = {"Disable": 0, "Allowed": 1, "ValidAfter": 2}
