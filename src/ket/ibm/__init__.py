@@ -16,7 +16,7 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 try:
-    from qiskit import QuantumCircuit
+    from qiskit import QuantumCircuit, QuantumRegister
     from qiskit.providers import Backend
     from qiskit.circuit import library
 except ImportError as exc:
@@ -179,13 +179,18 @@ class IBMDeviceForDraw(BatchExecution):
 
     def __init__(
         self,
-        num_qubits: int,
+        num_qubits: list[int],
+        names: list[str],
         decompose: bool = False,
+        keep_order: bool = True,
     ):
         super().__init__()
-        self.circuit = QuantumCircuit(num_qubits)
-        self.num_qubits = num_qubits
+        qubits = [QuantumRegister(n, l) for n, l in zip(num_qubits, names)]
+        self.circuit = QuantumCircuit(*qubits)
+        self.num_qubits = sum(num_qubits)
         self.decompose = decompose
+        self.keep_order = keep_order
+        self.last_gate = None
 
     def clear(self):
         pass
@@ -203,52 +208,76 @@ class IBMDeviceForDraw(BatchExecution):
         }
 
     def pauli_x(self, target, control):
+        if self.keep_order and self.last_gate != "X":
+            self.circuit.barrier()
         gate = library.XGate()
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "X"
 
     def pauli_y(self, target, control):
+        if self.keep_order and self.last_gate != "Y":
+            self.circuit.barrier()
         gate = library.YGate()
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "Y"
 
     def pauli_z(self, target, control):
+        if self.keep_order and self.last_gate != "Z":
+            self.circuit.barrier()
         gate = library.ZGate()
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "Z"
 
     def hadamard(self, target, control):
+        if self.keep_order and self.last_gate != "H":
+            self.circuit.barrier()
         gate = library.HGate()
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "H"
 
     def rotation_x(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "RX":
+            self.circuit.barrier()
         gate = library.RXGate(kwargs["Value"])
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "RX"
 
     def rotation_y(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "RY":
+            self.circuit.barrier()
         gate = library.RYGate(kwargs["Value"])
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "RY"
 
     def rotation_z(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "RZ":
+            self.circuit.barrier()
         gate = library.RZGate(kwargs["Value"])
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "RZ"
 
     def phase(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "P":
+            self.circuit.barrier()
         gate = library.PhaseGate(kwargs["Value"])
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
+        self.last_gate = "P"
 
     def config(
         self,

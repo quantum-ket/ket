@@ -12,10 +12,12 @@ from __future__ import annotations
 
 from functools import reduce
 from operator import add
+from copy import copy
 from typing import Callable, Literal
 from cmath import asin, exp, isclose, cos, sin
 from math import acos, sqrt, atan2
 from collections.abc import Sized, Iterable
+from inspect import signature
 
 from .base import Quant, Process
 from .operations import ctrl, around, dump
@@ -373,9 +375,10 @@ def draw(
     gate: Callable[[Quant], None],
     num_qubits: int | list[int],
     *,
-    args=(),
+    args: tuple = (),
     decompose: bool = False,
     title: str | None = None,
+    keep_order: bool = True,
     **kwargs,
 ):
     """Draw a quantum gate using Qiskit.
@@ -385,6 +388,7 @@ def draw(
         num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
         decompose: Decompose controlled gates. Defaults to False.
+        keep_order: Maintain the gate call order.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
     Returns:
@@ -392,9 +396,15 @@ def draw(
     """
     from .ibm import IBMDeviceForDraw  # pylint: disable=import-outside-toplevel
 
+    names = list(signature(gate).parameters)[len(args) :]
+    if len(names) != len(num_qubits):
+        names = [None for _ in range(len(num_qubits))]
+
     device = IBMDeviceForDraw(
-        sum(num_qubits) if isinstance(num_qubits, Iterable) else num_qubits,
+        num_qubits if isinstance(num_qubits, Iterable) else [num_qubits],
+        names,
         decompose,
+        keep_order,
     )
     p = Process(device.config())
     if isinstance(num_qubits, Iterable):
@@ -408,8 +418,12 @@ def draw(
         kwargs["output"] = "mpl"
     if "style" not in kwargs:
         kwargs["style"] = DRAW_STYLE
+    else:
+        user_defined = kwargs["style"]
+        kwargs["style"] = copy(DRAW_STYLE)
+        kwargs["style"].update(user_defined)
 
-    fig = device.circuit.draw(**kwargs)
+    fig = device.circuit.draw(**kwargs, plot_barriers=False)
     if title is not None:
         fig.suptitle(title)
     return fig
