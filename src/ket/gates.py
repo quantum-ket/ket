@@ -43,12 +43,14 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import functools
+from contextlib import contextmanager
 from math import pi
 from functools import reduce
 from operator import add
 from typing import Any, Callable
+import functools
 import warnings
+import contextvars
 
 from .clib.libket import (
     HADAMARD,
@@ -63,6 +65,7 @@ from .clib.libket import (
 
 from .base import Process, Quant, Parameter
 from .operations import _search_process, ctrl, cat, kron, around
+from .expv import Pauli
 
 __all__ = [
     "I",
@@ -89,6 +92,7 @@ __all__ = [
     "SX",
     "global_phase",
     "RBS",
+    "ham",
 ]
 
 
@@ -103,9 +107,24 @@ def _gate_docstring(name, matrix, effect=None) -> str:
     """
 
 
+_build_hamiltonian = contextvars.ContextVar("build_hamiltonian", default=False)
+
+
+@contextmanager
+def ham():
+    token = _build_hamiltonian.set(True)
+    try:
+        yield
+    finally:
+        _build_hamiltonian.reset(token)
+
+
 def I(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
+    if _build_hamiltonian.get():
+        return Pauli.i(qubits)
+
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
@@ -123,6 +142,9 @@ I.__doc__ = _gate_docstring(
 def X(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
+    if _build_hamiltonian.get():
+        return Pauli.x(qubits)
+
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
@@ -142,6 +164,9 @@ X.__doc__ = _gate_docstring(
 def Y(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
+    if _build_hamiltonian.get():
+        return Pauli.y(qubits)
+
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
@@ -161,6 +186,9 @@ Y.__doc__ = _gate_docstring(
 def Z(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
+    if _build_hamiltonian.get():
+        return Pauli.z(qubits)
+
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 

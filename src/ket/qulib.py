@@ -347,6 +347,7 @@ DRAW_STYLE = {
     "gatefacecolor": "#0f7cfb",
     "barrierfacecolor": "#c6cdd5",
     "backgroundcolor": "#f4f8ff",
+    "margin": [1.5, 0, 0, 0],
     "displaytext": {
         "u1": "P",
         "rx": "RX",
@@ -376,7 +377,7 @@ def draw(
     num_qubits: int | list[int],
     *,
     args: tuple = (),
-    decompose: bool = False,
+    decompose: Literal["CX", "CZ"] | None = None,
     title: str | None = None,
     keep_order: bool = True,
     **kwargs,
@@ -387,7 +388,7 @@ def draw(
         gate: Quantum gate function.
         num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
-        decompose: Decompose controlled gates. Defaults to False.
+        decompose: Decompose controlled gates. Defaults to None.
         keep_order: Maintain the gate call order.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
@@ -395,6 +396,11 @@ def draw(
         Qiskit circuit diagram of the quantum gate.
     """
     from .ibm import IBMDeviceForDraw  # pylint: disable=import-outside-toplevel
+
+    if not isinstance(num_qubits, Iterable):
+        num_qubits = (num_qubits,)
+    if not isinstance(args, Iterable):
+        args = (args,)
 
     names = list(signature(gate).parameters)[len(args) :]
     if len(names) != len(num_qubits):
@@ -407,10 +413,7 @@ def draw(
         keep_order,
     )
     p = Process(device.config())
-    if isinstance(num_qubits, Iterable):
-        q = [p.alloc(n) for n in num_qubits]
-    else:
-        q = [p.alloc(num_qubits)]
+    q = [p.alloc(n) for n in num_qubits]
     gate(*args, *q)
     p.execute()
 

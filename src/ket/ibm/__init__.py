@@ -181,7 +181,7 @@ class IBMDeviceForDraw(BatchExecution):
         self,
         num_qubits: list[int],
         names: list[str],
-        decompose: bool = False,
+        decompose: Literal["CX", "CZ"] | None = None,
         keep_order: bool = True,
     ):
         super().__init__()
@@ -290,8 +290,8 @@ class IBMDeviceForDraw(BatchExecution):
             exp_value="Disable",
             dump="Disable",
             gradient="Disable",
-            define_qpu=self.decompose,
+            define_qpu=self.decompose is not None,
             coupling_graph=None,
-            u4_gate_type="CX",
+            u4_gate_type=self.decompose,
             u2_gate_set="All",
         )
