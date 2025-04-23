@@ -25,6 +25,7 @@ except ImportError as exc:
         "alongside ket by running `pip install ket[ibm]`."
     ) from exc
 
+from typing import Literal
 import json
 from ctypes import CFUNCTYPE, POINTER, c_uint8, c_size_t, c_double
 from ..clib.libket import BatchCExecution, make_configuration, BatchExecution

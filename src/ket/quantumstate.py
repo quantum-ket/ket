@@ -30,7 +30,12 @@ try:
     from IPython import get_ipython
     from IPython.display import Math
 
-    IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+    try:
+        import google.colab  # pylint: disable=unused-import
+
+        IN_NOTEBOOK = True
+    except ImportError:
+        IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
 except ImportError:
     IN_NOTEBOOK = False
 

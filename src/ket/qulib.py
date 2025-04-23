@@ -24,11 +24,18 @@ from .operations import ctrl, around, dump
 from .gates import RZ, X, Z, H, RY, CNOT, S, global_phase
 
 try:
-    from IPython import get_ipython
+    import google.colab  # pylint: disable=unused-import
 
-    IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+    IN_NOTEBOOK = True
 except ImportError:
-    IN_NOTEBOOK = False
+    try:
+        from IPython import get_ipython
+
+        IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+
+    except ImportError:
+        IN_NOTEBOOK = False
+
 
 __all__ = [
     "flip_to_control",
@@ -372,7 +379,7 @@ DRAW_STYLE = {
 }
 
 
-def draw(
+def draw(  # pylint: disable=too-many-arguments
     gate: Callable[[Quant], None],
     num_qubits: int | list[int],
     *,

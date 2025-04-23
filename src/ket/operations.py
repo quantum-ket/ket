@@ -1,6 +1,6 @@
 """Functions to manipulate quantum operations.
 
-This module provides essential functions in the Ket library for manipulating quantum operations. 
+This module provides essential functions in the Ket library for manipulating quantum operations.
 It includes functions for controlled and inverse operations, facilitating quantum circuit
 construction.
 """

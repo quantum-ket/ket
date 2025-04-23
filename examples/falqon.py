@@ -2,10 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from functools import partial
-from ket import Process, H, RZZ, RX, Pauli, exp_value, sample
-
-Y, Z = partial(Pauli, "Y"), partial(Pauli, "Z")
+from ket import Process, H, Y, Z, ham, RZZ, RX, exp_value, sample
+from plotly import express as px
 
 
 edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
@@ -14,28 +12,29 @@ n = 4
 delta_t = 0.1
 
 beta = [0]
+cost = []
 
-num_layers = 10
+num_layers = 20
 
 process = Process(num_qubits=n, simulator="dense", execution="live")
 
 qubits = H(process.alloc(n))
 edges = list(map(qubits.at, edges))
 
+with ham():
+    h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
+    h_b = sum(Y(i) * Z(j) + Z(i) * Y(j) for i, j in edges)
+
 for _ in range(num_layers):
     for a, b in edges:
         RZZ(delta_t, a, b)
-    for q in qubits:
-        RX(-beta[-1] * delta_t, q)
+    RX(beta[-1] * delta_t, qubits)
 
-    beta.append(
-        exp_value(
-            sum(Y(a) * Z(b) for a, b in edges) + sum(Z(a) * Y(b) for a, b in edges)
-        ).get()
-    )
-
+    beta.append(-exp_value(h_b).get())
+    cost.append(exp_value(h_c).get())
 
 result = sample(qubits)
 
-print(beta)
+px.line(y=beta, title="Beta").show()
+px.line(y=cost, title="Cost").show()
 result.histogram().show()

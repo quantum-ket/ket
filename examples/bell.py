@@ -4,18 +4,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Bell state preparation."""
-import ket
+from ket import *
 from math import sqrt
 
-process = ket.Process()
+process = Process()
 a, b = process.alloc(2)
 
-ket.X(a + b)
-ket.CNOT(ket.H(a), b)
+X(a + b)
+CNOT(H(a), b)
 
-a0b0 = ket.Pauli.z(a) * -((ket.Pauli.x(b) + ket.Pauli.z(b)) / sqrt(2))
-a0b1 = ket.Pauli.z(a) * ((ket.Pauli.x(b) - ket.Pauli.z(b)) / sqrt(2))
-a1b0 = ket.Pauli.x(a) * -((ket.Pauli.x(b) + ket.Pauli.z(b)) / sqrt(2))
-a1b1 = ket.Pauli.x(a) * ((ket.Pauli.x(b) - ket.Pauli.z(b)) / sqrt(2))
+with ham():
+    a0 = Z(a)
+    a1 = X(a)
+    b0 = -(X(b) + Z(b)) / sqrt(2)
+    b1 = (X(b) - Z(b)) / sqrt(2)
+    h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
 
-print(ket.exp_value(a0b0 + a0b1 + a1b0 - a1b1).get())
+print(exp_value(h).get())

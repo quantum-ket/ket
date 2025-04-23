@@ -112,6 +112,24 @@ _build_hamiltonian = contextvars.ContextVar("build_hamiltonian", default=False)
 
 @contextmanager
 def ham():
+    """
+    Context manager to define a Hamiltonian in Ket.
+
+    When used within a `with ham():` block, any operator expressions
+    constructed (e.g., sums of Pauli terms) are interpreted as part
+    of a Hamiltonian definition.
+
+    This enables a more natural and symbolic style for building
+    Hamiltonians, closely mirroring their mathematical form.
+
+    Example:
+
+        .. code-block:: python
+
+            with ham():
+                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
+
+    """
     token = _build_hamiltonian.set(True)
     try:
         yield

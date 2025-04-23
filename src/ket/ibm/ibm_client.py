@@ -1,4 +1,4 @@
-""" Client for connecting the Qiskit ket interface with the Qiskit runtime backend."""
+"""Client for connecting the Qiskit ket interface with the Qiskit runtime backend."""
 
 from __future__ import annotations
 
