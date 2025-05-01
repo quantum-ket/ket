@@ -26,6 +26,8 @@ API_argtypes = {
             POINTER(c_size_t),  # coupling_graph
             c_size_t,  # coupling_graph_size
             c_bool,  # gradient
+            c_size_t,  # sample_base
+            POINTER(c_size_t),  # classical_shadows
         ],
         [c_void_p],
     ),
@@ -52,7 +54,7 @@ def set_log(level: int):
     API["kbw_set_log_level"](level)
 
 
-SIMULATOR = {
+_SIMULATOR = {
     "dense": 0,
     "dense v1": 0,
     "sparse": 1,
@@ -60,12 +62,17 @@ SIMULATOR = {
 }
 
 
-def get_simulator(
+_CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
+
+
+def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     execution: Literal["live", "batch"] = "live",
     simulator: Literal["sparse", "dense", "dense v2"] = "sparse",
     coupling_graph: list[tuple[int, int]] | None = None,
     gradient: bool = False,
+    classical_shadows=None,
+    direct_sample=0,
 ):
     """Create a configuration"""
     if gradient:
@@ -77,11 +84,19 @@ def get_simulator(
         coupling_graph = reduce(iconcat, coupling_graph, [])
         coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
 
+    if classical_shadows is not None:
+        cs = {**_CLASSICAL_SHADOWS, **classical_shadows}
+        classical_shadows = (c_size_t * 5)(
+            cs["bias"][0], cs["bias"][1], cs["bias"][2], cs["samples"], cs["shots"]
+        )
+
     return API["kbw_make_configuration"](
         num_qubits,  # num_qubits
-        SIMULATOR[simulator.lower()],  # simulator
+        _SIMULATOR[simulator.lower()],  # simulator
         execution == "live",  # use_live
         coupling_graph,  # coupling_graph
         coupling_graph_size,  # coupling_graph_size
         gradient,  # gradient
+        direct_sample,  # sample_base
+        classical_shadows,  # classical_shadows
     )

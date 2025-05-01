@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from functools import reduce
 from operator import add
-from copy import copy
 from typing import Callable, Literal
 from cmath import asin, exp, isclose, cos, sin
 from math import acos, sqrt, atan2
@@ -419,7 +418,8 @@ def draw(  # pylint: disable=too-many-arguments
         decompose,
         keep_order,
     )
-    p = Process(device.config())
+
+    p = Process(device)
     q = [p.alloc(n) for n in num_qubits]
     gate(*args, *q)
     p.execute()
@@ -429,9 +429,7 @@ def draw(  # pylint: disable=too-many-arguments
     if "style" not in kwargs:
         kwargs["style"] = DRAW_STYLE
     else:
-        user_defined = kwargs["style"]
-        kwargs["style"] = copy(DRAW_STYLE)
-        kwargs["style"].update(user_defined)
+        kwargs["style"] = {**DRAW_STYLE, **kwargs["style"]}
 
     fig = device.circuit.draw(**kwargs, plot_barriers=False)
     if title is not None:

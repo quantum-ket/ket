@@ -16,7 +16,7 @@ from ctypes import c_size_t, c_uint8
 from json import loads
 from typing import Literal, Optional, Any
 
-from .clib.libket import Process as LibketProcess
+from .clib.libket import Process as LibketProcess, BatchExecution
 from .clib.kbw import get_simulator
 
 try:
@@ -123,12 +123,12 @@ class Process(LibketProcess):
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        configuration=None,
+        configuration: BatchExecution | None = None,
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
-        coupling_graph: Optional[list[tuple[int, int]]] = None,
         gradient: bool = False,
+        **kwargs,
     ):
 
         if configuration is not None and any(
@@ -137,7 +137,8 @@ class Process(LibketProcess):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
         if configuration is not None:
-            super().__init__(configuration)
+            self.configuration = configuration
+            super().__init__(self.configuration.connect())
         else:
             simulator = "sparse" if simulator is None else simulator
             num_qubits = (
@@ -150,15 +151,15 @@ class Process(LibketProcess):
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
-                    coupling_graph=coupling_graph,
                     gradient=gradient,
+                    **kwargs,
                 )
             )
 
         self._metadata_buffer_size = 512
         self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
-        self._instructions_buffer_size = 2048
-        self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+        self._buffer_size = 2048
+        self._buffer = (c_uint8 * self._buffer_size)()
 
     def alloc(self, num_qubits: int = 1) -> Quant:
         """Allocate a specified number of qubits and return a :class:`~ket.base.Quant` object.
@@ -223,15 +224,13 @@ class Process(LibketProcess):
              {'Gate': {'control': [], 'gate': 'Hadamard', 'target': 0}},
              {'Gate': {'control': [0], 'gate': 'PauliX', 'target': 1}}]
         """
-        write_size = self.instructions_json(
-            self._instructions_buffer, self._instructions_buffer_size
-        )
-        if write_size.value > self._instructions_buffer_size:
-            self._instructions_buffer_size = write_size.value + 1
-            self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+        write_size = self.instructions_json(self._buffer, self._buffer_size)
+        if write_size.value > self._buffer_size:
+            self._buffer_size = write_size.value + 1
+            self._buffer = (c_uint8 * self._buffer_size)()
             return self.get_instructions()
 
-        return loads(bytearray(self._instructions_buffer[: write_size.value]))
+        return loads(bytearray(self._buffer[: write_size.value]))
 
     def get_isa_instructions(self) -> list[dict[str, Any]] | None:
         """Retrieve transpiled quantum instructions from the quantum process.
@@ -241,15 +240,13 @@ class Process(LibketProcess):
             if the process has been transpiled, otherwise None.
 
         """
-        write_size = self.isa_instructions_json(
-            self._instructions_buffer, self._instructions_buffer_size
-        )
-        if write_size.value > self._instructions_buffer_size:
-            self._instructions_buffer_size = write_size.value + 1
-            self._instructions_buffer = (c_uint8 * self._instructions_buffer_size)()
+        write_size = self.isa_instructions_json(self._buffer, self._buffer_size)
+        if write_size.value > self._buffer_size:
+            self._buffer_size = write_size.value + 1
+            self._buffer = (c_uint8 * self._buffer_size)()
             return self.get_isa_instructions()
 
-        return loads(bytearray(self._instructions_buffer[: write_size.value]))
+        return loads(bytearray(self._buffer[: write_size.value]))
 
     def get_metadata(self) -> dict[str, Any]:
         """Retrieve metadata from the quantum process.
@@ -310,6 +307,44 @@ class Process(LibketProcess):
         if len(param) == 1:
             return parameters[0]
         return parameters
+
+    def save(self):
+        """
+        Save the quantum simulation state.
+
+        This method saves the current state of the quantum simulation. It works only
+        in simulated execution, provided that the simulator supports state saving.
+        If state saving is not available, no error will be raised.
+
+        The structure of the saved state depends on the simulator and is not interchangeable
+        between different simulators. Note that the saved state does not retain information
+        about the order of qubit allocation. Using the saved state may result in unintended
+        behavior if the qubit allocation order differs when the state is loaded.
+        """
+
+        write_size = self.save_sim_state(self._buffer, self._buffer_size)
+        if write_size.value > self._buffer_size:
+            self._buffer_size = write_size.value + 1
+            self._buffer = (c_uint8 * self._buffer_size)()
+            return self.save()
+
+        return bytearray(self._buffer[: write_size.value])
+
+    def load(self, data):
+        """
+        Loads the given data into the simulation state.
+
+        The data must be generated by a call to the method `save` with the same simulator.
+        If the state load fails in the simulator, the state is not altered,
+        and it may raise no error.
+
+        Args:
+            data: Quantum state. The data format depends on the simulator.
+        """
+
+        data_len = len(data)
+        data = (c_uint8 * data_len)(*data)
+        self.load_sim_state(data, data_len)
 
     def __repr__(self) -> str:
         return f"<Ket 'Process' id={hex(id(self))}>"

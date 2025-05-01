@@ -140,15 +140,14 @@ class Remote(
 
     def submit_execution(
         self,
-        logical_circuit: dict,
-        physical_circuit: dict | None,
+        circuit: dict,
         parameters: list[float],
     ):
         url = f"{self._url}/run"
         response = requests.get(
             url,
             verify=self._verify_ssl,
-            json=(logical_circuit, physical_circuit, parameters, self._args),
+            json=(circuit, parameters, self._args),
             timeout=self._timeout,
         )
         if response.status_code == 200:
@@ -162,29 +161,19 @@ class Remote(
     def clear(self):
         pass
 
-    def connect(
-        self,
-        **kwargs,
-    ):
-        """
-        Establishes a connection to the remote server.
-
-        This method initializes a connection to the remote server using the provided
-        keyword arguments. The returned configuration must be passed to the
-        :class:`~ket.base.Process` constructor to create a new process connected to the server.
-
-        Note that this method must be called for each new process that needs to
-        interact with the server.
+    def set(self, **kwargs):
+        """Configure the execution.
 
         Args:
             kwargs: Keyword arguments specifying connection parameters. The required
                     arguments depend on the remote server's API.
-
-        Returns:
-            Configuration object: The configuration required to initialize a process.
         """
-
         self._args = {k: str(v) for k, v in kwargs.items()}
+        return self
+
+    def connect(
+        self,
+    ):
         if self._token is not None:
             self._args["token"] = self._token
 

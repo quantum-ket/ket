@@ -20,10 +20,8 @@ from ctypes import (
     c_uint64,
     c_double,
 )
-from functools import reduce
 import json
-from operator import iconcat
-from typing import Literal
+from typing import Any, Literal
 import weakref
 from os import environ
 from os.path import dirname
@@ -68,8 +66,6 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
             "submit_execution",
             CFUNCTYPE(
                 None,
-                POINTER(c_uint8),
-                c_size_t,
                 POINTER(c_uint8),
                 c_size_t,
                 POINTER(c_double),
@@ -127,7 +123,6 @@ API_argtypes = {
     "ket_process_adj_begin": ([c_void_p], []),
     "ket_process_adj_end": ([c_void_p], []),
     "ket_process_execute": ([c_void_p], []),
-    "ket_process_transpile": ([c_void_p], []),
     "ket_process_instructions_json": (
         [c_void_p, POINTER(c_uint8), c_size_t],
         [c_size_t],
@@ -137,7 +132,6 @@ API_argtypes = {
         [c_size_t],
     ),
     "ket_process_metadata_json": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
-    "ket_process_get_qubit_status": ([c_void_p, c_size_t], [c_bool, c_bool]),
     "ket_process_get_measurement": ([c_void_p, c_size_t], [c_bool, c_uint64]),
     "ket_process_get_exp_value": ([c_void_p, c_size_t], [c_bool, c_double]),
     "ket_process_get_sample": (
@@ -151,21 +145,14 @@ API_argtypes = {
     ),
     "ket_make_configuration": (
         [
-            c_size_t,  # num_qubits
+            POINTER(c_uint8),  # json
+            c_size_t,  # json_size
             POINTER(BatchCExecution),  # batch_execution
-            c_int32,  # measure
-            c_int32,  # sample
-            c_int32,  # exp_value
-            c_int32,  # dump
-            c_int32,  # gradient
-            c_bool,  # define_qpu
-            POINTER(c_size_t),  # coupling_graph
-            c_size_t,  # coupling_graph_size
-            c_int32,  # u4_gate
-            c_int32,  # u2_gates
         ],
         [c_void_p],
     ),
+    "ket_process_save_sim_state": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
+    "ket_process_load_sim_state": ([c_void_p, POINTER(c_uint8), c_size_t], []),
 }
 
 
@@ -213,27 +200,19 @@ class BatchExecution(ABC):
             None,
             POINTER(c_uint8),
             c_size_t,
-            POINTER(c_uint8),
-            c_size_t,
             POINTER(c_double),
             c_size_t,
         )
         def submit_execution(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-            logical_circuit,
-            logical_circuit_size,
-            physical_circuit,
-            physical_circuit_size,
+            circuit,
+            circuit_size,
             parameters,
             parameters_size,
         ):
-            logical_circuit = json.loads(
-                bytearray(logical_circuit[:logical_circuit_size])
-            )
-            physical_circuit = json.loads(
-                bytearray(physical_circuit[:physical_circuit_size])
-            )
+            circuit = json.loads(bytearray(circuit[:circuit_size]))
+
             parameters = parameters[:parameters_size]
-            self.submit_execution(logical_circuit, physical_circuit, parameters)
+            self.submit_execution(circuit, parameters)
 
         self._result_json = None
         self._result_len = None
@@ -260,8 +239,7 @@ class BatchExecution(ABC):
     @abstractmethod
     def submit_execution(
         self,
-        logical_circuit: dict,
-        physical_circuit: dict | None,
+        circuit: dict,
         parameters: list[float],
     ):
         """Get the quantum circuit to execute."""
@@ -274,21 +252,13 @@ class BatchExecution(ABC):
     def clear(self):
         """Clear the data to start a new execution."""
 
+    @abstractmethod
+    def connect(self):
+        """Call configure with the appropriated arguments to generate the object."""
+
     def configure(self, **kwargs):
         """Configure the batch execution."""
         return make_configuration(batch_execution=self.c_struct, **kwargs)
-
-    @staticmethod
-    def get_qubit_index(qubit):
-        """Get the qubit index from the qubit object."""
-        match qubit:
-            case {"Main": {"index": index}}:
-                ...
-            case {"index": index}:
-                ...
-            case _:
-                raise ValueError(f"Invalid qubit: {qubit}")
-        return index
 
     @staticmethod
     def get_gate_and_angle(gate):
@@ -302,8 +272,6 @@ class BatchExecution(ABC):
         for instruction in instructions:
             match instruction:
                 case {"Gate": {"control": control, "gate": gate, "target": target}}:
-                    control = list(map(self.get_qubit_index, control))
-                    target = self.get_qubit_index(target)
                     gate, param = self.get_gate_and_angle(gate)
                     match gate:
                         case "Hadamard":
@@ -325,13 +293,10 @@ class BatchExecution(ABC):
                 case {"ExpValue": {"index": index, "hamiltonian": hamiltonian}}:
                     self.exp_value(index, hamiltonian)
                 case {"Measure": {"index": index, "qubits": qubits}}:
-                    qubits = list(map(self.get_qubit_index, qubits))
                     self.measure(index, qubits)
                 case {"Sample": {"index": index, "qubits": qubits, "shots": shots}}:
-                    qubits = list(map(self.get_qubit_index, qubits))
                     self.sample(index, qubits, shots)
                 case {"Dump": {"index": index, "qubits": qubits}}:
-                    qubits = list(map(self.get_qubit_index, qubits))
                     self.dump(index, qubits)
                 case "Identity":
                     continue
@@ -387,44 +352,78 @@ class BatchExecution(ABC):
         raise NotImplementedError("Dump not implemented")
 
 
-_FEATURE_STATUS = {"Disable": 0, "Allowed": 1, "ValidAfter": 2}
+_BASE_QPU = {
+    "coupling_graph": None,
+    "u2_gates": "All",  # All, ZYZ, RzSx
+    "u4_gate": "CX",  # CX, CZ
+}
+
+# Unsupported, Basic, Advanced
+_MANAGED_BY_TARGET = {
+    "measure": "Unsupported",
+    "sample": "Unsupported",
+    "exp_value": "Unsupported",
+    "dump": "Unsupported",
+}
+
+_CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
 
 
 def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     batch_execution,
-    measure: Literal["Disable", "Allowed", "ValidAfter"],
-    sample: Literal["Disable", "Allowed", "ValidAfter"],
-    exp_value: Literal["Disable", "Allowed", "ValidAfter"],
-    dump: Literal["Disable", "Allowed", "ValidAfter"],
-    gradient: Literal["Disable", "ParameterShift", "SupportsGradient"],
-    define_qpu: bool,
-    coupling_graph: list[tuple[int, int]] | None,
-    u4_gate_type: Literal["CX", "CZ"],
-    u2_gate_set: Literal["All", "ZYZ", "RzSx"],
+    execution_managed_by_target: dict[str, str] | None = None,
+    direct_sample_exp_value: int | None = None,
+    classical_shadows_exp_value: dict[str, Any] | None = None,
+    qpu: dict[str, str] | None = None,
+    gradient: Literal["ParameterShift", "NativeSupport"] | None = None,
 ) -> Process:
     """Make a Libket configuration"""
 
-    coupling_graph_size = len(coupling_graph) if coupling_graph else 0
-    if coupling_graph_size > 0:
-        coupling_graph = reduce(iconcat, coupling_graph, [])
-        coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+    if qpu is not None:
+        qpu = {**_BASE_QPU, **qpu}
+
+    # Ensure only one of the three is defined and at least one is provided
+    defined_options = [
+        execution_managed_by_target is not None,
+        direct_sample_exp_value is not None,
+        classical_shadows_exp_value is not None,
+    ]
+    if sum(defined_options) != 1:
+        raise ValueError(
+            "Exactly one of 'execution_managed_by_target', 'direct_sample_exp_value', "
+            "or 'classical_shadows_exp_value' must be defined."
+        )
+
+    if execution_managed_by_target is not None:
+        execution_protocol = {
+            "ManagedByTarget": {**_MANAGED_BY_TARGET, **execution_managed_by_target}
+        }
+    elif direct_sample_exp_value is not None:
+        execution_protocol = {"SampleBased": {"DirectSample": direct_sample_exp_value}}
     else:
-        coupling_graph = None
+        execution_protocol = {
+            "SampleBased": {
+                "ClassicalShadows": {
+                    **_CLASSICAL_SHADOWS,
+                    **classical_shadows_exp_value,
+                }
+            }
+        }
+
+    execution_target = {
+        "num_qubits": num_qubits,
+        "qpu": qpu,
+        "execution_protocol": execution_protocol,
+        "gradient": gradient,
+    }
+
+    execution_target_json = json.dumps(execution_target).encode("utf-8")
+    execution_target_len = len(execution_target_json)
+    execution_target_json = (c_uint8 * execution_target_len)(*execution_target_json)
 
     return API["ket_make_configuration"](
-        num_qubits,  # num_qubits
-        batch_execution,  # batch_execution
-        _FEATURE_STATUS[measure],  # measure
-        _FEATURE_STATUS[sample],  # sample
-        _FEATURE_STATUS[exp_value],  # exp_value
-        _FEATURE_STATUS[dump],  # dump
-        {"Disable": 0, "ParameterShift": 1, "SupportsGradient": 2}[
-            gradient
-        ],  # gradient
-        define_qpu,  # define_qpu
-        coupling_graph,  # coupling_graph
-        coupling_graph_size,  # coupling_graph_size
-        1 if u4_gate_type == "CZ" else 0,  # u4_gate
-        {"All": 0, "ZYZ": 1, "RzSx": 2}[u2_gate_set],  # u2_gates
+        execution_target_json,
+        execution_target_len,
+        batch_execution,
     )

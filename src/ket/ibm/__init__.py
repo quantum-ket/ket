@@ -84,24 +84,15 @@ class IBMDevice:  # pylint: disable=too-many-instance-attributes
             c_size_t,
         )
         def submit_execution(
-            logical_circuit,
-            logical_circuit_size,
-            physical_circuit,
-            physical_circuit_size,
+            circuit,
+            circuit_size,
             _parameters,
             _parameters_size,
         ):
             """Sends the ket circuit instructions from libket to the IBM Client."""
-            logical_circuit = json.loads(
-                bytearray(logical_circuit[:logical_circuit_size])
-            )
-            physical_circuit = json.loads(
-                bytearray(physical_circuit[:physical_circuit_size])
-            )
+            circuit = json.loads(bytearray(circuit[:circuit_size]))
             self.client = IBMClient(self.num_qubits, self._backend)
-            self._formatted_result = self.client.process_instructions(
-                physical_circuit if physical_circuit is not None else logical_circuit
-            )
+            self._formatted_result = self.client.process_instructions(circuit)
 
         @CFUNCTYPE(
             None,
@@ -148,15 +139,20 @@ class IBMDevice:  # pylint: disable=too-many-instance-attributes
         return make_configuration(
             num_qubits=self.num_qubits,
             batch_execution=self.c_struct,
-            measure="Allowed",
-            sample="Allowed",
-            exp_value="Allowed",
-            dump="Disable",
-            define_qpu=self.coupling_graph is not None,
-            coupling_graph=self.coupling_graph,
-            u4_gate_type="CX",
-            u2_gate_set="All",
-            gradient="Disable",
+            execution_managed_by_target={
+                "measure": "Basic",
+                "sample": "Basic",
+                "exp_value": "Basic",
+            },
+            qpu=(
+                None
+                if self.coupling_graph is None
+                else {
+                    "coupling_graph": self.coupling_graph,
+                    "u2_gates": "ZYZ",
+                    "u4_gate": "CX",
+                }
+            ),
         )
 
     @property
@@ -196,8 +192,8 @@ class IBMDeviceForDraw(BatchExecution):
     def clear(self):
         pass
 
-    def submit_execution(self, logical_circuit, _fc, _p):
-        self.process_instructions(logical_circuit)
+    def submit_execution(self, circuit, _p):
+        self.process_instructions(circuit)
 
     def get_result(self):
         return {
@@ -280,19 +276,11 @@ class IBMDeviceForDraw(BatchExecution):
         self.circuit.append(gate, control + [target])
         self.last_gate = "P"
 
-    def config(
+    def connect(
         self,
     ):
         """Configure process"""
         return super().configure(
             num_qubits=self.num_qubits,
-            measure="Disable",
-            sample="Disable",
-            exp_value="Disable",
-            dump="Disable",
-            gradient="Disable",
-            define_qpu=self.decompose is not None,
-            coupling_graph=None,
-            u4_gate_type=self.decompose,
-            u2_gate_set="All",
+            execution_managed_by_target={},
         )

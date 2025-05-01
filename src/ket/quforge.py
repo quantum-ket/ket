@@ -39,7 +39,7 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
     def __init__(
         self,
         num_qubits: int,
-        device: Literal["cpu", "gpu"] = "cpu",
+        device: Literal["cpu", "cuda"] = "cpu",
         sparse: bool = True,
         gradient: bool = True,
     ):
@@ -151,7 +151,7 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         for pauli, c in zip(products, coef):
             h_partial = ["I" for _ in range(self.num_qubits)]
             for p in pauli:
-                h_partial[self.get_qubit_index(p["qubit"])] = p["pauli"][-1]
+                h_partial[p["qubit"]] = p["pauli"][-1]
             h_partial = list(map(lambda x: self.pauli_map[x], h_partial))
             h_partial = c * reduce(partial(qf.kron, sparse=self.sparse), h_partial)
 
@@ -162,18 +162,19 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
 
         output_state = self.circuit(self.initial_state)
         expected_value = (output_state.T.conj() @ (h_final @ output_state)).real
-        expected_value.backward()
+        if self.gradient_enabled and len(self.parameters):
+            expected_value.backward()
         self.exp_result = float(expected_value[0])
 
         self.gradient = [p.grad.sum().item() for p in self.parameters]
 
-    def submit_execution(self, logical_circuit, _, parameters):
+    def submit_execution(self, circuit, parameters):
         self.gradient = [None for _ in range(len(parameters))]
         self.parameters = [
             torch.nn.Parameter(p * torch.ones(self.num_qubits, device=self.device))
             for p in parameters
         ]
-        self.process_instructions(logical_circuit)
+        self.process_instructions(circuit)
 
     def get_result(self):
         return {
@@ -196,7 +197,7 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.gradient = None
         self.parameters = None
 
-    def config(self):
+    def connect(self):
         """Configures a Process to use QuForge.
 
         The return value of this function must be passed to a :class:`~ket.base.Process`
@@ -207,13 +208,7 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.clear()
         return super().configure(
             num_qubits=self.num_qubits,
-            measure="Disable",
-            sample="Disable",
-            exp_value="Allowed",
-            dump="Disable",
-            gradient="SupportsGradient" if self.gradient_enabled else "Disable",
-            define_qpu=True,
-            coupling_graph=None,
-            u4_gate_type="CX",
-            u2_gate_set="All",
+            execution_managed_by_target={"exp_value": "Basic"},
+            qpu={"u2_gates": "ZYZ"},
+            gradient="NativeSupport" if self.gradient_enabled else None,
         )

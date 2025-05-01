@@ -249,6 +249,9 @@ class Hamiltonian:
     def __neg__(self) -> Hamiltonian:
         return -1.0 * self
 
+    def __len__(self) -> int:
+        return len(self.pauli_products)
+
     def __repr__(self) -> str:
         return (
             f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.pauli_products)}, "
