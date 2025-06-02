@@ -20,11 +20,7 @@ except ImportError:
 
 
 class AmazonBraket(BatchExecution):
-    def __init__(
-        self,
-        num_qubits: int,
-        device: Optional[str] = None
-    ):
+    def __init__(self, num_qubits: int, device: Optional[str] = None):
         if not BRAKET_AVAILABLE:
             raise RuntimeError(
                 "Amazon-Braket is not available. Please install it with: pip install ket-lang[amazon]"
@@ -39,21 +35,48 @@ class AmazonBraket(BatchExecution):
         self.result = None
         # self.exp_result = None
 
+        self.sample_results_by_index: Dict[int, List[int]] = {}
+        self.executed_operation_indices: List[int] = []
+
     def clear(self):
         self.circuit = Circuit()
-        # self.exp_result = None
+        self.sample_results_by_index.clear()
+        self.executed_operation_indices.clear()
+        self.result = None
 
     def submit_execution(self, logical_circuit, _, parameters=None):
         self.process_instructions(logical_circuit)
 
     def get_result(self):
-        return {
-            "measurements": [],
-            "exp_values": [],
-            "samples": [],
-            "dumps": [],
-            "gradients": None,
+        final_samples_list_of_lists: List[List[int]] = []
+
+        # Para manter a ordem, você pode precisar saber a ordem dos 'index'
+        # conforme foram definidos no `logical_circuit` original.
+        # self.executed_operation_indices pode dar a ordem de chamada via process_instructions.
+        # Se a ordem não for crítica ou se os índices forem sempre sequenciais e baixos,
+        # ordenar as chaves pode ser uma aproximação.
+        # A forma mais robusta seria extrair os 'index' das instruções 'Sample'
+        # do 'logical_circuit' (passado para submit_execution) na ordem correta.
+
+        # Assumindo que a ordem em executed_operation_indices é a correta ou suficiente:
+        for op_index in self.executed_operation_indices:
+            if op_index in self.sample_results_by_index:
+                final_samples_list_of_lists.append(
+                    self.sample_results_by_index[op_index]
+                )
+            # Se houver outros tipos de resultados (exp_values, measurements) que também usam índices,
+            # você precisaria de uma lógica similar para eles e listas separadas.
+
+        results_dict = {
+            "measurements": [],  # Preencha se você tiver medições explícitas
+            "exp_values": [],  # Preencha se você tiver valores esperados (ex: [self.exp_result_val])
+            "samples": [list(zip(*self.result.items()))],  # Lista de listas de inteiros
+            "dumps": [],  # Preencha se você tiver dumps
+            "gradients": None,  # Preencha se você tiver gradientes
         }
+
+        # print(f"DEBUG: AmazonBraket.get_result is returning: {results_dict}") # Para depuração
+        return results_dict
 
     def pauli_x(self, target, control):
         """Apply a Pauli-X gate to the target qubit."""
@@ -74,11 +97,20 @@ class AmazonBraket(BatchExecution):
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.h(target)
 
-    def sample(self, _, qubits, shots):
-        self.result = self.device.run(
-            self.circuit, shots=shots).result().measurement_counts
-        
-        # return self.result
+    @staticmethod
+    def from_aws_to_ket(state, qubits, aws_map):
+        return int(
+            "".join([state[aws_map[q]] if q in aws_map else "0" for q in qubits]),
+            2,
+        )
+
+    def sample(self, _, qubits, shots: int):
+        result = self.device.run(self.circuit, shots=shots).result()
+        aws_map = {q: i for i, q in enumerate(result.measured_qubits)}
+        self.result = {
+            self.from_aws_to_ket(k, qubits, aws_map): v
+            for k, v in result.measurement_counts.items()
+        }
 
     def connect(self):
         """Configures a Process to use AmazonBraket.
@@ -101,7 +133,7 @@ class AmazonBraket(BatchExecution):
 
         qpu_params = {
             "coupling_graph": None,
-            "u4_gate_type":"CX",
+            "u4_gate_type": "CX",
             "u2_gate_set": "All",
         }
         # if self.device != LocalSimulator():
@@ -113,6 +145,6 @@ class AmazonBraket(BatchExecution):
 
         return super().configure(
             num_qubits=self.num_qubits,
-            execution_managed_by_target=exec_params,
-            qpu=qpu_params
+            direct_sample_exp_value=1024,
+            qpu=qpu_params,
         )
