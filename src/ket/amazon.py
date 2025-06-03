@@ -48,25 +48,6 @@ class AmazonBraket(BatchExecution):
         self.process_instructions(logical_circuit)
 
     def get_result(self):
-        final_samples_list_of_lists: List[List[int]] = []
-
-        # Para manter a ordem, você pode precisar saber a ordem dos 'index'
-        # conforme foram definidos no `logical_circuit` original.
-        # self.executed_operation_indices pode dar a ordem de chamada via process_instructions.
-        # Se a ordem não for crítica ou se os índices forem sempre sequenciais e baixos,
-        # ordenar as chaves pode ser uma aproximação.
-        # A forma mais robusta seria extrair os 'index' das instruções 'Sample'
-        # do 'logical_circuit' (passado para submit_execution) na ordem correta.
-
-        # Assumindo que a ordem em executed_operation_indices é a correta ou suficiente:
-        for op_index in self.executed_operation_indices:
-            if op_index in self.sample_results_by_index:
-                final_samples_list_of_lists.append(
-                    self.sample_results_by_index[op_index]
-                )
-            # Se houver outros tipos de resultados (exp_values, measurements) que também usam índices,
-            # você precisaria de uma lógica similar para eles e listas separadas.
-
         results_dict = {
             "measurements": [],  # Preencha se você tiver medições explícitas
             "exp_values": [],  # Preencha se você tiver valores esperados (ex: [self.exp_result_val])
@@ -96,6 +77,39 @@ class AmazonBraket(BatchExecution):
         """Apply a Hadamard gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.h(target)
+
+    def rotation_x(self, target, control, **kwargs):
+        """Apply a rotation around the X-axis to the target qubit."""
+        assert len(control) == 0, "Control qubits are not supported"
+        match kwargs:
+            case {"Value": value}:
+                ...
+            # case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+            #     value = self.parameters[index] * multiplier
+
+        self.circuit.rx(target=target, angle=value)
+
+    def rotation_y(self, target, control, **kwargs):
+        """Apply a rotation around the Y-axis to the target qubit."""
+        assert len(control) == 0, "Control qubits are not supported"
+        match kwargs:
+            case {"Value": value}:
+                ...
+            # case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+            #     value = self.parameters[index] * multiplier
+
+        self.circuit.ry(target=target, angle=value)
+
+    def rotation_z(self, target, control, **kwargs):
+        """Apply a rotation around the Z-axis to the target qubit."""
+        assert len(control) == 0, "Control qubits are not supported"
+        match kwargs:
+            case {"Value": value}:
+                ...
+            # case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+            #     value = self.parameters[index] * multiplier
+
+        self.circuit.rz(target=target, angle=value)
 
     @staticmethod
     def from_aws_to_ket(state, qubits, aws_map):
