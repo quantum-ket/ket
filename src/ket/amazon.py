@@ -56,7 +56,6 @@ class AmazonBraket(BatchExecution):
             "gradients": None,  # Preencha se você tiver gradientes
         }
 
-        # print(f"DEBUG: AmazonBraket.get_result is returning: {results_dict}") # Para depuração
         return results_dict
 
     def pauli_x(self, target, control):
@@ -67,11 +66,15 @@ class AmazonBraket(BatchExecution):
         else:
             self.circuit.cnot(control[0], target)
 
-    # def pauli_y(self, target, control):
-    #     pass
+    def pauli_y(self, target, control):
+        """Apply a Pauli-Y gate to the target qubit."""
+        assert len(control) == 0, "Control qubits are not supported"
+        self.circuit.y(target)
 
-    # def pauli_z(self, target, control):
-    #     pass
+    def pauli_z(self, target, control):
+        """Apply a Pauli-Z gate to the target qubit."""
+        assert len(control) == 0, "Control qubits are not supported"
+        self.circuit.z(target)
 
     def hadamard(self, target, control):
         """Apply a Hadamard gate to the target qubit."""
@@ -84,8 +87,8 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            # case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-            #     value = self.parameters[index] * multiplier
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
 
         self.circuit.rx(target=target, angle=value)
 
@@ -95,8 +98,8 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            # case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-            #     value = self.parameters[index] * multiplier
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
 
         self.circuit.ry(target=target, angle=value)
 
@@ -106,10 +109,25 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            # case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-            #     value = self.parameters[index] * multiplier
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
 
         self.circuit.rz(target=target, angle=value)
+
+    def phase(self, target, control, **kwargs):
+        """Apply a phase gate to the target qubit."""
+        match kwargs:
+            case {"Value": value}:
+                ...
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
+        self.circuit.phaseshift(target, value)
+        # self.rotation_z(target, control, **kwargs)
+
+    def swap(self, target1, target2, control):
+        """Apply a rotation around the Z-axis to the target qubit."""
+        assert len(control) == 0, "Control qubits are not supported"
+        self.circuit.swap(target1=target1, target2=target2)
 
     @staticmethod
     def from_aws_to_ket(state, qubits, aws_map):
