@@ -179,7 +179,7 @@ class AmazonBraket(BatchExecution):
 
         self.clear()
 
-        # TODO: is this still needed?
+        # TO-DO: is this still needed?
         # exec_params = {
         #     # "measure": "Unsupported",
         #     "sample": "Basic",
@@ -192,7 +192,7 @@ class AmazonBraket(BatchExecution):
             "u4_gate_type": "CX",
             "u2_gate_set": "All",
         }
-        # TODO: Dynamic QPU configuration based on Braket device supportedOperations
+        # TO-DO: Dynamic QPU configuration based on Braket device supportedOperations
         # if self.device != LocalSimulator():
         #     qpu_params = {
         #         "coupling_graph": None,
