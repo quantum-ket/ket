@@ -13,6 +13,7 @@ dist
 wheelhouse
 *.so
 .coverage
+.env
 venv
 .vscode/
 .gitlab-ci-local/
