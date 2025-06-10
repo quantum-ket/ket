@@ -1,3 +1,16 @@
+"""AmazonBraket Interface for Ket
+
+The class :class:~ket.amazon.AmazonBraket provides a backend to connect Ket
+with Amazon Braket, the fully managed quantum computing service from AWS.
+
+This integration allows you to run quantum circuits developed in Ket on the
+diverse range of simulators and quantum processing units (QPUs) offered
+through the Braket service. By acting as a bridge between Ket's high-level
+programming environment and Amazon's cloud resources. This makes it
+an excellent choice for experiments that require high-performance simulation
+or access to different QPU architectures.
+"""
+
 from __future__ import annotations
 
 # SPDX-FileCopyrightText: 2025 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -5,13 +18,13 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Literal, Optional, List, Dict
+from typing import Optional, List, Dict
 from .clib.libket import BatchExecution
 
 try:
     # pip3 install amazon-braket-sdk
     from braket.aws import AwsDevice
-    from braket.circuits import Circuit  # , Instruction, gates, Observable, Gate
+    from braket.circuits import Circuit
     from braket.devices import LocalSimulator
 
     BRAKET_AVAILABLE = True
@@ -20,10 +33,26 @@ except ImportError:
 
 
 class AmazonBraket(BatchExecution):
+    """Amazon Braket Backend for Ket.
+
+    This class provides an interface to run Ket  quantum circuits on the Amazon 
+    Braket service. It enables access to a wide range of cloud-based simulators 
+    and real quantum hardware (QPUs), making it suitable for both small-scale 
+    tests and large-scale quantum experiments.
+
+    Args:
+        num_qubits (int): The total number of qubits required for the quantum
+            process.
+        device (Optional[str]): The ARN (Amazon Resource Name) string of the
+            Braket device (QPU or simulator) to be used for execution. If
+            "None", it defaults to using the local Braket simulator.
+    """
+
     def __init__(self, num_qubits: int, device: Optional[str] = None):
         if not BRAKET_AVAILABLE:
             raise RuntimeError(
-                "Amazon-Braket is not available. Please install it with: pip install ket-lang[amazon]"
+                "Amazon-Braket is not available. Please install it with: pip install \
+                    ket-lang[amazon]"
             )
 
         super().__init__()
@@ -44,16 +73,16 @@ class AmazonBraket(BatchExecution):
         self.executed_operation_indices.clear()
         self.result = None
 
-    def submit_execution(self, logical_circuit, _, parameters=None):
-        self.process_instructions(logical_circuit)
+    def submit_execution(self, circuit, _, parameters=None):
+        self.process_instructions(circuit)
 
     def get_result(self):
         results_dict = {
-            "measurements": [],  # Preencha se você tiver medições explícitas
-            "exp_values": [],  # Preencha se você tiver valores esperados (ex: [self.exp_result_val])
-            "samples": [list(zip(*self.result.items()))],  # Lista de listas de inteiros
-            "dumps": [],  # Preencha se você tiver dumps
-            "gradients": None,  # Preencha se você tiver gradientes
+            "measurements": [],
+            "exp_values": [],
+            "samples": [list(zip(*self.result.items()))],
+            "dumps": [],
+            "gradients": None,
         }
 
         return results_dict
@@ -87,8 +116,6 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
 
         self.circuit.rx(target=target, angle=value)
 
@@ -98,8 +125,6 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
 
         self.circuit.ry(target=target, angle=value)
 
@@ -109,8 +134,6 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
 
         self.circuit.rz(target=target, angle=value)
 
@@ -119,18 +142,20 @@ class AmazonBraket(BatchExecution):
         match kwargs:
             case {"Value": value}:
                 ...
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
         self.circuit.phaseshift(target, value)
-        # self.rotation_z(target, control, **kwargs)
-
-    def swap(self, target1, target2, control):
-        """Apply a rotation around the Z-axis to the target qubit."""
-        assert len(control) == 0, "Control qubits are not supported"
-        self.circuit.swap(target1=target1, target2=target2)
 
     @staticmethod
     def from_aws_to_ket(state, qubits, aws_map):
+        """Convert a Braket state bitstring to a Ket integer result.
+
+        Args:
+            state: The bitstring state from Braket measurement, e.g., "101".
+            qubits: The list of qubits as seen by Ket.
+            aws_map: A map from the qubit index to its position in the Braket bitstring.
+
+        Returns:
+            An integer representing the measured state in Ket's qubit order.
+        """
         return int(
             "".join([state[aws_map[q]] if q in aws_map else "0" for q in qubits]),
             2,
@@ -148,31 +173,31 @@ class AmazonBraket(BatchExecution):
         """Configures a Process to use AmazonBraket.
 
         The return value of this function must be passed to a :class:`~ket.base.Process`
-        constructor. The result should not be reused, and the AmazonBraket instance must remain alive
-        until the end of the process's lifetime.
+        constructor. The result should not be reused, and the AmazonBraket instance must
+        remain alive until the end of the process's lifetime.
         """
 
         self.clear()
 
-        "Unsupported"
-
-        exec_params = {
-            # "measure": "Unsupported",
-            "sample": "Basic",
-            # "exp_value": "Unsupported",
-            # "dump":"Unsupported"
-        }
+        # TODO: is this still needed?
+        # exec_params = {
+        #     # "measure": "Unsupported",
+        #     "sample": "Basic",
+        #     # "exp_value": "Unsupported",
+        #     # "dump":"Unsupported"
+        # }
 
         qpu_params = {
             "coupling_graph": None,
             "u4_gate_type": "CX",
             "u2_gate_set": "All",
         }
+        # TODO: Dynamic QPU configuration based on Braket device supportedOperations
         # if self.device != LocalSimulator():
         #     qpu_params = {
-        #         "coupling_graph": None,      # This was in your original call
-        #         "u4_gate_type": "CX",        # This was in your original call, libket.py calls it u4_gate
-        #         "u2_gates": "All"          # This was in your original call, libket.py calls it u2_gates
+        #         "coupling_graph": None,
+        #         "u4_gate_type": "CX",
+        #         "u2_gates": "All"
         #     }
 
         return super().configure(
