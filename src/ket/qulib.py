@@ -379,13 +379,14 @@ DRAW_STYLE = {
 
 
 def draw(  # pylint: disable=too-many-arguments
-    gate: Callable[[Quant], None],
+    gate: Callable,
     num_qubits: int | list[int],
     *,
     args: tuple = (),
     decompose: Literal["CX", "CZ"] | None = None,
     title: str | None = None,
     keep_order: bool = True,
+    aux_qubits: int | None = None,
     **kwargs,
 ):
     """Draw a quantum gate using Qiskit.
@@ -404,13 +405,18 @@ def draw(  # pylint: disable=too-many-arguments
     from .ibm import IBMDeviceForDraw  # pylint: disable=import-outside-toplevel
 
     if not isinstance(num_qubits, Iterable):
-        num_qubits = (num_qubits,)
+        num_qubits = [num_qubits]
     if not isinstance(args, Iterable):
-        args = (args,)
+        args = [args]
 
-    names = list(signature(gate).parameters)[len(args) :]
+    names = list(signature(gate).parameters)[len(args) : len(args) + len(num_qubits)]
     if len(names) != len(num_qubits):
         names = [None for _ in range(len(num_qubits))]
+
+    if aux_qubits is not None:
+        num_qubits = list(num_qubits)
+        num_qubits.append(aux_qubits)
+        names.append("AUX")
 
     device = IBMDeviceForDraw(
         num_qubits if isinstance(num_qubits, Iterable) else [num_qubits],
@@ -420,7 +426,7 @@ def draw(  # pylint: disable=too-many-arguments
     )
 
     p = Process(device)
-    q = [p.alloc(n) for n in num_qubits]
+    q = [p.alloc(n) for n in (num_qubits if aux_qubits is None else num_qubits[:-1])]
     gate(*args, *q)
     p.execute()
 

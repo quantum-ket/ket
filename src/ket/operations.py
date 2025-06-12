@@ -15,9 +15,10 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from ctypes import c_size_t
-from functools import reduce
+from functools import reduce, wraps
 from operator import add
 from typing import Any, Callable, Sequence
+from inspect import signature
 
 
 from .base import (
@@ -47,6 +48,10 @@ __all__ = [
     "sample",
     "dump",
     "exp_value",
+    "using_aux",
+    "is_permutation",
+    "is_diagonal",
+    "C",
 ]
 
 
@@ -105,7 +110,7 @@ def control(control_qubits: Quant):
         process.ctrl_pop()
 
 
-def ctrl(control_qubits: Quant, gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
+def ctrl(control_qubits: Quant, gate: Callable) -> Callable:
     """Add control qubits to a gate.
 
     Create a new callable that applies the given ``gate`` with the control qubits.
@@ -138,9 +143,27 @@ def ctrl(control_qubits: Quant, gate: Callable[[Any], Any]) -> Callable[[Any], A
         A new callable that applies the given gate with the control qubits.
     """
 
+    @wraps(gate)
     def inner(*args, **kwargs):
         with control(control_qubits):
             return control_qubits, gate(*args, **kwargs)
+
+    return inner
+
+
+def C(gate: Callable) -> Callable:  # pylint: disable=invalid-name
+    """Create a controlled gate
+
+    Args:
+        gate: Quantum gate.
+
+    Returns:
+        A gate with the first parameter as control.
+    """
+
+    @wraps(gate)
+    def inner(control_qubits, *args, **kwargs):
+        return ctrl(control_qubits, gate)(*args, **kwargs)
 
     return inner
 
@@ -204,6 +227,7 @@ def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
 
     """
 
+    @wraps(gate)
     def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
         ket_process = _search_process(ket_process, args, kwargs)
 
@@ -275,7 +299,7 @@ def cat(*gates) -> Callable[[Any], Any]:
     return inner
 
 
-def kron(*gates) -> Callable[[Any], Any]:
+def kron(*gates, times: int = 1) -> Callable[[Any], Any]:
     """Gates tensor product.
 
     Create a new callable that with the tensor product of the given gates.
@@ -300,16 +324,19 @@ def kron(*gates) -> Callable[[Any], Any]:
         A new callable that represents the tensor product of the given quantum gates.
     """
 
+    gates = gates * times
+
     def inner(*args):
-        return tuple(gate(arg) for gate, arg in zip(gates, args))
+        return tuple(
+            gate(*arg) if isinstance(arg, tuple) else gate(arg)
+            for gate, arg in zip(gates, args)
+        )
 
     return inner
 
 
 @contextmanager
-def around(
-    gate: Callable[[Any], Any], *args, ket_process: Process | None = None, **kwargs
-):
+def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
     r"""Applying and then reversing quantum gates.
 
     Apply the given quantum gate (:math:`U`) and then execute a code block (:math:`V`). After the
@@ -342,15 +369,29 @@ def around(
 
     ket_process = _search_process(ket_process, args, kwargs)
 
+    ket_process.around_begin()
+
     ket_process.ctrl_stack()
+    ket_process.approximated_decomposition_begin()
     gate(*args, **kwargs)
+    ket_process.approximated_decomposition_end()
     ket_process.ctrl_unstack()
+
+    ket_process.around_mid()
+
     try:
         yield
     finally:
+
+        ket_process.around_undo()
+
         ket_process.ctrl_stack()
+        ket_process.approximated_decomposition_begin()
         adj(gate)(*args, ket_process=ket_process, **kwargs)
+        ket_process.approximated_decomposition_end()
         ket_process.ctrl_unstack()
+
+        ket_process.around_end()
 
 
 def measure(qubits: Quant) -> Measurement:
@@ -409,3 +450,132 @@ def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
         Object representing the expected value.
     """
     return ExpValue(hamiltonian)
+
+
+def using_aux(unsafe: bool = False, **names):
+    """Add axillary qubits to a quantum gate.
+
+    Example:
+            .. code-block:: python
+
+                @using_aux(a=lambda c: 0 if len(c) <= 2 else 1)
+                def v_chain(c, t, a):
+                    if len(c) <= 2:
+                        ctrl(c, X)(t)
+                    else:
+                        with around(ctrl(c[:2], X), a):
+                            v_chain(a + c[2:], t)
+
+    Args:
+        unsafe: Use dirty unsafe qubits. Defaults to False.
+    """
+
+    def inner(func):
+        param = signature(func).parameters
+
+        @wraps(func)
+        def call(*args, ket_process: Process | None = None, **kwargs):
+            ket_process = _search_process(ket_process, args, kwargs)
+
+            if unsafe:
+                q_args = [q for q in args if isinstance(q, Quant)] + [
+                    q for q in kwargs.values() if isinstance(q, Quant)
+                ]
+                interacting_qubits = reduce(add, q_args)
+                interacting_qubits = interacting_qubits.qubits
+                interacting_qubits_size = len(interacting_qubits)
+                interacting_qubits = (c_size_t * interacting_qubits_size)(
+                    *interacting_qubits
+                )
+            else:
+                interacting_qubits_size = 0
+                interacting_qubits = None
+
+            free_stack = []
+
+            kwargs_ex = {**kwargs, **dict(zip(param, args))}
+
+            for name, num_qubits in names.items():
+                if name in kwargs_ex:
+                    continue
+
+                if callable(num_qubits):
+                    try:
+                        nq_args = {
+                            p: kwargs_ex[p] for p in signature(num_qubits).parameters
+                        }
+                        num_qubits = num_qubits(**nq_args)
+                    except KeyError as e:
+                        raise ValueError(
+                            "Parameters used to calculate the number of auxiliary "
+                            "qubit must be passed as keyword arguments"
+                        ) from e
+
+                if num_qubits <= 0:
+                    kwargs[name] = None
+                    continue
+
+                aux_index, aux_id = ket_process.allocate_aux(
+                    num_qubits, interacting_qubits, interacting_qubits_size
+                )
+
+                qubits = Quant(
+                    qubits=[
+                        (i + 1) << 32
+                        for i in range(aux_index.value, aux_index.value + num_qubits)
+                    ],
+                    process=ket_process,
+                )
+
+                free_stack.append(aux_id.value)
+
+                kwargs[name] = qubits
+
+            func(*args, **kwargs)
+
+            for aux_id in reversed(free_stack):
+                ket_process.free_aux(aux_id)
+
+        return call
+
+    return inner
+
+
+def is_diagonal(gate: Callable) -> Callable:
+    """Force to consider as a diagonal gate.
+
+    Args:
+        gate: Quantum gate
+    """
+
+    @wraps(gate)
+    def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
+        ket_process = _search_process(ket_process, args, kwargs)
+
+        ket_process.is_diagonal_begin()
+        try:
+            return gate(*args, **kwargs)
+        finally:
+            ket_process.is_diagonal_end()
+
+    return inner
+
+
+def is_permutation(gate: Callable) -> Callable:
+    """Force to consider as a permutation gate.
+
+    Args:
+        gate: Quantum gate
+    """
+
+    @wraps(gate)
+    def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
+        ket_process = _search_process(ket_process, args, kwargs)
+
+        ket_process.is_permutation_begin()
+        try:
+            return gate(*args, **kwargs)
+        finally:
+            ket_process.is_permutation_end()
+
+    return inner

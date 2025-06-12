@@ -283,4 +283,5 @@ class IBMDeviceForDraw(BatchExecution):
         return super().configure(
             num_qubits=self.num_qubits,
             execution_managed_by_target={},
+            qpu={"u4_gate": self.decompose} if self.decompose in ["CZ", "CX"] else None,
         )

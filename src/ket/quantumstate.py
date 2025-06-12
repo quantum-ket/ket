@@ -110,7 +110,7 @@ class QuantumState:
                     self._states = dict(states)
                 else:
                     self._states = {
-                        state: amplitude / sqrt(p)
+                        state: amplitude / sqrt(p) if p != 0 else 0
                         for state, amplitude in states.items()
                     }
 

@@ -153,6 +153,24 @@ API_argtypes = {
     ),
     "ket_process_save_sim_state": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
     "ket_process_load_sim_state": ([c_void_p, POINTER(c_uint8), c_size_t], []),
+    "ket_process_is_diagonal_begin": ([c_void_p], []),
+    "ket_process_is_permutation_begin": ([c_void_p], []),
+    "ket_process_is_diagonal_end": ([c_void_p], []),
+    "ket_process_is_permutation_end": ([c_void_p], []),
+    "ket_process_around_begin": ([c_void_p], []),
+    "ket_process_around_mid": ([c_void_p], []),
+    "ket_process_around_undo": ([c_void_p], []),
+    "ket_process_around_end": ([c_void_p], []),
+    "ket_process_allocate_aux": (
+        [c_void_p, c_size_t, POINTER(c_size_t), c_size_t],
+        [c_size_t, c_size_t],
+    ),
+    "ket_process_free_aux": (
+        [c_void_p, c_size_t],
+        [],
+    ),
+    "ket_process_approximated_decomposition_begin": ([c_void_p], []),
+    "ket_process_approximated_decomposition_end": ([c_void_p], []),
 }
 
 
