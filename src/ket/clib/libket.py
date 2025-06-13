@@ -400,6 +400,12 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
 
     if qpu is not None:
         qpu = {**_BASE_QPU, **qpu}
+        if qpu["coupling_graph"]:
+            qubit_in_graph = [q for edge in qpu["coupling_graph"] for q in edge]
+            if any(q not in qubit_in_graph for q in range(num_qubits)) or any(
+                q not in list(range(num_qubits)) for q in qubit_in_graph
+            ):
+                raise ValueError("Unreachable qubit in the coupling graph.")
 
     # Ensure only one of the three is defined and at least one is provided
     defined_options = [

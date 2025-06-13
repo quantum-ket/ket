@@ -2,136 +2,113 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from math import sqrt, pi, cos, sin
-from cmath import exp, isclose
-import ket
-from ket import qulib
+from ket import X, Y, Z, H, T, S, RX, RY, RZ, C, Process
+from ket.qulib import dump_matrix
+import numpy as np
 
 GATES = {
-    ket.X: [[0, 1], [1, 0]],
-    ket.Y: [[0, -1j], [1j, 0]],
-    ket.Z: [[1, 0], [0, -1]],
-    ket.H: [[1 / sqrt(2), 1 / sqrt(2)], [1 / sqrt(2), -1 / sqrt(2)]],
-    ket.T: [[1, 0], [0, exp(1j * pi / 4)]],
-    ket.S: [[1, 0], [0, 1j]],
+    X: [[0, 1], [1, 0]],
+    Y: [[0, -1j], [1j, 0]],
+    Z: [[1, 0], [0, -1]],
+    H: [[1 / np.sqrt(2), 1 / np.sqrt(2)], [1 / np.sqrt(2), -1 / np.sqrt(2)]],
+    T: [[1, 0], [0, np.exp(1j * np.pi / 4)]],
+    S: [[1, 0], [0, 1j]],
 }
 
 ROTATION_GATES = {
-    ket.RX: lambda theta: [
-        [cos(theta / 2), -1j * sin(theta / 2)],
-        [-1j * sin(theta / 2), cos(theta / 2)],
+    RX: lambda theta: [
+        [np.cos(theta / 2), -1j * np.sin(theta / 2)],
+        [-1j * np.sin(theta / 2), np.cos(theta / 2)],
     ],
-    ket.RY: lambda theta: [
-        [cos(theta / 2), -sin(theta / 2)],
-        [sin(theta / 2), cos(theta / 2)],
+    RY: lambda theta: [
+        [np.cos(theta / 2), -np.sin(theta / 2)],
+        [np.sin(theta / 2), np.cos(theta / 2)],
     ],
-    ket.RZ: lambda theta: [[exp(-1j * theta / 2), 0], [0, exp(1j * theta / 2)]],
+    RZ: lambda theta: [[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]],
 }
 
 
-def linspace(start, stop, num):
-    yield start
-    step = (stop - start) / (num - 1)
-    next_num = start
-    for _ in range(num - 1):
-        next_num += step
-        yield next_num
+def validate(result, matrix):
+    """Check resulting gate matrix"""
+
+    gate_matrix = [
+        [result[-2][-2], result[-2][-1]],
+        [result[-1][-2], result[-1][-1]],
+    ]
+
+    eye_matrix = result
+
+    eye_matrix[-2][-2] = 1
+    eye_matrix[-2][-1] = 0
+    eye_matrix[-1][-2] = 0
+    eye_matrix[-1][-1] = 1
+
+    return np.allclose(eye_matrix, np.eye(len(eye_matrix))) and np.allclose(
+        gate_matrix, matrix
+    )
 
 
-def test_decomposition_su2():
-    n = 7
+def base_test_su2(c, a):
+    """Test the decomposition of Rotation gates."""
+    n = 2 * (c + 1) + a
 
-    for gate, mat_gate in ROTATION_GATES.items():
-        for ang in linspace(0.0, 2 * pi, 8):
-            matrix = mat_gate(ang)
-
-            ctrl_gate = lambda q: ket.ctrl(q[:-1], gate(ang))(q[-1])
-            result_matrix = ket.qulib.dump_matrix(ctrl_gate, num_qubits=n)
-
-            gate_matrix = [
-                [result_matrix[-2][-2], result_matrix[-2][-1]],
-                [result_matrix[-1][-2], result_matrix[-1][-1]],
-            ]
-
-            eye_matrix = result_matrix
-
-            eye_matrix[-2][-2] = 1
-            eye_matrix[-2][-1] = 0
-            eye_matrix[-1][-2] = 0
-            eye_matrix[-1][-1] = 1
-
-            eye = list(
-                list(1 if i == j else 0 for i in range(2**n)) for j in range(2**n)
-            )
-
-            assert all(
-                isclose(gate_matrix[i][j], matrix[i][j], abs_tol=1e-10)
-                for i in range(2)
-                for j in range(2)
-            )
-
-            assert all(
-                isclose(eye_matrix[i][j], eye[i][j], abs_tol=1e-10)
-                for i in range(2**n)
-                for j in range(2**n)
-            )
-
-
-def test_decomposition_c_t():
-
-    n = 7
-
-    for ket_gate, matrix in GATES.items():
-        gate = lambda q: ket.ctrl(q[:-1], ket_gate)(q[-1])
-        result_matrix = ket.qulib.dump_matrix(gate, num_qubits=n)
-
-        gate_matrix = [
-            [result_matrix[-2][-2], result_matrix[-2][-1]],
-            [result_matrix[-1][-2], result_matrix[-1][-1]],
-        ]
-
-        eye_matrix = result_matrix
-
-        eye_matrix[-2][-2] = 1
-        eye_matrix[-2][-1] = 0
-        eye_matrix[-1][-2] = 0
-        eye_matrix[-1][-1] = 1
-
-        eye = list(list(1 if i == j else 0 for i in range(2**n)) for j in range(2**n))
-
-        assert all(
-            isclose(gate_matrix[i][j], matrix[i][j], abs_tol=1e-10)
-            for i in range(2)
-            for j in range(2)
+    assert all(
+        validate(
+            dump_matrix(
+                C(gate(angle)),
+                num_qubits=(c, 1),
+                process=Process(
+                    num_qubits=n,
+                    coupling_graph=[(i, j) for i in range(n) for j in range(i)],
+                    simulator="sparse",
+                ),
+            ),
+            matrix(angle),
         )
+        for gate, matrix in ROTATION_GATES.items()
+        for angle in np.linspace(0.0, 2 * np.pi, 8)
+    )
 
-        assert all(
-            isclose(eye_matrix[i][j], eye[i][j], abs_tol=1e-10)
-            for i in range(2**n)
-            for j in range(2**n)
+
+def base_test_u2(c, a):
+    """Test the decomposition of U2 gates."""
+    n = 2 * (c + 1) + a
+
+    assert all(
+        validate(
+            dump_matrix(
+                C(gate),
+                num_qubits=(c, 1),
+                process=Process(
+                    num_qubits=n,
+                    coupling_graph=[(i, j) for i in range(n) for j in range(i)],
+                    simulator="sparse",
+                ),
+            ),
+            matrix,
         )
+        for gate, matrix in GATES.items()
+    )
 
 
-def test_decomposition_t_c():
-    n = 7
+def test_u2():
+    """Test the decomposition of U2 gates up to 6 qubits."""
+    n = 6
+    for c in range(1, n):
+        for a in range(c):
+            base_test_u2(c, a)
 
-    for ket_gate in GATES.keys():
-        gate = lambda q: ket.ctrl(q[1:], ket_gate)(q[0])
 
-        decompose_matrix = qulib.dump_matrix(gate, num_qubits=n)
-
-        not_decompose_matrix = qulib.dump_matrix(gate, num_qubits=n)
-
-        assert all(
-            isclose(decompose_matrix[i][j], not_decompose_matrix[i][j], abs_tol=1e-10)
-            for i in range(2**n)
-            for j in range(2**n)
-        )
+def test_su2():
+    """Test the decomposition of SU2 gates up to 6 qubits."""
+    n = 6
+    for c in range(1, n):
+        for a in range(c):
+            base_test_su2(c, a)
 
 
 if __name__ == "__main__":
-    test_decomposition_c_t()
-    # test_decomposition_t_c()
-    # test_decomposition_is_enabled()
-    # test_decomposition_su2()
-    print("Ok")
+    test_su2()
+    test_u2()
+    print("OK")
+

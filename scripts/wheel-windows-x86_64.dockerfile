@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM rust:1.85 AS rust
+FROM rust:1.87 AS rust
 RUN apt update && apt install mingw-w64 -y
 RUN rustup target add x86_64-pc-windows-gnu
 

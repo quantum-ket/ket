@@ -81,6 +81,11 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     coupling_graph_size = len(coupling_graph) if coupling_graph else 0
 
     if coupling_graph:
+        qubit_in_graph = [q for edge in coupling_graph for q in edge]
+        if any(q not in qubit_in_graph for q in range(num_qubits)) or any(
+            q not in list(range(num_qubits)) for q in qubit_in_graph
+        ):
+            raise ValueError("Unreachable qubit in the coupling graph.")
         coupling_graph = reduce(iconcat, coupling_graph, [])
         coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
 

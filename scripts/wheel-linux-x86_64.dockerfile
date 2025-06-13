@@ -5,7 +5,7 @@
 
 FROM almalinux:8-minimal AS rust
 RUN microdnf install gcc -y
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.85 -y
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.87 -y
 
 FROM rust AS build_libket_amd64
 COPY src/ket/clib/libs/libket/ /workdir/
