@@ -179,14 +179,6 @@ class AmazonBraket(BatchExecution):
 
         self.clear()
 
-        # TO-DO: is this still needed?
-        # exec_params = {
-        #     # "measure": "Unsupported",
-        #     "sample": "Basic",
-        #     # "exp_value": "Unsupported",
-        #     # "dump":"Unsupported"
-        # }
-
         qpu_params = {
             "coupling_graph": None,
             "u4_gate_type": "CX",
