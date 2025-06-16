@@ -3,9 +3,4 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-amazon-braket-default-simulator
-amazon-braket-schemas
 amazon-braket-sdk
-dotenv
-ipynb
-plotly
