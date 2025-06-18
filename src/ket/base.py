@@ -12,11 +12,11 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 
-from ctypes import c_size_t, c_uint8
+from ctypes import c_size_t, c_uint8, c_void_p
 from json import loads
 from typing import Literal, Optional, Any
 
-from .clib.libket import Process as LibketProcess, BatchExecution
+from .clib.libket import LiveExecution, Process as LibketProcess, BatchExecution
 from .clib.kbw import get_simulator
 
 try:
@@ -123,7 +123,7 @@ class Process(LibketProcess):
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        configuration: BatchExecution | None = None,
+        configuration: BatchExecution | LiveExecution | None = None,
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
@@ -138,7 +138,9 @@ class Process(LibketProcess):
 
         if configuration is not None:
             self.configuration = configuration
-            super().__init__(self.configuration.connect())
+            ptr = self.configuration.connect()
+            assert isinstance(ptr, c_void_p)
+            super().__init__(ptr)
         else:
             simulator = "sparse" if simulator is None else simulator
             num_qubits = (

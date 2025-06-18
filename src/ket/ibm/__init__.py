@@ -138,7 +138,7 @@ class IBMDevice:  # pylint: disable=too-many-instance-attributes
 
         return make_configuration(
             num_qubits=self.num_qubits,
-            batch_execution=self.c_struct,
+            execution=self,
             execution_managed_by_target={
                 "measure": "Basic",
                 "sample": "Basic",

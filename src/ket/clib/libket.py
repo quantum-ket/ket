@@ -77,6 +77,44 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
     ]
 
 
+class LiveCExecution(Structure):  # pylint: disable=too-few-public-methods
+    """C LiveCExecution Structure"""
+
+    _fields_ = [
+        (
+            "gate",
+            CFUNCTYPE(
+                None, POINTER(c_uint8), c_size_t, c_size_t, POINTER(c_size_t), c_size_t
+            ),
+        ),
+        ("measure", CFUNCTYPE(c_uint64, POINTER(c_size_t), c_size_t)),
+        ("exp_value", CFUNCTYPE(c_double, POINTER(c_uint8), c_size_t)),
+        (
+            "sample",
+            CFUNCTYPE(
+                None,
+                POINTER(c_size_t),
+                c_size_t,
+                c_size_t,
+                POINTER(POINTER(c_uint8)),
+                POINTER(c_size_t),
+            ),
+        ),
+        (
+            "dump",
+            CFUNCTYPE(
+                None,
+                POINTER(c_size_t),
+                c_size_t,
+                POINTER(POINTER(c_uint8)),
+                POINTER(c_size_t),
+            ),
+        ),
+        ("save", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
+        ("load", CFUNCTYPE(None, POINTER(c_uint8), c_size_t)),
+    ]
+
+
 API_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
     "ket_set_log_level": ([c_uint32], []),
@@ -148,6 +186,7 @@ API_argtypes = {
             POINTER(c_uint8),  # json
             c_size_t,  # json_size
             POINTER(BatchCExecution),  # batch_execution
+            POINTER(LiveCExecution),  # live_execution
         ],
         [c_void_p],
     ),
@@ -276,7 +315,7 @@ class BatchExecution(ABC):
 
     def configure(self, **kwargs):
         """Configure the batch execution."""
-        return make_configuration(batch_execution=self.c_struct, **kwargs)
+        return make_configuration(execution=self, **kwargs)
 
     @staticmethod
     def get_gate_and_angle(gate):
@@ -370,6 +409,177 @@ class BatchExecution(ABC):
         raise NotImplementedError("Dump not implemented")
 
 
+class LiveExecution(ABC):
+    """Base class for constructing live target executions."""
+
+    def __init__(self):
+        @CFUNCTYPE(
+            None, POINTER(c_uint8), c_size_t, c_size_t, POINTER(c_size_t), c_size_t
+        )
+        def gate(gate_json, gate_json_size, target, control, control_size):
+            gate = json.loads(bytearray(gate_json[:gate_json_size]))
+            control = control[:control_size]
+            if isinstance(gate, dict):
+                gate, value = list(gate.items())[0]
+                value = value["Value"]
+            match gate:
+                case "Hadamard":
+                    self.hadamard(target, control)
+                case "PauliX":
+                    self.pauli_x(target, control)
+                case "PauliY":
+                    self.pauli_y(target, control)
+                case "PauliZ":
+                    self.pauli_z(target, control)
+                case "RotationX":
+                    self.rotation_x(target, control, value)
+                case "RotationY":
+                    self.rotation_y(target, control, value)
+                case "RotationZ":
+                    self.rotation_z(target, control, value)
+                case "Phase":
+                    self.phase(target, control, value)
+
+        @CFUNCTYPE(c_uint64, POINTER(c_size_t), c_size_t)
+        def measure(qubits, qubits_size):
+            qubits = qubits[:qubits_size]
+            return self.measure(qubits)
+
+        @CFUNCTYPE(c_double, POINTER(c_uint8), c_size_t)
+        def exp_value(h_json, h_size):
+            h = json.loads(bytearray(h_json[:h_size]))
+            return self.exp_value(h)
+
+        self._sample_json = None
+        self._sample_len = None
+
+        @CFUNCTYPE(
+            None,
+            POINTER(c_size_t),
+            c_size_t,
+            c_size_t,
+            POINTER(POINTER(c_uint8)),
+            POINTER(c_size_t),
+        )
+        def sample(qubits, qubits_size, shots, result_ptr, size):
+            qubits = qubits[:qubits_size]
+            result = self.sample(qubits, shots)
+            self._sample_json = json.dumps(result).encode("utf-8")
+            self._sample_len = len(self._sample_json)
+            self._sample_json = (c_uint8 * self._sample_len)(*self._sample_json)
+            result_ptr[0] = self._sample_json
+            size[0] = self._sample_len
+
+        self._dump_json = None
+        self._dump_len = None
+
+        @CFUNCTYPE(
+            None,
+            POINTER(c_size_t),
+            c_size_t,
+            POINTER(POINTER(c_uint8)),
+            POINTER(c_size_t),
+        )
+        def dump(qubits, qubits_size, result_ptr, size):
+            qubits = qubits[:qubits_size]
+            result = self.dump(qubits)
+            self._dump_json = json.dumps(result).encode("utf-8")
+            self._dump_len = len(self._dump_json)
+            self._dump_json = (c_uint8 * self._dump_len)(*self._dump_json)
+            result_ptr[0] = self._dump_json
+            size[0] = self._dump_len
+
+        self._save_data = None
+        self._save_len = None
+
+        @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
+        def save(save_data, save_len):
+            self._save_data = self.save()
+            self._sample_len = len(self._save_data)
+            self._save_data = (c_uint8 * self._save_len)(*self._save_data)
+            save_data[0] = self._save_data
+            save_len[0] = self._save_len
+
+        @CFUNCTYPE(None, POINTER(c_uint8), c_size_t)
+        def load(data, size):
+            data = bytearray(data[:size])
+            self.load(data)
+
+        self.c_struct = LiveCExecution(
+            gate,
+            measure,
+            exp_value,
+            sample,
+            dump,
+            save,
+            load,
+        )
+
+    def pauli_x(self, target, control):
+        """Apply a Pauli-X gate to the target qubit."""
+        raise NotImplementedError("Pauli-X gate not implemented")
+
+    def pauli_y(self, target, control):
+        """Apply a Pauli-Y gate to the target qubit."""
+        raise NotImplementedError("Pauli-Y gate not implemented")
+
+    def pauli_z(self, target, control):
+        """Apply a Pauli-Z gate to the target qubit."""
+        raise NotImplementedError("Pauli-Z gate not implemented")
+
+    def hadamard(self, target, control):
+        """Apply a Hadamard gate to the target qubit."""
+        raise NotImplementedError("Hadamard gate not implemented")
+
+    def rotation_x(self, target, control, angle):
+        """Apply a X-Rotation gate to the target qubit."""
+        raise NotImplementedError("X-Rotation gate not implemented")
+
+    def rotation_y(self, target, control, angle):
+        """Apply a Y-Rotation gate to the target qubit."""
+        raise NotImplementedError("Y-Rotation gate not implemented")
+
+    def rotation_z(self, target, control, angle):
+        """Apply a Z-Rotation gate to the target qubit."""
+        raise NotImplementedError("Z-Rotation gate not implemented")
+
+    def phase(self, target, control, angle):
+        """Apply a Phase gate to the target qubit."""
+        raise NotImplementedError("Phase gate not implemented")
+
+    def measure(self, qubits: list[int]) -> int:
+        """Measure the qubits and return the result as an integer."""
+        raise NotImplementedError("`measure` method not implemented")
+
+    def exp_value(self, hamiltonian: dict):
+        """Compute the expectation value of the given Hamiltonian."""
+        raise NotImplementedError("`exp_value` method not implemented")
+
+    def sample(self, qubits: list[int], shots: int):
+        """Sample the state of the qubits."""
+        raise NotImplementedError("`sample` method not implemented")
+
+    def dump(self, qubits: list[int]) -> dict:
+        """Dump the state of the qubits."""
+        raise NotImplementedError("`dump` method not implemented")
+
+    def save(self) -> bytearray:
+        """Save the current state of the execution."""
+        raise NotImplementedError("`save` method not implemented")
+
+    def load(self, data: bytearray):
+        """Load the state of the execution from the given data."""
+        raise NotImplementedError("`load` method not implemented")
+
+    @abstractmethod
+    def connect(self):
+        """Call configure with the appropriated arguments to generate the object."""
+
+    def configure(self, **kwargs):
+        """Configure the batch execution."""
+        return make_configuration(execution=self, **kwargs)
+
+
 _BASE_QPU = {
     "coupling_graph": None,
     "u2_gates": "All",  # All, ZYZ, RzSx
@@ -389,7 +599,7 @@ _CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
 
 def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
-    batch_execution,
+    execution,
     execution_managed_by_target: dict[str, str] | None = None,
     direct_sample_exp_value: int | None = None,
     classical_shadows_exp_value: dict[str, Any] | None = None,
@@ -446,8 +656,19 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
     execution_target_len = len(execution_target_json)
     execution_target_json = (c_uint8 * execution_target_len)(*execution_target_json)
 
+    if isinstance(execution, BatchExecution):
+        batch_execution = execution.c_struct
+        live_execution = None
+    elif isinstance(execution, LiveExecution):
+        batch_execution = None
+        live_execution = execution.c_struct
+    else:
+        batch_execution = None
+        live_execution = None
+
     return API["ket_make_configuration"](
         execution_target_json,
         execution_target_len,
         batch_execution,
+        live_execution,
     )

@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import X, Y, Z, H, T, S, RX, RY, RZ, C, Process
+from ket import X, Y, Z, H, T, S, RX, RY, RZ, C, Process, ctrl, using_aux, around, kron
 from ket.qulib import dump_matrix
 import numpy as np
 
@@ -107,8 +107,114 @@ def test_su2():
             base_test_su2(c, a)
 
 
+@using_aux(a=lambda c: 0 if len(c) <= 2 else 1)
+def v_chain(c, t, a):
+    """V Chain decomposition with clean auxiliary."""
+    if len(c) <= 2:
+        ctrl(c, X)(t)
+    else:
+        with around(ctrl(c[:2], X), a):
+            v_chain(a + c[2:], t)
+
+
+def test_v_chain():
+    c = 6
+    a = c - 2
+    n = 2 * (c + 1) + a
+
+    validate(
+        dump_matrix(
+            v_chain,
+            num_qubits=(c, 1),
+            process=Process(
+                num_qubits=n,
+                coupling_graph=[(i, j) for i in range(n) for j in range(i)],
+                simulator="sparse",
+            ),
+        ),
+        GATES[X],
+    )
+
+
+@using_aux(a=lambda c: len(c) // 2 if len(c) > 2 else 0)
+def network(gate, c, t, a):
+    n = len(c)
+
+    if n <= 2:
+        ctrl(c, gate)(t)
+    else:
+        num_groups = n // 2
+        rest = n % 2
+
+        with around(
+            kron(C(X), times=num_groups),
+            *((c[2 * i : 2 * i + 2], a[i]) for i in range(num_groups))
+        ):
+            network(
+                gate,
+                c[-rest:] + a if rest != 0 else a,
+                t,
+            )
+
+
+def test_network_h():
+    c = 6
+    a = c - 2
+    n = 2 * (c + 1) + a
+
+    validate(
+        dump_matrix(
+            network,
+            num_qubits=(c, 1),
+            args=(H,),
+            process=Process(
+                num_qubits=n,
+                coupling_graph=[(i, j) for i in range(n) for j in range(i)],
+                simulator="sparse",
+            ),
+        ),
+        GATES[H],
+    )
+
+
+@using_aux(unsafe=True, a=lambda c: len(c) - 2)
+def v_chain_dirty(c, t, a):
+    def inner(c, t, a, skip=False):
+        if len(c) <= 2:
+            ctrl(c, X)(t)
+        elif skip:
+            inner(c=c[:-1], t=a[-1], a=a[:-1])
+        else:
+            with around(ctrl(c[-1] + a[-1], X), t):
+                inner(c=c[:-1], t=a[-1], a=a[:-1])
+
+    inner(c, t, a)
+    inner(c, t, a, True)
+
+
+def test_v_chain_dirty():
+    c = 6
+    a = c - 2
+    n = 2 * (c + 1) + a
+
+    validate(
+        dump_matrix(
+            v_chain_dirty,
+            num_qubits=(c, 1),
+            process=Process(
+                num_qubits=n,
+                coupling_graph=[(i, j) for i in range(n) for j in range(i)],
+                simulator="sparse",
+            ),
+        ),
+        GATES[X],
+    )
+
+
 if __name__ == "__main__":
     test_su2()
     test_u2()
+    test_v_chain()
+    test_network_h()
+    test_v_chain_dirty()
     print("OK")
-
