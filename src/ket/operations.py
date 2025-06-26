@@ -299,7 +299,7 @@ def cat(*gates) -> Callable[[Any], Any]:
     return inner
 
 
-def kron(*gates, times: int = 1) -> Callable[[Any], Any]:
+def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
     """Gates tensor product.
 
     Create a new callable that with the tensor product of the given gates.
@@ -324,7 +324,7 @@ def kron(*gates, times: int = 1) -> Callable[[Any], Any]:
         A new callable that represents the tensor product of the given quantum gates.
     """
 
-    gates = gates * times
+    gates = gates * n
 
     def inner(*args):
         return tuple(

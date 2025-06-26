@@ -147,7 +147,7 @@ def network(gate, c, t, a):
         rest = n % 2
 
         with around(
-            kron(C(X), times=num_groups),
+            kron(C(X), n=num_groups),
             *((c[2 * i : 2 * i + 2], a[i]) for i in range(num_groups))
         ):
             network(

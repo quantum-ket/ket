@@ -18,6 +18,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from json import loads
 from typing import Optional, List, Dict
 from .clib.libket import BatchExecution
 
@@ -32,48 +33,91 @@ except ImportError:
     BRAKET_AVAILABLE = False
 
 
-class AmazonBraket(BatchExecution):
+class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attributes
     """Amazon Braket Backend for Ket.
 
-    This class provides an interface to run Ket  quantum circuits on the Amazon 
-    Braket service. It enables access to a wide range of cloud-based simulators 
-    and real quantum hardware (QPUs), making it suitable for both small-scale 
+    This class provides an interface to run Ket  quantum circuits on the Amazon
+    Braket service. It enables access to a wide range of cloud-based simulators
+    and real quantum hardware (QPUs), making it suitable for both small-scale
     tests and large-scale quantum experiments.
 
     Args:
-        num_qubits (int): The total number of qubits required for the quantum
-            process.
         device (Optional[str]): The ARN (Amazon Resource Name) string of the
             Braket device (QPU or simulator) to be used for execution. If
             "None", it defaults to using the local Braket simulator.
+        shots (Optional[int]): The number of shots for the execution to estimate
+            the expectation values of an Hamiltonian term. If not specified, it defaults
+            to 2048.
+        classical_shadows (Optional[dict]): If specified, it will use the classical
+            shadows technique for state estimation. Dictionary should be in the
+            format: {"bias": tuple[int], "samples": int, "shots": int}.
+
     """
 
-    def __init__(self, num_qubits: int, device: Optional[str] = None):
+    def __init__(
+        self,
+        device: Optional[str] = None,
+        shots: int | None = None,
+        classical_shadows: dict | None = None,
+    ):
         if not BRAKET_AVAILABLE:
             raise RuntimeError(
                 "Amazon-Braket is not available. Please install it with: pip install \
                     ket-lang[amazon]"
             )
 
+        if shots is not None and classical_shadows is not None:
+            raise ValueError(
+                "You cannot specify both 'shots' and 'classical_shadows'. "
+                "Please choose one of them."
+            )
+
         super().__init__()
 
-        self.num_qubits = num_qubits
-        self.device = AwsDevice(device) if device else LocalSimulator()
+        self.device = AwsDevice(device) if device is not None else LocalSimulator()
+        self.device_paradigm = loads(self.device.properties.json())["paradigm"]
+
+        if not (
+            self.device_paradigm["braketSchemaHeader"]["name"]
+            == "braket.device_schema.gate_model_qpu_paradigm_properties"
+            or self.device_paradigm["braketSchemaHeader"]["name"]
+            == "braket.device_schema.simulators.gate_model_simulator_paradigm_properties"
+        ):
+            raise ValueError(
+                "The device must be a Gate Model QPU or Simulator. "
+                f"Received: {self.device_paradigm['braketSchemaHeader']['name']}"
+            )
+
+        self.num_qubits = self.device_paradigm["qubitCount"]
+
+        if (
+            hasattr(self.device, "topology_graph")
+            and self.device.topology_graph is not None
+        ):
+            self.coupling_graph = list(device.topology_graph.edges)
+        else:
+            self.coupling_graph = None
 
         self.circuit = Circuit()
         self.result = None
-        # self.exp_result = None
 
         self.sample_results_by_index: Dict[int, List[int]] = {}
         self.executed_operation_indices: List[int] = []
+
+        self.parameters = None
+
+        self.shots = 2048 if shots is None and classical_shadows is None else shots
+        self.classical_shadows = classical_shadows
 
     def clear(self):
         self.circuit = Circuit()
         self.sample_results_by_index.clear()
         self.executed_operation_indices.clear()
         self.result = None
+        self.parameters = None
 
-    def submit_execution(self, circuit, _, parameters=None):
+    def submit_execution(self, circuit, parameters):
+        self.parameters = parameters
         self.process_instructions(circuit)
 
     def get_result(self):
@@ -114,6 +158,8 @@ class AmazonBraket(BatchExecution):
         """Apply a rotation around the X-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
             case {"Value": value}:
                 ...
 
@@ -123,6 +169,8 @@ class AmazonBraket(BatchExecution):
         """Apply a rotation around the Y-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
             case {"Value": value}:
                 ...
 
@@ -132,6 +180,8 @@ class AmazonBraket(BatchExecution):
         """Apply a rotation around the Z-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
             case {"Value": value}:
                 ...
 
@@ -140,12 +190,15 @@ class AmazonBraket(BatchExecution):
     def phase(self, target, control, **kwargs):
         """Apply a phase gate to the target qubit."""
         match kwargs:
+            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
+                value = self.parameters[index] * multiplier
             case {"Value": value}:
                 ...
+
         self.circuit.phaseshift(target, value)
 
     @staticmethod
-    def from_aws_to_ket(state, qubits, aws_map):
+    def _from_braket_to_ket(state, qubits, aws_map):
         """Convert a Braket state bitstring to a Ket integer result.
 
         Args:
@@ -165,7 +218,7 @@ class AmazonBraket(BatchExecution):
         result = self.device.run(self.circuit, shots=shots).result()
         aws_map = {q: i for i, q in enumerate(result.measured_qubits)}
         self.result = {
-            self.from_aws_to_ket(k, qubits, aws_map): v
+            self._from_braket_to_ket(k, qubits, aws_map): v
             for k, v in result.measurement_counts.items()
         }
 
@@ -180,20 +233,14 @@ class AmazonBraket(BatchExecution):
         self.clear()
 
         qpu_params = {
-            "coupling_graph": None,
+            "coupling_graph": self.coupling_graph,
             "u4_gate_type": "CX",
             "u2_gate_set": "All",
         }
-        # TO-DO: Dynamic QPU configuration based on Braket device supportedOperations
-        # if self.device != LocalSimulator():
-        #     qpu_params = {
-        #         "coupling_graph": None,
-        #         "u4_gate_type": "CX",
-        #         "u2_gates": "All"
-        #     }
 
         return super().configure(
             num_qubits=self.num_qubits,
-            direct_sample_exp_value=1024,
+            direct_sample_exp_value=self.shots,
+            classical_shadows_exp_value=self.classical_shadows,
             qpu=qpu_params,
         )

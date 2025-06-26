@@ -280,9 +280,9 @@ class QuantumState:
 
 
         Note:
-            This method requires additional dependencies from ``ket-lang[visualization]``.
+            This method requires additional dependencies from ``ket-lang[plot]``.
 
-            Install with: ``pip install ket-lang[visualization]``.
+            Install with: ``pip install ket-lang[plot]``.
 
         Returns:
             A Bloch sphere plot illustrating the quantum state.
@@ -555,9 +555,9 @@ class QuantumState:
         of the quantum state.
 
         Note:
-            This method requires additional dependencies from ``ket-lang[visualization]``.
+            This method requires additional dependencies from ``ket-lang[plot]``.
 
-            Install with: ``pip install ket-lang[visualization]``.
+            Install with: ``pip install ket-lang[plot]``.
 
         Returns:
             Histogram of the quantum state.

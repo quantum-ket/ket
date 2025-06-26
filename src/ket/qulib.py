@@ -18,6 +18,7 @@ from math import acos, sqrt, atan2
 from collections.abc import Sized, Iterable
 from inspect import signature
 
+from .clib.libket import BatchExecution
 from .base import Quant, Process
 from .operations import ctrl, around, dump
 from .gates import RZ, X, Z, H, RY, CNOT, S, global_phase
@@ -35,6 +36,13 @@ except ImportError:
     except ImportError:
         IN_NOTEBOOK = False
 
+try:
+    from qiskit import QuantumCircuit, QuantumRegister
+    from qiskit.circuit import library
+
+    QISKIT_AVAILABLE = True
+except ImportError:
+    QISKIT_AVAILABLE = False
 
 __all__ = [
     "flip_to_control",
@@ -378,6 +386,122 @@ DRAW_STYLE = {
 }
 
 
+class _IBMDeviceForDraw(BatchExecution):
+    """IBMDevice use for qulib.draw"""
+
+    def __init__(
+        self,
+        num_qubits: list[int],
+        names: list[str],
+        decompose: Literal["CX", "CZ"] | None = None,
+        keep_order: bool = True,
+    ):
+        super().__init__()
+        qubits = [QuantumRegister(n, l) for n, l in zip(num_qubits, names)]
+        self.circuit = QuantumCircuit(*qubits)
+        self.num_qubits = sum(num_qubits)
+        self.decompose = decompose
+        self.keep_order = keep_order
+        self.last_gate = None
+
+    def clear(self):
+        pass
+
+    def submit_execution(self, circuit, _p):
+        self.process_instructions(circuit)
+
+    def get_result(self):
+        return {
+            "measurements": [],
+            "exp_values": [],
+            "samples": [],
+            "dumps": [],
+            "gradients": None,
+        }
+
+    def pauli_x(self, target, control):
+        if self.keep_order and self.last_gate != "X":
+            self.circuit.barrier()
+        gate = library.XGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "X"
+
+    def pauli_y(self, target, control):
+        if self.keep_order and self.last_gate != "Y":
+            self.circuit.barrier()
+        gate = library.YGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "Y"
+
+    def pauli_z(self, target, control):
+        if self.keep_order and self.last_gate != "Z":
+            self.circuit.barrier()
+        gate = library.ZGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "Z"
+
+    def hadamard(self, target, control):
+        if self.keep_order and self.last_gate != "H":
+            self.circuit.barrier()
+        gate = library.HGate()
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "H"
+
+    def rotation_x(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "RX":
+            self.circuit.barrier()
+        gate = library.RXGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "RX"
+
+    def rotation_y(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "RY":
+            self.circuit.barrier()
+        gate = library.RYGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "RY"
+
+    def rotation_z(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "RZ":
+            self.circuit.barrier()
+        gate = library.RZGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "RZ"
+
+    def phase(self, target, control, **kwargs):
+        if self.keep_order and self.last_gate != "P":
+            self.circuit.barrier()
+        gate = library.PhaseGate(kwargs["Value"])
+        if len(control) >= 1:
+            gate = gate.control(len(control))
+        self.circuit.append(gate, control + [target])
+        self.last_gate = "P"
+
+    def connect(
+        self,
+    ):
+        """Configure process"""
+        return super().configure(
+            num_qubits=self.num_qubits,
+            execution_managed_by_target={},
+            qpu={"u4_gate": self.decompose} if self.decompose in ["CZ", "CX"] else None,
+        )
+
+
 def draw(  # pylint: disable=too-many-arguments
     gate: Callable,
     num_qubits: int | list[int],
@@ -391,6 +515,11 @@ def draw(  # pylint: disable=too-many-arguments
 ):
     """Draw a quantum gate using Qiskit.
 
+    Note:
+        This method requires additional dependencies from ``ket-lang[plot]``.
+
+        Install with: ``pip install ket-lang[plot]``.
+
     Args:
         gate: Quantum gate function.
         num_qubits: Number of qubits.
@@ -402,7 +531,12 @@ def draw(  # pylint: disable=too-many-arguments
     Returns:
         Qiskit circuit diagram of the quantum gate.
     """
-    from .ibm import IBMDeviceForDraw  # pylint: disable=import-outside-toplevel
+
+    if not QISKIT_AVAILABLE:
+        raise RuntimeError(
+            "Visualization optional dependence are required. Install with: "
+            "pip install ket-lang[plot]"
+        )
 
     if not isinstance(num_qubits, Iterable):
         num_qubits = [num_qubits]
@@ -418,7 +552,7 @@ def draw(  # pylint: disable=too-many-arguments
         num_qubits.append(aux_qubits)
         names.append("AUX")
 
-    device = IBMDeviceForDraw(
+    device = _IBMDeviceForDraw(
         num_qubits if isinstance(num_qubits, Iterable) else [num_qubits],
         names,
         decompose,

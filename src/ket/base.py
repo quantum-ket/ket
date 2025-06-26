@@ -634,9 +634,9 @@ class Samples:
         of the sample.
 
         Note:
-            This method requires additional dependencies from ``ket-lang[visualization]``.
+            This method requires additional dependencies from ``ket-lang[plot]``.
 
-            Install with: ``pip install ket-lang[visualization]``.
+            Install with: ``pip install ket-lang[plot]``.
 
         Returns:
             Histogram of sample measurement.
@@ -665,7 +665,7 @@ def _check_visualize():
     if not VISUALIZE:
         raise RuntimeError(
             "Visualization optional dependence are required. Install with: "
-            "pip install ket-lang[visualization]"
+            "pip install ket-lang[plot]"
         )
 
 
