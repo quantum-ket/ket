@@ -31,6 +31,12 @@ __all__ = [
 class Pauli:
     """Pauli operator for Hamiltonian creation.
 
+    .. tip::
+        The preferred way to create a Hamiltonian is by using the
+        :func:`~ket.gates.ham` context manager, which allows you to define a Hamiltonian
+        using a more intuitive syntax. However, you can also create Hamiltonians directly by
+        instantiating this class.
+
     This class represents a Pauli operator for Hamiltonian creation. The primary usage of this class
     is to prepare a Hamiltonian by adding and multiplying Pauli operators and scalars for
     calculating the expected value of a quantum state.

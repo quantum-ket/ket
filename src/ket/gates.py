@@ -115,7 +115,7 @@ def ham():
     """
     Context manager to define a Hamiltonian in Ket.
 
-    When used within a `with ham():` block, any operator expressions
+    When used within a ``with ham():`` block, any operator expressions
     constructed (e.g., sums of Pauli terms) are interpreted as part
     of a Hamiltonian definition.
 

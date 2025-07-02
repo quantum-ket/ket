@@ -1,8 +1,12 @@
 """QuForge Interface for Ket
 
-The class :class:~ket.quforge.QuForgeKet enables the use of QuForge, an efficient
+The class :class:`~ket.quforge.QuForgeKet` enables the use of QuForge, an efficient
 qudit simulator, within Ket. This simulator supports expected value calculation
 and gradient evaluation, making it a great choice for Quantum Machine Learning.
+
+This module requires additional dependencies from ``ket-lang[qml]``.
+Install with: ``pip install ket-lang[qml]``.
+
 """
 
 # SPDX-FileCopyrightText: 2025 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
@@ -82,7 +86,6 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.parameters = None
 
     def pauli_x(self, target, control):
-        """Apply a Pauli-X gate to the target qubit."""
         assert len(control) <= 1, "Control qubits are not supported"
         if len(control) == 0:
             self.circuit.X(index=[target])
@@ -90,22 +93,18 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
             self.circuit.CNOT(index=[control[0], target])
 
     def pauli_y(self, target, control):
-        """Apply a Pauli-Y gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.Y(index=[target])
 
     def pauli_z(self, target, control):
-        """Apply a Pauli-Z gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.Z(index=[target])
 
     def hadamard(self, target, control):
-        """Apply a Hadamard gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.H(index=[target])
 
     def rotation_x(self, target, control, **kwargs):
-        """Apply a rotation around the X-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
             case {"Value": value}:
@@ -116,7 +115,6 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.circuit.RX(index=[target], angle=value)
 
     def rotation_y(self, target, control, **kwargs):
-        """Apply a rotation around the Y-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
             case {"Value": value}:
@@ -127,7 +125,6 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.circuit.RY(index=[target], angle=value)
 
     def rotation_z(self, target, control, **kwargs):
-        """Apply a rotation around the Z-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
             case {"Value": value}:
@@ -138,11 +135,9 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.circuit.RZ(index=[target], angle=value)
 
     def phase(self, target, control, **kwargs):
-        """Apply a phase gate to the target qubit."""
         self.rotation_z(target, control, **kwargs)
 
     def exp_value(self, _, hamiltonian):
-        """Compute the expectation value."""
         coef = hamiltonian["coefficients"]
         products = hamiltonian["products"]
 
@@ -198,13 +193,6 @@ class QuForgeKet(BatchExecution):  # pylint: disable=too-many-instance-attribute
         self.parameters = None
 
     def connect(self):
-        """Configures a Process to use QuForge.
-
-        The return value of this function must be passed to a :class:`~ket.base.Process`
-        constructor. The result should not be reused, and the QuForgeKet instance must remain alive
-        until the end of the process's lifetime.
-        """
-
         self.clear()
         return super().configure(
             num_qubits=self.num_qubits,

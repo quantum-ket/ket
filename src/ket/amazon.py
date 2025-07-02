@@ -1,6 +1,6 @@
 """AmazonBraket Interface for Ket
 
-The class :class:~ket.amazon.AmazonBraket provides a backend to connect Ket
+The class :class:`~ket.amazon.AmazonBraket` provides a backend to connect Ket
 with Amazon Braket, the fully managed quantum computing service from AWS.
 
 This integration allows you to run quantum circuits developed in Ket on the
@@ -9,6 +9,46 @@ through the Braket service. By acting as a bridge between Ket's high-level
 programming environment and Amazon's cloud resources. This makes it
 an excellent choice for experiments that require high-performance simulation
 or access to different QPU architectures.
+
+:Example:
+
+.. code-block:: python
+
+    from ket import *
+    from ket.amazon import AmazonBraket
+    from math import sqrt
+
+    device = AmazonBraket()                                                                    # LocalSimulator
+    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')            # TN1
+    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')            # DM1
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')                # IonQ Aria-1
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')                # IonQ Aria-2
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')               # IonQ Forte-1
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')    # IonQ Forte-Enterprise-1
+    # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')                # IQM Garnet
+    # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')            # Rigetti Ankaa-3
+
+    process = Process(device)
+    a, b = process.alloc(2)
+
+    X(a + b)
+    CNOT(H(a), b)
+
+    with ham():
+        a0 = Z(a)
+        a1 = X(a)
+        b0 = -(X(b) + Z(b)) / sqrt(2)
+        b1 = (X(b) - Z(b)) / sqrt(2)
+        h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
+
+    print(exp_value(h).get())
+
+
+To use the Braket QPUs and on demand simulators, you need to have an
+AWS account and the necessary permissions to access the Braket service.
+You can find more information on how to set up your AWS account and
+permissions in the `Amazon Braket documentation <https://docs.aws.amazon.com/braket/>`_.
+
 """
 
 from __future__ import annotations
@@ -39,18 +79,32 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
     This class provides an interface to run Ket  quantum circuits on the Amazon
     Braket service. It enables access to a wide range of cloud-based simulators
     and real quantum hardware (QPUs), making it suitable for both small-scale
-    tests and large-scale quantum experiments.
+    tests and large-scale quantum experiments. Only Gate Model QPUs and
+    simulators are supported.
+
+    The arguments ``shots`` and ``classical_shadows`` control how the
+    execution is performed for estimating expectation values of an
+    Hamiltonian term. Only one of these arguments can be specified at a time.
+
+    If ``shots`` is specified, it will run the circuit multiple times
+    (the number of shots) to estimate the expectation values.
+    If ``classical_shadows`` is specified, it will use the classical shadows
+    technique for state estimation. The dictionary should be in the
+    format: ``{"bias": (int, int, int), "samples": int, "shots": int}``.
+    The ``bias`` tuple represents the bias for the randomized measurements on the
+    X, Y, and Z axes, respectively. The ``samples`` is the number of
+    classical shadows to be generated, and ``shots`` is the number of shots
+    for each sample.
 
     Args:
-        device (Optional[str]): The ARN (Amazon Resource Name) string of the
+        device: The ARN (Amazon Resource Name) string of the
             Braket device (QPU or simulator) to be used for execution. If
-            "None", it defaults to using the local Braket simulator.
-        shots (Optional[int]): The number of shots for the execution to estimate
-            the expectation values of an Hamiltonian term. If not specified, it defaults
-            to 2048.
-        classical_shadows (Optional[dict]): If specified, it will use the classical
-            shadows technique for state estimation. Dictionary should be in the
-            format: {"bias": tuple[int], "samples": int, "shots": int}.
+            ``None``, it defaults to using the local Braket simulator.
+        shots: The number of shots for the execution to estimate
+            the expectation values of an Hamiltonian term. If ``classical_shadows``
+            and ``shots`` are not specified, it defaults to 2048.
+        classical_shadows: If specified, it will use the classical
+            shadows technique for state estimation.
 
     """
 
@@ -94,7 +148,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             hasattr(self.device, "topology_graph")
             and self.device.topology_graph is not None
         ):
-            self.coupling_graph = list(device.topology_graph.edges)
+            self.coupling_graph = list(
+                (i - 1, j - 1) for i, j in self.device.topology_graph.edges
+            )
         else:
             self.coupling_graph = None
 
@@ -132,7 +188,6 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         return results_dict
 
     def pauli_x(self, target, control):
-        """Apply a Pauli-X gate to the target qubit."""
         assert len(control) <= 1, "Control qubits are not supported"
         if len(control) == 0:
             self.circuit.x(target)
@@ -140,22 +195,18 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             self.circuit.cnot(control[0], target)
 
     def pauli_y(self, target, control):
-        """Apply a Pauli-Y gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.y(target)
 
     def pauli_z(self, target, control):
-        """Apply a Pauli-Z gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.z(target)
 
     def hadamard(self, target, control):
-        """Apply a Hadamard gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         self.circuit.h(target)
 
     def rotation_x(self, target, control, **kwargs):
-        """Apply a rotation around the X-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
@@ -166,7 +217,6 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         self.circuit.rx(target=target, angle=value)
 
     def rotation_y(self, target, control, **kwargs):
-        """Apply a rotation around the Y-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
@@ -177,7 +227,6 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         self.circuit.ry(target=target, angle=value)
 
     def rotation_z(self, target, control, **kwargs):
-        """Apply a rotation around the Z-axis to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         match kwargs:
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
@@ -188,7 +237,6 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         self.circuit.rz(target=target, angle=value)
 
     def phase(self, target, control, **kwargs):
-        """Apply a phase gate to the target qubit."""
         match kwargs:
             case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
                 value = self.parameters[index] * multiplier
@@ -223,13 +271,6 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         }
 
     def connect(self):
-        """Configures a Process to use AmazonBraket.
-
-        The return value of this function must be passed to a :class:`~ket.base.Process`
-        constructor. The result should not be reused, and the AmazonBraket instance must
-        remain alive until the end of the process's lifetime.
-        """
-
         self.clear()
 
         qpu_params = {

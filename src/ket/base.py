@@ -1,7 +1,12 @@
-"""Base quantum programming classes.
+"""Base classes for quantum programming.
 
-This module provides base classes for handling quantum programming in the Ket library. It includes
-for handle and store quantum states, measurements.
+This module provides the base classes for quantum programming in Ket, including the
+:class:`~ket.base.Process`, which is the gateway for qubit allocation and quantum execution,
+and the :class:`~ket.base.Quant`, which stores the qubit's reference.
+
+With the exception of :class:`~ket.base.Process`, the classes in this module are not
+intended to be instantiated directly by the user. Instead, they are meant to be
+created through provided functions.
 """
 
 from __future__ import annotations
@@ -36,11 +41,12 @@ __all__ = [
 
 
 class Process(LibketProcess):
-    """Quantum program process.
+    """
+    Quantum program process.
 
-    A :class:`~ket.base.Process` in Ket handles quantum circuit preparation and execution, serving
-    as a direct interface to the Rust library. Its primary usage in quantum programming is to
-    allocate qubits using the :meth:`~ket.base.Process.alloc` method.
+    A :class:`~ket.base.Process` in Ket is responsible for preparing and executing quantum circuits.
+    It serves as a direct interface to the underlying Rust runtime library. The primary way to
+    interact with a process is through the :meth:`~ket.base.Process.alloc` method to allocate qubits.
 
     Example:
 
@@ -49,81 +55,76 @@ class Process(LibketProcess):
             from ket import Process
 
             p = Process()
-            qubits = p.alloc(10) # Allocate 10 qubits
+            qubits = p.alloc(10)  # Allocate 10 qubits
 
-    By default, quantum execution is performed by the KBW simulator using sparse mode with 32
-    qubits. The KBW simulator in sparse mode handles qubits in a representation equivalent to a
-    sparse matrix. This simulator's execution time is related to the amount of superposition in the
-    quantum execution, making it suitable as a default when the number of qubits is unknown or the
-    quantum state can be represented by a sparse matrix, such as in a GHZ state. The dense simulator
-    mode has exponential time complexity with the number of qubits. While it can better explore CPU
-    parallelism, the number of qubits must be carefully set. The default number of qubits for the
-    dense simulator is 12. The choice of simulator mode depends on the quantum algorithm, as each
-    mode has its pros and cons.
+    By default, quantum execution is handled by the KBW simulator in **sparse** mode with support
+    for up to 32 qubits. In sparse mode, qubits are represented using a data structure similar to a
+    sparse matrix. This mode performs well when the quantum state involves the superposition of a
+    small number of basis states, such as GHZ states, and is suitable as a general default when the
+    number of qubits is unknown.
 
-    Another parameter for quantum execution on the KBW simulator is between "live" and "batch"
-    execution. This configuration determines when quantum instructions will be executed. If set to
-    "live", quantum instructions execute immediately after the call. If set to "batch", quantum
-    instructions execute only at the end of the process. The default configuration is "live",
-    suitable for quantum simulation where the non-clone theorem of quantum mechanics does not need
-    to be respected. Batch execution is closer to what is expected from a quantum computer and is
-    recommended when preparing quantum code to execute on a QPU.
+    The **dense** simulation mode, on the other hand, has exponential time complexity in the number
+    of qubits. It leverages CPU parallelism more effectively, but requires careful management of the
+    number of qubits, defaulting to 12. The choice between sparse and dense simulation depends on
+    the specific quantum algorithm being implemented, as each mode has trade-offs in performance
+    and scalability.
 
-    Example:
+    The execution mode of the simulator can be set to either ``"live"`` or ``"batch"``:
 
-        Batch execution:
+    - **Live** (default): Quantum instructions are executed immediately upon invocation. This mode
+      is ideal for interactive simulation.
 
-        .. code-block:: python
+    - **Batch**: Quantum instructions are queued and executed only at the a measurement result is
+      requested. This mode better reflects the behavior of real quantum hardware and is recommended
+      for preparing code for deployment to QPUs.
 
-            from ket import *
+    Batch Execution Example:
 
-            p = Process(execution="batch")
-            a, b = p.alloc(2)
+    .. code-block:: python
 
-            CNOT(H(a), b) # Bell state preparation
+        from ket import *
 
-            d = dump(a + b)
+        p = Process(execution="batch")
+        a, b = p.alloc(2)
 
-            p.execute()
-            # The value of `d` will only be available after executing the process
+        CNOT(H(a), b)  # Prepare a Bell state
 
-            print(d.show())
+        d = sample(a + b)
 
-            CNOT(a, b)  # This instruction will raise an error since the process
-                        # has already executed.
+        print(d.get())  # Execution happens here
 
-        Live execution:
+        CNOT(a, b)  # Raises an error: process already executed
 
-        .. code-block:: python
+    Live Execution Example:
 
-            from ket import *
+    .. code-block:: python
 
-            p = Process(execution="batch")
-            a, b = p.alloc(2)
+        from ket import *
+        p = Process(execution="live")
+        a, b = p.alloc(2)
 
-            CNOT(H(a), b) # Bell state preparation
+        CNOT(H(a), b)  # Prepare a Bell state
 
-            # The value of the dump is available right after
-            print(dump(a + b).show())
+        print(sample(a + b).get())  # Output is available immediately
 
-            CNOT(a, b)  # This instruction can execute normally
-            H(a)
-
-            print(dump(a + b).show())
-
+        CNOT(a, b)
+        H(a)
+        print(sample(a + b).get())
 
     Args:
-        configuration: Configuration definition for third-party quantum execution.
-            Defaults to :obj:`None`.
-        num_qubits: Number of qubits for the KBW simulator. If None and ``simulator=="sparse"``,
-            defaults to 32; otherwise, defaults to 12.
-        simulator: Simulation mode for the KBW simulator. If None, defaults to ``"sparse"``.
-        execution: Execution mode for the KBW simulator. If None, defaults to ``"live"``.
+        execution_target: Quantum execution target object. If not provided, the KBW simulator
+            is used.
+        num_qubits: Number of qubits for the KBW simulator.
+            Defaults to 32 for sparse mode, or 12 for dense mode.
+        simulator: Simulation mode for the KBW simulator, either ``"sparse"`` or ``"dense"``.
+            Defaults to ``"sparse"``.
+        execution: Execution mode for the KBW simulator, either ``"live"`` or ``"batch"``.
+            Defaults to ``"live"``.
     """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        configuration: BatchExecution | LiveExecution | None = None,
+        execution_target: BatchExecution | LiveExecution | None = None,
         num_qubits: Optional[int] = None,
         simulator: Optional[Literal["sparse", "dense", "dense v2"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
@@ -131,13 +132,13 @@ class Process(LibketProcess):
         **kwargs,
     ):
 
-        if configuration is not None and any(
+        if execution_target is not None and any(
             map(lambda a: a is not None, [num_qubits, simulator, execution])
         ):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
-        if configuration is not None:
-            self.configuration = configuration
+        if execution_target is not None:
+            self.configuration = execution_target
             ptr = self.configuration.connect()
             assert isinstance(ptr, c_void_p)
             super().__init__(ptr)
@@ -164,14 +165,11 @@ class Process(LibketProcess):
         self._buffer = (c_uint8 * self._buffer_size)()
 
     def alloc(self, num_qubits: int = 1) -> Quant:
-        """Allocate a specified number of qubits and return a :class:`~ket.base.Quant` object.
+        """Allocate qubits and return a :class:`~ket.base.Quant` object.
 
-        Args:
-            num_qubits: The number of qubits to allocate. Defaults to 1.
-
-        Returns:
-            A list like object representing the allocated qubits.
-
+        Each qubit is assigned a unique index, and the
+        resulting :class:`~ket.base.Quant` object encapsulates the allocated qubits along with a
+        reference to the parent :class:`~ket.base.Process` object.
 
         Example:
             >>> from ket import Process
@@ -180,10 +178,12 @@ class Process(LibketProcess):
             >>> print(qubits)
             <Ket 'Quant' [0, 1, 2] pid=0x...>
 
-        The :meth:`~ket.base.Process.alloc` method allocates the specified number of qubits and
-        returns a :class:`~ket.base.Quant` object. Each qubit is assigned a unique index, and the
-        resulting :class:`~ket.base.Quant` object encapsulates the allocated qubits along with a
-        reference to the parent :class:`~ket.base.Process` object.
+
+        Args:
+            num_qubits: The number of qubits to allocate. Defaults to 1.
+
+        Returns:
+            A list like object representing the allocated qubits.
         """
 
         if num_qubits < 1:
@@ -195,23 +195,10 @@ class Process(LibketProcess):
     def _get_ket_process(self):
         return self
 
-    def get_instructions(self) -> list[dict[str, Any]]:
-        """Retrieve quantum instructions from the quantum process.
+    def get_instructions(self) -> list[dict]:
+        """Retrieve quantum instructions from the process.
 
-        Returns:
-            A list of dictionaries containing quantum instructions extracted from the process.
-
-        The :meth:`~ket.base.Process.get_instructions` method retrieves the quantum instructions
-        from the prepared quantum process. It internally calls the
-        :meth:`~ket.base.Process.instructions_json` method to obtain the instructions fom the Rust
-        library in JSON format, converts the byte data into a list of dictionaries, and returns the
-        result.
-
-        Note:
-            Ensure that the quantum process has been appropriately prepared for execution using the
-            :meth:`~ket.base.Process.prepare_for_execution` method before calling this method. The
-            returned instructions provide insights into the quantum circuit and can be useful for
-            debugging or analysis purposes.
+        The format of the instructions is defined in the runtime library Libket.
 
         Example:
             >>> from ket import *
@@ -221,10 +208,16 @@ class Process(LibketProcess):
             >>> # Get quantum instructions
             >>> instructions = p.get_instructions()
             >>> pprint(instructions)
-            [{'Alloc': {'target': 0}},
-             {'Alloc': {'target': 1}},
-             {'Gate': {'control': [], 'gate': 'Hadamard', 'target': 0}},
-             {'Gate': {'control': [0], 'gate': 'PauliX', 'target': 1}}]
+            [{'Gate': {'control': [],
+                       'gate': 'Hadamard',
+                       'target': {'Main': {'index': 0}}}},
+             {'Gate': {'control': [{'Main': {'index': 0}}],
+                       'gate': 'PauliX',
+                       'target': {'Main': {'index': 1}}}}]
+
+
+        Returns:
+            A list of dictionaries containing quantum instructions extracted from the process.
         """
         write_size = self.instructions_json(self._buffer, self._buffer_size)
         if write_size.value > self._buffer_size:
@@ -234,8 +227,46 @@ class Process(LibketProcess):
 
         return loads(bytearray(self._buffer[: write_size.value]))
 
-    def get_isa_instructions(self) -> list[dict[str, Any]] | None:
-        """Retrieve transpiled quantum instructions from the quantum process.
+    def get_mapped_instructions(self) -> list[dict] | None:
+        """Retrieve quantum instructions after the circuit mapping.
+
+        The format of the instructions is defined in the runtime library Libket.
+
+        The instructions are extracted after the circuit mapping step, which is
+        performed during the compilation process. A qubit coupling graph must be passed to the
+        process for the quantum circuit mapping to happen. Note that at this point, the single
+        qubit gates have not been translated to the native gate set of the quantum hardware yet.
+
+        Example:
+
+            >>> n = 4
+            >>> coupling_graph = [(0, 1), (1, 2), (2, 3), (3, 0)]
+            >>> p = Process(num_qubits=n, coupling_graph=coupling_graph)
+            >>> q = p.alloc(n)
+            >>> ctrl(H(q[0]), X)(q[1:])
+            >>> m = measure(q)
+            >>> p.prepare_for_execution()
+            >>> pprint(p.get_mapped_instructions())
+            [{'Gate': {'control': [], 'gate': 'Hadamard', 'target': {'index': 0}}},
+             {'Gate': {'control': [{'index': 0}],
+                       'gate': 'PauliX',
+                       'target': {'index': 1}}},
+             'Identity',
+             {'Gate': {'control': [{'index': 3}],
+                       'gate': 'PauliX',
+                       'target': {'index': 0}}},
+             {'Gate': {'control': [{'index': 0}],
+                       'gate': 'PauliX',
+                       'target': {'index': 3}}},
+             {'Gate': {'control': [{'index': 3}],
+                       'gate': 'PauliX',
+                       'target': {'index': 2}}},
+             {'Measure': {'index': 0,
+                          'qubits': [{'index': 3},
+                                     {'index': 1},
+                                     {'index': 0},
+                                     {'index': 2}]}}]
+
 
         Returns:
             A list of dictionaries containing quantum instructions extracted from the process
@@ -253,35 +284,28 @@ class Process(LibketProcess):
     def get_metadata(self) -> dict[str, Any]:
         """Retrieve metadata from the quantum process.
 
+        Example:
+
+            >>> n = 4
+            >>> coupling_graph = [(0, 1), (1, 2), (2, 3), (3, 0)]
+            >>> p = Process(num_qubits=n, coupling_graph=coupling_graph)
+            >>> q = p.alloc(n)
+            >>> ctrl(H(q[0]), X)(q[1:])
+            >>> m = measure(q)
+            >>> p.prepare_for_execution()
+            >>> pprint(p.get_mapped_instructions())
+            {'allocated_qubits': 4,
+             'decomposition': {'NoAuxCX': 3},
+             'logical_circuit_depth': 3,
+             'logical_gate_count': {'1': 1, '2': 3},
+             'physical_circuit_depth': 5,
+             'physical_gate_count': {'1': 1, '2': 4},
+             'terminated': True}
+
+
         Returns:
             A dictionary containing metadata information extracted from the process.
 
-        The :meth:`~ket.base.Process.get_metadata` method retrieves metadata from the prepared
-        quantum process. It internally calls the :meth:`~ket.base.Process.metadata_json` method to
-        obtain the metadata in JSON format, converts the byte data into a dictionary, and returns
-        the result.
-
-        Note:
-            Ensure that the quantum process has been appropriately prepared for execution using the
-            :meth:`~ket.base.Process.prepare_for_execution` method before calling this method. The
-            returned metadata provides information about the quantum circuit execution, including
-            depth, gate count, qubit simultaneous operations, status, execution time, and timeout.
-
-        Example:
-
-            >>> from ket import Process
-            >>> p = Process()
-            >>> a, b = p.alloc(2)
-            >>> CNOT(H(a), b)
-            >>> # Get metadata
-            >>> metadata = p.get_metadata()
-            >>> pprint(metadata)
-            {'depth': 2,
-             'execution_time': None,
-             'gate_count': {'1': 1, '2': 1},
-             'qubit_simultaneous': 2,
-             'status': 'Live',
-             'timeout': None}
         """
 
         write_size = self.metadata_json(
@@ -304,7 +328,7 @@ class Process(LibketProcess):
             A list of :class:`~ket.base.Parameter` objects.
         """
         parameters = [
-            Parameter(process=self, index=self.set_parameter(p), value=p) for p in param
+            Parameter(process=self, index=self.set_parameter(p).value, value=p) for p in param
         ]
         if len(param) == 1:
             return parameters[0]
@@ -673,7 +697,7 @@ class Parameter:
     """Parameter for gradient calculation.
 
     This class represents a parameter for gradient calculation in a quantum process. It should not
-    be instanced directly, but rather obtained from the :meth:`~ket.base.Process.param`
+    be instanced directly, but rather obtained from the :meth:`~ket.base.Process.param`  method.
     """
 
     def __init__(self, process, index, value, multiplier=1):
