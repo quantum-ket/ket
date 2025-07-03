@@ -1,4 +1,20 @@
+"""Module providing functionality to interact with IBM Quantum and IBM Cloud devices.
+
+Note:
+    This module requires additional dependencies from ``ket-lang[ibm]``.
+
+    Install with: ``pip install ket-lang[ibm]``.
+
+"""
+
 from __future__ import annotations
+
+# SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+# SPDX-FileCopyrightText: 2024 Otávio Augusto de Santana Jatobá
+# <otavio.jatoba@grad.ufsc.br>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from .clib.libket import BatchExecution
 
 try:
@@ -11,12 +27,31 @@ except ImportError:
     QISKIT_AVAILABLE = False
 
 
-class IBMDevice(BatchExecution):
+class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     """IBM Qiskit backend for Ket process.
+
+    The arguments ``shots`` and ``classical_shadows`` control how the
+    execution is performed for estimating expectation values of an
+    Hamiltonian term. Only one of these arguments can be specified at a time.
+
+    If ``shots`` is specified, it will run the circuit multiple times
+    (the number of shots) to estimate the expectation values.
+    If ``classical_shadows`` is specified, it will use the classical shadows
+    technique for state estimation. The dictionary should be in the
+    format: ``{"bias": (int, int, int), "samples": int, "shots": int}``.
+    The ``bias`` tuple represents the bias for the randomized measurements on the
+    X, Y, and Z axes, respectively. The ``samples`` is the number of
+    classical shadows to be generated, and ``shots`` is the number of shots
+    for each sample.
 
     Args:
         backend: The backend to be used for the quantum execution.
         use_qiskit_transpiler: Use Qiskit transpiler instead of Ket's.
+        shots: The number of shots for the execution to estimate
+            the expectation values of an Hamiltonian term. If ``classical_shadows``
+            and ``shots`` are not specified, it defaults to 2048.
+        classical_shadows: If specified, it will use the classical
+            shadows technique for state estimation.
     """
 
     def __init__(
@@ -35,8 +70,8 @@ class IBMDevice(BatchExecution):
 
         if shots is not None and classical_shadows is not None:
             raise ValueError(
-                "You cannot specify both 'shots' and 'classical_shadows'. "
-                "Please choose one of them."
+                "You cannot specify both 'shots' and 'classical_shadows'. Please"
+                " choose one of them."
             )
 
         super().__init__()

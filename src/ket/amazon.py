@@ -18,15 +18,15 @@ or access to different QPU architectures.
     from ket.amazon import AmazonBraket
     from math import sqrt
 
-    device = AmazonBraket()                                                                    # LocalSimulator
-    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')            # TN1
-    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')            # DM1
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')                # IonQ Aria-1
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')                # IonQ Aria-2
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')               # IonQ Forte-1
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')    # IonQ Forte-Enterprise-1
-    # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')                # IQM Garnet
-    # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')            # Rigetti Ankaa-3
+    device = AmazonBraket()
+    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')
+    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')
+    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')
+    # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')
+    # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')
 
     process = Process(device)
     a, b = process.alloc(2)
@@ -273,15 +273,13 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
     def connect(self):
         self.clear()
 
-        qpu_params = {
-            "coupling_graph": self.coupling_graph,
-            "u4_gate_type": "CX",
-            "u2_gate_set": "All",
-        }
-
         return super().configure(
             num_qubits=self.num_qubits,
             direct_sample_exp_value=self.shots,
             classical_shadows_exp_value=self.classical_shadows,
-            qpu=qpu_params,
+            qpu={
+                "coupling_graph": self.coupling_graph,
+                "u4_gate_type": "CX",
+                "u2_gate_set": "All",
+            },
         )

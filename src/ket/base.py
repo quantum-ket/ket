@@ -46,7 +46,8 @@ class Process(LibketProcess):
 
     A :class:`~ket.base.Process` in Ket is responsible for preparing and executing quantum circuits.
     It serves as a direct interface to the underlying Rust runtime library. The primary way to
-    interact with a process is through the :meth:`~ket.base.Process.alloc` method to allocate qubits.
+    interact with a process is through the :meth:`~ket.base.Process.alloc` method to allocate
+    qubits.
 
     Example:
 

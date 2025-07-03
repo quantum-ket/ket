@@ -86,8 +86,9 @@ from .expv import *
 from .quantumstate import *
 from . import qulib
 
-__version__ = "0.9.0b7"
+__version__ = "0.9.0b8"
 
+# pylint: disable=duplicate-code
 __all__ = [
     "Process",
     "ctrl",
@@ -129,6 +130,7 @@ __all__ = [
     "ham",
     "qulib",
 ]
+# pylint: enable=duplicate-code
 
 
 def ket_version() -> list[str]:

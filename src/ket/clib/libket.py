@@ -161,6 +161,7 @@ API_argtypes = {
     "ket_process_adj_begin": ([c_void_p], []),
     "ket_process_adj_end": ([c_void_p], []),
     "ket_process_execute": ([c_void_p], []),
+    "ket_process_prepare_for_execution": ([c_void_p], []),
     "ket_process_instructions_json": (
         [c_void_p, POINTER(c_uint8), c_size_t],
         [c_size_t],
@@ -299,19 +300,38 @@ class BatchExecution(ABC):
         circuit: dict,
         parameters: list[float],
     ):
-        """Get the quantum circuit to execute."""
+        """Get the quantum circuit to execute.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
 
     @abstractmethod
     def get_result(self) -> dict:
-        """Get the result of the quantum circuit execution."""
+        """Get the result of the quantum circuit execution.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
 
     @abstractmethod
     def clear(self):
-        """Clear the data to start a new execution."""
+        """Clear the data to start a new execution.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
 
     @abstractmethod
     def connect(self):
-        """Call configure with the appropriated arguments to generate the object."""
+        """Call :meth:`ket.clib.libket.BatchExecution.configure` with the
+        appropriated arguments to generate the quantum execution target.
+
+        .. warning::
+            This method is called automatically by :class:`~ket.base.Process`.
+            It is not necessary to call it manually.
+
+        """
 
     def configure(self, **kwargs):
         """Configure the batch execution."""
@@ -361,51 +381,100 @@ class BatchExecution(ABC):
                     raise ValueError(f"Invalid instruction: {instruction}")
 
     def pauli_x(self, target, control):
-        """Apply a Pauli-X gate to the target qubit."""
+        """Apply a Pauli-X gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and  should not be called directly.
+
+        """
         raise NotImplementedError("Pauli-X gate not implemented")
 
     def pauli_y(self, target, control):
-        """Apply a Pauli-Y gate to the target qubit."""
+        """Apply a Pauli-Y gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Pauli-Y gate not implemented")
 
     def pauli_z(self, target, control):
-        """Apply a Pauli-Z gate to the target qubit."""
+        """Apply a Pauli-Z gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Pauli-Z gate not implemented")
 
     def hadamard(self, target, control):
-        """Apply a Pauli-Z gate to the target qubit."""
+        """Apply a Hadamard gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Hadamard gate not implemented")
 
     def rotation_x(self, target, control, **kwargs):
-        """Apply a X-Rotation gate to the target qubit."""
+        """Apply a X-Rotation gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("X-Rotation gate not implemented")
 
     def rotation_y(self, target, control, **kwargs):
-        """Apply a Y-Rotation gate to the target qubit."""
+        """Apply a Y-Rotation gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Y-Rotation gate not implemented")
 
     def rotation_z(self, target, control, **kwargs):
-        """Apply a Z-Rotation gate to the target qubit."""
+        """Apply a Z-Rotation gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Z-Rotation gate not implemented")
 
     def phase(self, target, control, **kwargs):
-        """Apply a Phase gate to the target qubit."""
+        """Apply a Phase gate to the target qubit.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Phase gate not implemented")
 
     def exp_value(self, index, hamiltonian):
-        """Compute the expectation value."""
+        """Compute the expectation value.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Expectation value not implemented")
 
     def measure(self, index, qubits) -> int:
-        """Measure the qubits."""
+        """Measure the qubits.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Measurement not implemented")
 
     def sample(self, index, qubits, shots):
-        """Sample the qubits."""
+        """Sample the qubits.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Sampling not implemented")
 
     def dump(self, index, qubits):
-        """Dump the qubits."""
+        """Dump the qubits.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
         raise NotImplementedError("Dump not implemented")
 
 
