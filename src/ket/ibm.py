@@ -21,6 +21,9 @@ try:
     from qiskit import QuantumCircuit
     from qiskit.circuit import library
     from qiskit.providers import BackendV2
+    from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+    from qiskit_ibm_runtime import SamplerV2 as Sampler
+    from qiskit_aer import AerSimulator
 
     QISKIT_AVAILABLE = True
 except ImportError:
@@ -45,7 +48,8 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     for each sample.
 
     Args:
-        backend: The backend to be used for the quantum execution.
+        backend: The backend to be used for the quantum execution. If not
+            provided, it defaults to the AerSimulator.
         use_qiskit_transpiler: Use Qiskit transpiler instead of Ket's.
         shots: The number of shots for the execution to estimate
             the expectation values of an Hamiltonian term. If ``classical_shadows``
@@ -56,7 +60,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
-        backend: BackendV2,
+        backend: BackendV2 | None = None,
         *,
         shots: int | None = None,
         classical_shadows: dict | None = None,
@@ -75,6 +79,9 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
             )
 
         super().__init__()
+
+        if backend is None:
+            backend = AerSimulator()
 
         self.num_qubits = backend.configuration().n_qubits
 
@@ -95,7 +102,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         else:
             self.coupling_graph = None
 
-        self.circuit = QuantumCircuit(self.num_qubits, self.num_qubits)
+        self.circuit = QuantumCircuit(self.num_qubits)
         self.parameters = None
 
         self.shots = 2048 if shots is None and classical_shadows is None else shots
@@ -105,7 +112,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.result = None
 
     def clear(self):
-        self.circuit = QuantumCircuit(self.num_qubits, self.num_qubits)
+        self.circuit = QuantumCircuit(self.num_qubits)
         self.parameters = None
         self.qubits_from_sample = None
         self.result = None
@@ -194,8 +201,19 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.circuit.append(gate, control + [target])
 
     def sample(self, _, qubits, shots):
-        self.circuit.measure(qubits, qubits)
-        self.result = self.backend.run(self.circuit, shots=shots).result().get_counts()
+        self.circuit.measure_all()
+        pm = generate_preset_pass_manager(
+            backend=self.backend,
+            initial_layout=(
+                list(range(self.num_qubits))
+                if self.coupling_graph is not None
+                else None
+            ),
+        )
+        isa_circuit = pm.run(self.circuit)
+        sampler = Sampler(mode=self.backend)
+        job = sampler.run([isa_circuit], shots=shots)
+        self.result = job.result()[0].data.meas.get_counts()
         self.qubits_from_sample = qubits
 
     def connect(self):

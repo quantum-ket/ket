@@ -13,8 +13,8 @@ from __future__ import annotations
 from functools import reduce
 from operator import add
 from typing import Callable, Literal
-from cmath import asin, exp, isclose, cos, sin
-from math import acos, sqrt, atan2
+from cmath import asin, isclose, phase as cphase
+from math import sqrt, atan2
 from collections.abc import Sized, Iterable
 from inspect import signature
 
@@ -274,50 +274,22 @@ def _is_unitary(matrix):
     )
 
 
-def _extract_phase(matrix):
+def _zyz(matrix):
     a, b = matrix[0]
     c, d = matrix[1]
-    det = a * d - b * c
-    return 1 / 2 * atan2(det.imag, det.real)
 
+    det = cphase(a * d - b * c)
+    phase = det / 2
 
-def _zyz(matrix):
-    phase = _extract_phase(matrix)
+    theta = 2 * atan2(abs(c), abs(a))
 
-    matrix = [
-        [exp(-1j * phase) * matrix[i][j] for j in range(len(matrix[0]))]
-        for i in range(len(matrix))
-    ]
+    ang1 = cphase(d)
+    ang2 = cphase(c)
 
-    def clip(num):
-        """Clip the number to compensate for floating point error"""
-        if -(1.0 + 10e-10) < num < 1.0 + 10e-10:
-            return min(max(num, -1.0), 1.0)
-        raise ValueError("math domain error")
+    phi = ang1 + ang2 - det
+    lam = ang1 - ang2
 
-    theta_1 = (
-        2 * acos(clip(abs(matrix[0][0])))
-        if abs(matrix[0][0]) >= abs(matrix[0][1])
-        else 2 * asin(abs(matrix[0][1]))
-    ).real
-
-    if not isclose(cos(theta_1 / 2), 0.0, abs_tol=1e-10):
-        aux_0_plus_2 = matrix[1][1] / cos(theta_1 / 2)
-        theta_0_plus_2 = 2 * atan2(aux_0_plus_2.imag, aux_0_plus_2.real)
-    else:
-        theta_0_plus_2 = 0.0
-
-    if not isclose(sin(theta_1 / 2), 0.0, abs_tol=1e-10):
-        aux_1_sub_2 = matrix[1][0] / sin(theta_1 / 2)
-        theta_0_sub_2 = 2 * atan2(aux_1_sub_2.imag, aux_1_sub_2.real)
-
-    else:
-        theta_0_sub_2 = 0.0
-
-    theta_0 = (theta_0_plus_2 + theta_0_sub_2) / 2
-    theta_2 = (theta_0_plus_2 - theta_0_sub_2) / 2
-
-    return phase, theta_0, theta_1, theta_2
+    return phase, phi, theta, lam
 
 
 def unitary(matrix: list[list[complex]]) -> Callable[[Quant], Quant]:
@@ -340,13 +312,13 @@ def unitary(matrix: list[list[complex]]) -> Callable[[Quant], Quant]:
     if not _is_unitary(matrix):
         raise ValueError("Input matrix is not unitary")
 
-    phase, theta_0, theta_1, theta_2 = _zyz(matrix)
+    phase, phi, theta, lam = _zyz(matrix)
 
     @global_phase(phase)
     def inner(qubits: Quant):
-        RZ(theta_2.real, qubits)
-        RY(theta_1.real, qubits)
-        RZ(theta_0.real, qubits)
+        RZ(lam.real, qubits)
+        RY(theta.real, qubits)
+        RZ(phi.real, qubits)
         return qubits
 
     return inner
@@ -393,14 +365,14 @@ class _IBMDeviceForDraw(BatchExecution):
         self,
         num_qubits: list[int],
         names: list[str],
-        decompose: Literal["CX", "CZ"] | None = None,
+        qpu: dict | None = None,
         keep_order: bool = True,
     ):
         super().__init__()
         qubits = [QuantumRegister(n, l) for n, l in zip(num_qubits, names)]
         self.circuit = QuantumCircuit(*qubits)
         self.num_qubits = sum(num_qubits)
-        self.decompose = decompose
+        self.qpu = qpu
         self.keep_order = keep_order
         self.last_gate = None
 
@@ -498,19 +470,21 @@ class _IBMDeviceForDraw(BatchExecution):
         return super().configure(
             num_qubits=self.num_qubits,
             execution_managed_by_target={},
-            qpu={"u4_gate": self.decompose} if self.decompose in ["CZ", "CX"] else None,
+            qpu=self.qpu,
         )
 
 
-def draw(  # pylint: disable=too-many-arguments
+def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
     gate: Callable,
-    num_qubits: int | list[int],
-    *,
+    qubits: int | list[int],
     args: tuple = (),
-    decompose: Literal["CX", "CZ"] | None = None,
+    *,
+    qpu_size: int | None = None,
+    u4_gate: Literal["CX", "CZ"] | None = None,
+    u2_gates: Literal["ZYZ", "RzSx"] | None = None,
+    coupling_graph: list[tuple[int, int]] | None = None,
     title: str | None = None,
     keep_order: bool = True,
-    aux_qubits: int | None = None,
     **kwargs,
 ):
     """Draw a quantum gate using Qiskit.
@@ -522,9 +496,15 @@ def draw(  # pylint: disable=too-many-arguments
 
     Args:
         gate: Quantum gate function.
-        num_qubits: Number of qubits.
+        qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
-        decompose: Decompose controlled gates. Defaults to None.
+        qpu_size: Size of the quantum processing unit (QPU).
+            If specified, the number of qubits will be adjusted to fit the QPU size.
+        u4_gate: Type of U4 gate to use, either "CX" or "CZ".
+        u2_gates: Type of U2 gates to use, either "ZYZ" or "RzSx".
+        coupling_graph: Coupling graph of the QPU,
+            specified as a list of tuples representing connected qubits.
+        title: Title for the circuit diagram.
         keep_order: Maintain the gate call order.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
@@ -538,38 +518,54 @@ def draw(  # pylint: disable=too-many-arguments
             "pip install ket-lang[plot]"
         )
 
-    if not isinstance(num_qubits, Iterable):
-        num_qubits = [num_qubits]
+    if not isinstance(qubits, Iterable):
+        qubits = [qubits]
     if not isinstance(args, Iterable):
         args = [args]
 
-    names = list(signature(gate).parameters)[len(args) : len(args) + len(num_qubits)]
-    if len(names) != len(num_qubits):
-        names = [None for _ in range(len(num_qubits))]
+    names = list(signature(gate).parameters)[len(args) : len(args) + len(qubits)]
+    if len(names) != len(qubits):
+        names = [None for _ in range(len(qubits))]
 
-    if aux_qubits is not None:
-        num_qubits = list(num_qubits)
-        num_qubits.append(aux_qubits)
+    if qpu_size is not None:
+        qubits = list(qubits)
+        total = sum(qubits)
+        if total > qpu_size:
+            raise ValueError(
+                f"Total number of qubits {sum(qubits)} exceeds the QPU size {qpu_size}"
+            )
+        qubits.append(qpu_size - total)
         names.append("AUX")
 
+    qpu = {}
+
+    if u4_gate is not None:
+        if not u4_gate in ["CX", "CZ"]:
+            raise ValueError("u4_gate must be 'CX' or 'CZ'")
+        qpu["u4_gate"] = u4_gate
+    if u2_gates is not None:
+        if not u2_gates in ["ZYZ", "RzSx"]:
+            raise ValueError("u2_gates must be 'ZYZ' or 'RzSx'")
+        qpu["u2_gates"] = u2_gates
+    if coupling_graph is not None:
+        qpu["coupling_graph"] = coupling_graph
+
     device = _IBMDeviceForDraw(
-        num_qubits if isinstance(num_qubits, Iterable) else [num_qubits],
-        names,
-        decompose,
+        [qpu_size] if coupling_graph is not None else qubits,
+        ["Q"] if coupling_graph is not None else names,
+        qpu if len(qpu) else None,
         keep_order,
     )
 
     p = Process(device)
-    q = [p.alloc(n) for n in (num_qubits if aux_qubits is None else num_qubits[:-1])]
+    q = [p.alloc(n) for n in (qubits if qpu_size is None else qubits[:-1])]
     gate(*args, *q)
     p.execute()
 
     if "output" not in kwargs and IN_NOTEBOOK:
         kwargs["output"] = "mpl"
-    if "style" not in kwargs:
-        kwargs["style"] = DRAW_STYLE
-    else:
-        kwargs["style"] = {**DRAW_STYLE, **kwargs["style"]}
+
+    kwargs["style"] = {**DRAW_STYLE, **kwargs.get("style", {})}
 
     fig = device.circuit.draw(**kwargs, plot_barriers=False)
     if title is not None:

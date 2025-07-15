@@ -105,7 +105,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             and ``shots`` are not specified, it defaults to 2048.
         classical_shadows: If specified, it will use the classical
             shadows technique for state estimation.
-
+        kwargs: Additional keyword arguments to be passed to the Braket device.
     """
 
     def __init__(
@@ -113,6 +113,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         device: Optional[str] = None,
         shots: int | None = None,
         classical_shadows: dict | None = None,
+        **kwargs,
     ):
         if not BRAKET_AVAILABLE:
             raise RuntimeError(
@@ -128,7 +129,11 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
 
         super().__init__()
 
-        self.device = AwsDevice(device) if device is not None else LocalSimulator()
+        self.device = (
+            AwsDevice(device, **kwargs)
+            if device is not None
+            else LocalSimulator(**kwargs)
+        )
         self.device_paradigm = loads(self.device.properties.json())["paradigm"]
 
         if not (

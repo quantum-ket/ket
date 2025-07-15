@@ -2,18 +2,21 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from math import pi, sqrt
+from math import pi, sqrt, atan2
 from cmath import isclose, exp
 import ket
 import pytest
 
 
 def validate(matrix):
-    from ket.qulib import _extract_phase
-
     gate = ket.qulib.dump_matrix(ket.qulib.unitary(matrix))
 
-    phase = _extract_phase(matrix)
+    a, b = matrix[0]
+    c, d = matrix[1]
+
+    det = a * d - b * c
+    phase = atan2(det.imag, det.real) / 2
+
     matrix = [
         [exp(-1j * phase) * matrix[i][j] for j in range(len(matrix[0]))]
         for i in range(len(matrix))

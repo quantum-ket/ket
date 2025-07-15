@@ -666,6 +666,26 @@ _MANAGED_BY_TARGET = {
 _CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
 
 
+def _dfs(node, visited, adj):
+    visited.add(node)
+    for neighbor in adj.get(node, []):
+        if neighbor not in visited:
+            _dfs(neighbor, visited, adj)
+
+
+def _find_unreachable_qubits(num_qubits, edges):
+    adj = {}
+    for u, v in edges:
+        adj.setdefault(u, []).append(v)
+        adj.setdefault(v, []).append(u)
+
+    all_nodes = set(range(num_qubits))
+    visited = set()
+    _dfs(0, visited, adj)
+
+    return list(all_nodes - visited)
+
+
 def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     execution,
@@ -680,11 +700,13 @@ def make_configuration(  # pylint: disable=too-many-arguments,too-many-positiona
     if qpu is not None:
         qpu = {**_BASE_QPU, **qpu}
         if qpu["coupling_graph"]:
-            qubit_in_graph = [q for edge in qpu["coupling_graph"] for q in edge]
-            if any(q not in qubit_in_graph for q in range(num_qubits)) or any(
-                q not in list(range(num_qubits)) for q in qubit_in_graph
-            ):
-                raise ValueError("Unreachable qubit in the coupling graph.")
+            unreachable_qubits = _find_unreachable_qubits(
+                num_qubits, qpu["coupling_graph"]
+            )
+            if len(unreachable_qubits) > 0:
+                raise ValueError(
+                    f"Unreachable qubit {unreachable_qubits} in the coupling graph."
+                )
 
     # Ensure only one of the three is defined and at least one is provided
     defined_options = [

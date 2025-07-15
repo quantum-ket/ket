@@ -4,16 +4,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Bell state preparation."""
-from pprint import pprint
 from ket import *
 from ket.ibm import IBMDevice
 from math import sqrt
 
-from qiskit_aer import AerSimulator
-
-sim = AerSimulator()
-
-device = IBMDevice(sim)
+device = IBMDevice()
 
 process = Process(device)
 a, b = process.alloc(2)
@@ -29,4 +24,3 @@ with ham():
     h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
 
 print(exp_value(h).get())
-pprint(process.get_instructions())
