@@ -44,7 +44,7 @@ jobs:
     - name: Install Python Dependencies
       run: python3 -m pip install setuptools wheel twine --break-system-packages
     - name: Build Wheel
-      run: python3 setup.py bdist_wheel -p macosx_14_universal2
+      run: python3 setup.py bdist_wheel -p macosx_14_0_universal2
     - name: Archive Wheel
       uses: actions/upload-artifact@v4
       with:
