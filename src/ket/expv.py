@@ -13,6 +13,8 @@ from __future__ import annotations
 # pylint: disable=duplicate-code
 
 from ctypes import c_int32, c_size_t
+from numbers import Number
+from itertools import product
 from functools import reduce
 from operator import add
 from typing import Literal
@@ -24,6 +26,7 @@ from .clib.libket import API
 __all__ = [
     "Pauli",
     "Hamiltonian",
+    "commutator",
     "ExpValue",
 ]
 
@@ -95,64 +98,125 @@ class Pauli:
         qubits: Quant,
         *,
         _process: Process | None = None,
-        _pauli_list: list[str] | None = None,
-        _qubits_list: list[Quant] | None = None,
+        _map: dict[int, str] | None = None,
         _coef: float | None = None,
     ):
-        if not isinstance(qubits, Quant) and _qubits_list is None:
+        if qubits is not None and not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
-        self.process = _process if _process is not None else qubits.process
-        self.pauli_list = _pauli_list if _pauli_list is not None else [pauli]
-        self.qubits_list = _qubits_list if _qubits_list is not None else [qubits]
-        self.coef = 1.0 if _coef is None else _coef
+        if pauli is not None and qubits is not None:
+            self.process = qubits.process
+            self.map = {q: pauli for q in qubits.qubits}
+            self.coef = 1.0
+        else:
+            assert _process is not None and _map is not None and _coef is not None, (
+                "If pauli and qubits are not provided, "
+                "process, map, and coef must be provided."
+            )
 
-    def _flat(self) -> tuple[list[str], list[Quant]]:
-        pauli_list = []
-        qubits_list = []
-        for pauli, qubits in zip(self.pauli_list, self.qubits_list):
-            pauli_list += [pauli] * len(qubits.qubits)
-            qubits_list += qubits.qubits
-        return pauli_list, qubits_list
+            self.process = _process
+            self.map = _map
+            self.coef = _coef
 
     def __neg__(self) -> Pauli:
         return -1.0 * self
 
     def __mul__(self, other: float | Pauli) -> Pauli:
-        if isinstance(other, (float, int)):
+
+        if isinstance(other, Number):
             return Pauli(
                 None,
                 None,
                 _process=self.process,
-                _pauli_list=self.pauli_list,
-                _qubits_list=self.qubits_list,
+                _map=self.map,
                 _coef=self.coef * other,
             )
+
         if isinstance(other, Hamiltonian):
             return other.__mul__(self)
 
         if self.process is not other.process:
             raise ValueError("different Ket processes")
 
+        if not set(self.map.keys()).isdisjoint(other.map.keys()):
+            raise ValueError("Pauli operators act on the same qubits")
+
         return Pauli(
             None,
             None,
             _process=self.process,
-            _pauli_list=self.pauli_list + other.pauli_list,
-            _qubits_list=self.qubits_list + other.qubits_list,
+            _map={**self.map, **other.map},
             _coef=self.coef * other.coef,
+        )
+
+    def __matmul__(self, rhs: Pauli) -> Pauli:
+        if isinstance(rhs, Hamiltonian):
+            return Hamiltonian([self], self.process) @ rhs
+
+        if self.process is not rhs.process:
+            raise ValueError("different Ket processes")
+
+        qubits = {*self.map.keys(), *rhs.map.keys()}
+        result_map = {}
+        coef = self.coef * rhs.coef
+
+        for qubit in qubits:
+            match (self.map.get(qubit, "I"), rhs.map.get(qubit, "I")):
+                case ("I", "I"):
+                    pass
+                case ("I", p) | (p, "I"):
+                    result_map[qubit] = p
+                case ("X", "Y"):
+                    result_map[qubit] = "Z"
+                    coef *= 1j
+                case ("X", "X"):
+                    result_map[qubit] = "I"
+                case ("X", "Z"):
+                    result_map[qubit] = "Y"
+                    coef *= -1j
+                case ("Y", "X"):
+                    result_map[qubit] = "Z"
+                    coef *= -1j
+                case ("Y", "Y"):
+                    result_map[qubit] = "I"
+                case ("Y", "Z"):
+                    result_map[qubit] = "X"
+                    coef *= 1j
+                case ("Z", "X"):
+                    result_map[qubit] = "Y"
+                    coef *= 1j
+                case ("Z", "Y"):
+                    result_map[qubit] = "X"
+                    coef *= -1j
+                case ("Z", "Z"):
+                    result_map[qubit] = "I"
+                case _:
+                    raise ValueError("Unsupported Pauli multiplication")
+
+        return Pauli(
+            None,
+            None,
+            _process=self.process,
+            _map=result_map,
+            _coef=coef,
         )
 
     __rmul__ = __mul__
 
     def __add__(self, other) -> Hamiltonian:
-        if isinstance(other, (int, float)):
-            other = other * Pauli.i(self.qubits_list[0])
+        if isinstance(other, Number):
+            other = Pauli(None, None, _process=self.process, _map={}, _coef=other)
 
         if self.process is not other.process:
             raise ValueError("different Ket processes")
 
-        return Hamiltonian([self, other], process=self.process)
+        if isinstance(other, Hamiltonian):
+            result = Hamiltonian([self], process=self.process) + other
+        else:
+            result = Hamiltonian([self, other], process=self.process)
+
+        result._filter()
+        return result
 
     __radd__ = __add__
 
@@ -201,11 +265,11 @@ class Pauli:
         """
         return Pauli("I", qubits)
 
+    def _str_no_coef(self) -> str:
+        return "".join(f"{pauli}{qubit}" for qubit, pauli in sorted(self.map.items()))
+
     def __str__(self) -> str:
-        return f"{self.coef}*" + "".join(
-            "".join(f"{pauli}{qubit}" for qubit in qubits.qubits)
-            for pauli, qubits in zip(self.pauli_list, self.qubits_list)
-        )
+        return f"{self.coef}" + ("*" + self._str_no_coef() if len(self.map) > 0 else "")
 
     def __repr__(self) -> str:
         return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.process))}>"
@@ -222,29 +286,71 @@ class Hamiltonian:
     def __init__(self, pauli_products: list[Pauli], process: Process):
         self.process = process
         self.pauli_products = pauli_products
+        assert all(isinstance(p, Pauli) for p in pauli_products)
 
     def __add__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
-        if isinstance(other, (int, float)):
-            other = other * Pauli.i(self.pauli_products[0].qubits_list[0])
+        if isinstance(other, Number):
+            other = Pauli(None, None, _process=self.process, _map={}, _coef=other)
         if isinstance(other, Pauli):
             other = Hamiltonian([other], self.process)
 
         if self.process is not other.process:
             raise ValueError("different Ket processes")
 
-        return Hamiltonian(self.pauli_products + other.pauli_products, self.process)
+        result = Hamiltonian(self.pauli_products + other.pauli_products, self.process)
+        result._filter()
+
+        return result
 
     def __sub__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         return self + -other
 
     __radd__ = __add__
 
+    def _filter(self):
+        new_terms = {}
+        for term in self.pauli_products:
+            str_term = term._str_no_coef()  # pylint: disable=protected-access
+            if str_term not in new_terms:
+                new_terms[str_term] = term
+            else:
+                new_terms[str_term].coef += term.coef
+
+        self.pauli_products = [
+            term for term in new_terms.values() if abs(term.coef) > 1e-10
+        ]
+
+    def __matmul__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
+        if isinstance(other, Pauli):
+            other = Hamiltonian([other], self.process)
+
+        result = Hamiltonian(
+            [a @ b for a, b in product(self.pauli_products, other.pauli_products)],
+            self.process,
+        )
+
+        result._filter()
+
+        return result
+
     def __rsub__(self, other) -> Hamiltonian:
         return -self + other
 
-    def __mul__(self, other: float) -> Hamiltonian:
-        return Hamiltonian(
-            [p * other for p in self.pauli_products], process=self.process
+    def __mul__(self, other: float | Hamiltonian | Pauli) -> Hamiltonian:
+        if isinstance(other, (Number, Pauli)):
+            return Hamiltonian(
+                [p * other for p in self.pauli_products], process=self.process
+            )
+
+        if isinstance(other, Hamiltonian):
+            return Hamiltonian(
+                [p * q for p, q in product(self.pauli_products, other.pauli_products)],
+                process=self.process,
+            )
+
+        raise TypeError(
+            f"Unsupported type for multiplication: {type(other)}. "
+            "Expected float, Hamiltonian, or Pauli."
         )
 
     __rmul__ = __mul__
@@ -263,6 +369,11 @@ class Hamiltonian:
             f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.pauli_products)}, "
             f"pid={hex(id(self.process))}>"
         )
+
+
+def commutator(a: Hamiltonian, b: Hamiltonian) -> Hamiltonian:
+    """Calculate the commutator of two Hamiltonians."""
+    return a @ b - b @ a
 
 
 class ExpValue:
@@ -302,14 +413,27 @@ class ExpValue:
         products_count = 0
         self._i_coef = 0.0
         for pauli_product in hamiltonian.pauli_products:
-            pauli, qubits = pauli_product._flat()
+            if len(pauli_product.map) == 0:
+                self._i_coef += pauli_product.coef.real
+                continue
+
+            qubits, pauli = zip(*pauli_product.map.items())
             pauli_qubits = list(
                 zip(
                     *[(self.pauli_map[p], q) for p, q in zip(pauli, qubits) if p != "I"]
                 )
             )
+            if (
+                isinstance(pauli_product.coef, complex)
+                and abs(pauli_product.coef.imag) > 1e-10
+            ):
+                raise ValueError(
+                    "Complex coefficients are not supported in Hamiltonian"
+                    " expected value calculation."
+                )
+
             if not pauli_qubits:
-                self._i_coef += pauli_product.coef
+                self._i_coef += pauli_product.coef.real
                 continue
             pauli, qubits = pauli_qubits
             API["ket_hamiltonian_add"](
@@ -318,7 +442,7 @@ class ExpValue:
                 len(pauli),
                 (c_size_t * len(qubits))(*qubits),
                 len(qubits),
-                pauli_product.coef,
+                pauli_product.coef.real,
             )
             products_count += 1
 

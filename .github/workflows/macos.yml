@@ -7,7 +7,7 @@ name: Wheel
 
 on:
   push:
-    branches: ["master"]
+    branches: [ "master" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,41 +17,41 @@ jobs:
     runs-on: macos-14
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Checkout Submodules
-        run: git submodule update --init --recursive
-      - name: Compile Rust Libs
-        run: |
-          rustup default 1.87
-          rustup target add x86_64-apple-darwin
-          rustup target add aarch64-apple-darwin
+    - uses: actions/checkout@v3
+    - name: Checkout Submodules
+      run: git submodule update --init --recursive
+    - name: Compile Rust Libs
+      run: |
+        rustup default 1.88
+        rustup target add x86_64-apple-darwin
+        rustup target add aarch64-apple-darwin
 
-          cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
-          cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+        cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
+        cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
-          cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
-          cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+        cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
+        cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
-          lipo -create -output src/ket/clib/libs/libket.dylib \
-              src/ket/clib/libs/libket/target/x86_64-apple-darwin/release/libket.dylib \
-              src/ket/clib/libs/libket/target/aarch64-apple-darwin/release/libket.dylib
+        lipo -create -output src/ket/clib/libs/libket.dylib \
+            src/ket/clib/libs/libket/target/x86_64-apple-darwin/release/libket.dylib \
+            src/ket/clib/libs/libket/target/aarch64-apple-darwin/release/libket.dylib
 
-          lipo -create -output src/ket/clib/libs/libkbw.dylib \
-              src/ket/clib/libs/kbw/target/x86_64-apple-darwin/release/libkbw.dylib \
-              src/ket/clib/libs/kbw/target/aarch64-apple-darwin/release/libkbw.dylib
+        lipo -create -output src/ket/clib/libs/libkbw.dylib \
+            src/ket/clib/libs/kbw/target/x86_64-apple-darwin/release/libkbw.dylib \
+            src/ket/clib/libs/kbw/target/aarch64-apple-darwin/release/libkbw.dylib
 
-          rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
-      - name: Install Python Dependencies
-        run: python3 -m pip install setuptools wheel twine --break-system-packages
-      - name: Build Wheel
-        run: python3 setup.py bdist_wheel -p macosx_10_14_universal2
-      - name: Archive Wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: macosx
-          path: dist
-      - name: Upload to PyPI
-        env:
-          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
-        run: python3 -m twine upload dist/*
+        rm -rf src/ket/clib/libs/libket/ src/ket/clib/libs/kbw/
+    - name: Install Python Dependencies
+      run: python3 -m pip install setuptools wheel twine --break-system-packages
+    - name: Build Wheel
+      run: python3 setup.py bdist_wheel -p macosx_14_universal2
+    - name: Archive Wheel
+      uses: actions/upload-artifact@v4
+      with:
+        name: macosx
+        path: dist
+    - name: Upload to PyPI
+      env:
+        TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+      run: python3 -m twine upload dist/*

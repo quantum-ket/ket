@@ -122,7 +122,6 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.process_instructions(circuit)
 
     def get_result(self):
-
         self.result = {
             "".join(s[-q - 1] for q in self.qubits_from_sample): c
             for s, c in self.result.items()

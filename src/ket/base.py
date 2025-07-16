@@ -329,7 +329,8 @@ class Process(LibketProcess):
             A list of :class:`~ket.base.Parameter` objects.
         """
         parameters = [
-            Parameter(process=self, index=self.set_parameter(p).value, value=p) for p in param
+            Parameter(process=self, index=self.set_parameter(p).value, value=p)
+            for p in param
         ]
         if len(param) == 1:
             return parameters[0]
