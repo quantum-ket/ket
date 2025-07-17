@@ -103,7 +103,8 @@ class QuantumState:
                         "".join(f"{state[j]:064b}" for j in range(state_size.value)), 2
                     )
                     amplitude = complex(amp_real.value, amp_imag.value)
-                    states[state] += amplitude
+                    if abs(amplitude) ** 2 > 1e-10:
+                        states[state] += amplitude
 
                 p = sum(map(lambda a: abs(a) ** 2, states.values()))
                 if abs(p - 1.0) < 1e-10:
@@ -112,6 +113,7 @@ class QuantumState:
                     self._states = {
                         state: amplitude / sqrt(p) if p != 0 else 0
                         for state, amplitude in states.items()
+                        if abs(amplitude) ** 2 > 1e-10
                     }
 
     @property

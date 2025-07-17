@@ -13,15 +13,16 @@ from __future__ import annotations
 from functools import reduce
 from operator import add
 from typing import Callable, Literal
-from cmath import asin, isclose, phase as cphase
+from cmath import isclose, phase as cphase
 from math import sqrt, atan2
 from collections.abc import Sized, Iterable
 from inspect import signature
 
-from .clib.libket import BatchExecution
-from .base import Quant, Process
-from .operations import ctrl, around, dump
-from .gates import RZ, X, Z, H, RY, CNOT, S, global_phase
+from ..clib.libket import BatchExecution
+from ..base import Quant, Process
+from ..operations import ctrl, around, dump
+from ..gates import RZ, X, Z, H, RY, CNOT, global_phase
+from . import prepare, math
 
 try:
     import google.colab  # pylint: disable=unused-import
@@ -47,10 +48,8 @@ except ImportError:
 __all__ = [
     "flip_to_control",
     "phase_oracle",
-    "prepare_ghz",
-    "prepare_w",
-    "prepare_bell",
-    "prepare_pauli",
+    "prepare",
+    "math",
     "dump_matrix",
     "unitary",
     "draw",
@@ -131,34 +130,6 @@ def phase_oracle(
     return inner(qubits)
 
 
-def prepare_bell(qubit_a: Quant, qubit_b: Quant) -> Quant:
-    r"""Prepare a Bell state = :math:`\frac{1}{\sqrt{2}}(\ket{0}+\ket{1})` state."""
-
-    return CNOT(H(qubit_a), qubit_b)
-
-
-def prepare_ghz(qubits: Quant) -> Quant:
-    r"""Prepare a GHZ = :math:`\frac{1}{\sqrt{2}}(\ket{0\dots0}+\ket{1\dots1})` state."""
-
-    ctrl(H(qubits[0]), X)(qubits[1:])
-
-    return qubits
-
-
-def prepare_w(qubits: Quant) -> Quant:
-    r"""Prepare a W = :math:`\frac{1}{\sqrt{n}}\sum_{k=0}^{n}\ket{2^k}` state."""
-
-    size = len(qubits)
-
-    X(qubits[0])
-    for i in range(size - 1):
-        n = size - i
-        ctrl(qubits[i], RY(2 * asin(sqrt((n - 1) / n)))(qubits[i + 1]))
-        CNOT(qubits[i + 1], qubits[i])
-
-    return qubits
-
-
 def dump_matrix(
     gate: Callable,
     num_qubits: int | list[int] = 1,
@@ -212,48 +183,6 @@ def dump_matrix(
         mat[row][column] = amp * sqrt(2**num_qubits)
 
     return mat
-
-
-def prepare_pauli(
-    pauli: Literal["X", "Y", "Z"],
-    eigenvalue: Literal[+1, -1],
-    qubits: Quant | None = None,
-) -> Quant | Callable[[Quant], Quant]:
-    """Prepare a quantum state in the +1 or -1 eigenstate of a Pauli operator.
-
-    This function prepares a quantum state in the +1 or -1 eigenstate of a specified Pauli operator.
-    The resulting quantum state can be obtained by either directly calling the function with qubits,
-    or by returning a closure that can be applied to qubits later.
-
-    Args:
-        pauli: Pauli operator to prepare the eigenstate for.
-        eigenvalue: Eigenvalue of the Pauli operator (+1 or -1).
-        qubits: Qubits to prepare the eigenstate on. If None, returns a closure.
-
-    Returns:
-        If qubits is provided, returns the resulting quantum state.
-        If qubits is None, returns a closure that can be applied to qubits later.
-    """
-
-    def inner(qubits: Quant) -> Quant:
-        if eigenvalue == +1:
-            pass
-        elif eigenvalue == -1:
-            X(qubits)
-        else:
-            raise ValueError("Invalid eigenvalue")
-
-        if pauli == "X":
-            return H(qubits)
-        if pauli == "Y":
-            return S(H(qubits))
-        if pauli == "Z":
-            return qubits
-        raise ValueError("Invalid Pauli operator")
-
-    if qubits is None:
-        return inner
-    return inner(qubits)
 
 
 def _is_unitary(matrix):
