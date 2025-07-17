@@ -7,6 +7,24 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.9.0](https://pypi.org/project/ket-lang/0.9.0)
+
+### Added
+
+- Added gradient calculation.
+- Added Pauli multiplication and complex coefficients for Hamiltonian construction.
+- Added auxiliary qubit allocation.
+- Added `BatchExecution` and `LiveExecution` abstract classes in `ket.clib.libket` to
+  streamline the implementation of quantum execution targets.
+- Improved quantum circuit drawing.
+- Added Amazon Braket support.
+
+### Updated
+
+* Updated Libket to version 0.6.0.
+* Updated KBW to version 0.4.0.
+* Updated IBM interface for Qiskit 2.0.
+
 ## [0.8.3](https://pypi.org/project/ket-lang/0.8.3)
 
 ### Added
@@ -37,7 +55,7 @@ SPDX-License-Identifier: Apache-2.0
 ### Updated
 
 - Updated Libket to 0.5.0.
-- Updated KBW to 0.4.0.
+- Updated KBW to 0.3.0.
 
 ## [0.7.1](https://pypi.org/project/ket-lang/0.7.1)
 

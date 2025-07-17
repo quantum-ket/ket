@@ -21,7 +21,7 @@ Ket's goal is to streamline the development of hardware-independent classical qu
 
 ## Installation :arrow_down:
 
-Ket requires Python 3.9 or newer and is available for Linux, Windows, and macOS (both Apple silicon and Intel). If you are using a non-x86_64 (Intel/AMD) CPU, such as ARM, on Linux or Windows, you will need to install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
+Ket requires Python 3.10 or newer and is available for Linux, Windows, and macOS (both Apple silicon and Intel). If you are using a non-x86_64 (Intel/AMD) CPU, such as ARM, on Linux or Windows, you will need to install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
 
 You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To do so, copy and paste the following command into your terminal:
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     p = Process()
 
-    alice_message = PHASE(pi / 4, H(p.alloc()))
+    alice_message = P(pi / 4, H(p.alloc()))
 
     alice_message_dump = dump(alice_message)
 
@@ -124,10 +124,10 @@ To get started with Ket development, follow these steps:
 
 1. **Rust Installation**
   
-    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.82 using the following command:
+    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.88 using the following command:
 
     ```shell
-    rustup default 1.82
+    rustup default 1.88
     ```
 
 2. **Clone and Compile**
