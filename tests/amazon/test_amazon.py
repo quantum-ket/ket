@@ -78,22 +78,6 @@ def oracle(phase: float, i: int, tgr):
     ket.P(2 * pi * phase * 2**i, tgr)
 
 
-def test_grover():
-    SIZE = 9
-    NUM_EXECUTIONS = 10
-    SUCCESS_THRESHOLD = 0.80
-
-    looking_for = randint(0, pow(2, SIZE) - 1)
-    results = []
-
-    for i in range(NUM_EXECUTIONS):
-        results.append(grover(SIZE, ket.qulib.phase_oracle(looking_for)))
-
-    success_count = results.count(looking_for)
-    rate = success_count / NUM_EXECUTIONS
-    assert rate >= SUCCESS_THRESHOLD
-
-
 def phase_estimator(oracle_gate, precision: int) -> float:
     """Estimates the phase of a given oracle function to a certain precision
     using the phase estimation algorithm.
@@ -123,12 +107,107 @@ def phase_estimator(oracle_gate, precision: int) -> float:
     return ket.measure(reversed(ctr)).get() / 2**precision
 
 
+def qft_sum(qubits):
+    if len(qubits) == 1:
+        ket.H(qubits)
+    else:
+        head, *tail = qubits
+        ket.H(head)
+
+        for i, ctrl_qubit in enumerate(tail):
+            with ket.control(ctrl_qubit):
+                ket.P(2 * pi / 2 ** (i + 2), head)
+
+        qft(tail)
+
+
+def R(l, q):
+    ket.P(2 * pi / 2**l, q)
+
+
+def sum_inner(a, b):
+    n_a = len(a)
+    n_b = len(b)
+
+    print(f"n_a: {n_a}, n_b: {n_b}")
+
+    if n_a > n_b:
+        raise RuntimeError()
+    if n_b == 0:
+        return
+
+    offset = n_b - n_a + 1
+
+    for j, aj in enumerate(a):
+        ket.ctrl(aj, R)(j + offset, b[0])
+
+    if n_a == n_b:
+        sum_inner(a[1:], b[1:])
+    else:
+        sum_inner(a, b[1:])
+
+
+def sum_qubits(a: ket.Quant, b: ket.Quant) -> int:
+    with ket.around(qft_sum, b):
+        sum_inner(a, b)
+
+
+def quantum_sum(a, b):
+    braket = AmazonBraket()
+    p = ket.Process(execution_target=braket)
+
+    qa = p.alloc(5)
+    qb = p.alloc(4)
+
+    ket.X(qa)
+    ket.X(qb)
+    ket.qulib.flip_to_control(a, qa)
+    ket.qulib.flip_to_control(b, qb)
+
+    sum_qubits(qb, qa)
+
+    return ket.measure(qb).get()
+
+
+# def test_grover():
+#     SIZE = 9
+#     NUM_EXECUTIONS = 10
+#     SUCCESS_THRESHOLD = 0.80
+
+#     looking_for = randint(0, pow(2, SIZE) - 1)
+#     results = []
+
+#     for i in range(NUM_EXECUTIONS):
+#         results.append(grover(SIZE, ket.qulib.phase_oracle(looking_for)))
+
+#     success_count = results.count(looking_for)
+#     rate = success_count / NUM_EXECUTIONS
+#     assert rate >= SUCCESS_THRESHOLD
+
+
 def test_phase_estimator():
     estimate_pi = partial(phase_estimator, partial(oracle, pi / 10))
     assert abs((estimate_pi(16) * 10) - pi) < 1e-3
 
 
+def test_quantum_adder():
+    # SIZE = 5
+    # a = randint(0, pow(2, SIZE) - 1)
+    # b = randint(0, pow(2, SIZE-1) - 1)
+    a = 15
+    b = 13
+
+    print(f"a: {a}, b: {b}")
+
+    result = quantum_sum(a, b)
+
+    print(f"a+b: {a+b}, result: {result}")
+
+    assert a + b == result
+
+
 if __name__ == "__main__":
-    test_grover()
-    test_phase_estimator()
+    # test_grover()
+    # test_phase_estimator()
+    test_quantum_adder()
     print("OK")
