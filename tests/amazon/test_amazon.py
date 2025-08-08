@@ -118,7 +118,7 @@ def qft_sum(qubits):
             with ket.control(ctrl_qubit):
                 ket.P(2 * pi / 2 ** (i + 2), head)
 
-        qft(tail)
+        qft_sum(tail)
 
 
 def R(l, q):
@@ -128,8 +128,6 @@ def R(l, q):
 def sum_inner(a, b):
     n_a = len(a)
     n_b = len(b)
-
-    print(f"n_a: {n_a}, n_b: {n_b}")
 
     if n_a > n_b:
         raise RuntimeError()
@@ -152,12 +150,12 @@ def sum_qubits(a: ket.Quant, b: ket.Quant) -> int:
         sum_inner(a, b)
 
 
-def quantum_sum(a, b):
+def quantum_sum(a, b, size):
     braket = AmazonBraket()
     p = ket.Process(execution_target=braket)
 
-    qa = p.alloc(5)
-    qb = p.alloc(4)
+    qa = p.alloc(size + 1)
+    qb = p.alloc(size - 1)
 
     ket.X(qa)
     ket.X(qb)
@@ -166,23 +164,23 @@ def quantum_sum(a, b):
 
     sum_qubits(qb, qa)
 
-    return ket.measure(qb).get()
+    return ket.measure(qa).get()
 
 
-# def test_grover():
-#     SIZE = 9
-#     NUM_EXECUTIONS = 10
-#     SUCCESS_THRESHOLD = 0.80
+def test_grover():
+    SIZE = 9
+    NUM_EXECUTIONS = 10
+    SUCCESS_THRESHOLD = 0.80
 
-#     looking_for = randint(0, pow(2, SIZE) - 1)
-#     results = []
+    looking_for = randint(0, pow(2, SIZE) - 1)
+    results = []
 
-#     for i in range(NUM_EXECUTIONS):
-#         results.append(grover(SIZE, ket.qulib.phase_oracle(looking_for)))
+    for i in range(NUM_EXECUTIONS):
+        results.append(grover(SIZE, ket.qulib.phase_oracle(looking_for)))
 
-#     success_count = results.count(looking_for)
-#     rate = success_count / NUM_EXECUTIONS
-#     assert rate >= SUCCESS_THRESHOLD
+    success_count = results.count(looking_for)
+    rate = success_count / NUM_EXECUTIONS
+    assert rate >= SUCCESS_THRESHOLD
 
 
 def test_phase_estimator():
@@ -191,23 +189,24 @@ def test_phase_estimator():
 
 
 def test_quantum_adder():
-    # SIZE = 5
-    # a = randint(0, pow(2, SIZE) - 1)
-    # b = randint(0, pow(2, SIZE-1) - 1)
-    a = 15
-    b = 13
+    SIZE = 5
 
-    print(f"a: {a}, b: {b}")
+    for _ in range(100):
+        a = randint(0, pow(2, SIZE) - 1)
+        b = randint(0, pow(2, SIZE - 1) - 1)
 
-    result = quantum_sum(a, b)
+        a = 30
+        b = 6
 
-    print(f"a+b: {a+b}, result: {result}")
+        expected_result = a + b
 
-    assert a + b == result
+        result = quantum_sum(a, b, SIZE)
+
+        assert expected_result == result
 
 
 if __name__ == "__main__":
-    # test_grover()
-    # test_phase_estimator()
+    test_grover()
+    test_phase_estimator()
     test_quantum_adder()
     print("OK")
