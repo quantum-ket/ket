@@ -13,16 +13,15 @@ from __future__ import annotations
 from functools import reduce
 from operator import add
 from typing import Callable, Literal
-from cmath import isclose, phase as cphase
-from math import sqrt, atan2
-from collections.abc import Sized, Iterable
+from math import sqrt
+from collections.abc import Iterable
 from inspect import signature
 
 from ..clib.libket import BatchExecution
-from ..base import Quant, Process
-from ..operations import ctrl, around, dump
-from ..gates import RZ, X, Z, H, RY, CNOT, global_phase
-from . import prepare, math
+from ..base import Process
+from ..operations import dump
+from ..gates import H, CNOT
+from . import gates, prepare, math, oracle
 
 try:
     import google.colab  # pylint: disable=unused-import
@@ -46,88 +45,13 @@ except ImportError:
     QISKIT_AVAILABLE = False
 
 __all__ = [
-    "flip_to_control",
-    "phase_oracle",
     "prepare",
+    "gates",
+    "oracle",
     "math",
     "dump_matrix",
-    "unitary",
     "draw",
 ]
-
-
-def flip_to_control(
-    control_state: int | list[int], qubits: Quant | None = None
-) -> Quant | Callable[[Quant], Quant]:
-    r"""Flip qubits from :math:`\ket{\texttt{control_state}}` to :math:`\ket{1\dots1}`.
-
-    The primary usage of this gate is to change the state when controlled applications are applied.
-    For instance, all controlled operations are only applied if the control qubits' state is
-    :math:`\ket{1}`. This gate is useful for using another state as control.
-
-    Example:
-
-        .. code-block:: python
-
-            from ket import *
-
-            p = Process()
-            q = p.alloc(3)
-
-            H(q[:2])
-
-            with around(flip_to_control(0b01), q[:2]):
-                ctrl(q[:2], X)(q[2])
-    """
-
-    def inner(qubits: Quant) -> Quant:
-        if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
-
-        length = len(qubits)
-        if isinstance(control_state, Sized):
-            if len(control_state) != length:
-                raise ValueError(
-                    f"'to' received a list of length {len(control_state)} to use on {length} qubits"
-                )
-            state = control_state
-        else:
-            if length < control_state.bit_length():
-                raise ValueError(
-                    f"To flip with control_state={control_state} "
-                    f"you need at least {control_state.bit_length()} qubits"
-                )
-
-            state = [int(i) for i in f"{{:0{length}b}}".format(control_state)]
-
-        for i, qubit in zip(state, qubits):
-            if i == 0:
-                X(qubit)
-        return qubits
-
-    if qubits is None:
-        return inner
-    return inner(qubits)
-
-
-def phase_oracle(
-    state: int, qubits: Quant | None = None
-) -> Quant | Callable[[Quant], Quant]:
-    r"""Transform qubits from :math:`\ket{\texttt{state}}` to :math:`-\ket{\texttt{state}}`.
-
-    This gate is useful for marking states in Grover's algorithm.
-    """
-
-    def inner(qubits: Quant) -> Quant:
-        init, last = qubits[:-1], qubits[-1]
-        with around(flip_to_control(state >> 1), init):
-            with around(lambda q: X(q) if state & 1 == 0 else None, last):
-                ctrl(init, Z)(last)
-        return qubits
-
-    if qubits is None:
-        return inner
-    return inner(qubits)
 
 
 def dump_matrix(
@@ -183,74 +107,6 @@ def dump_matrix(
         mat[row][column] = amp * sqrt(2**num_qubits)
 
     return mat
-
-
-def _is_unitary(matrix):
-    if len(matrix) != 2 or len(matrix[0]) != 2 or len(matrix[1]) != 2:
-        raise ValueError("Input matrix must be a 2x2 matrix")
-
-    conj_transpose = [[matrix[j][i].conjugate() for j in range(2)] for i in range(2)]
-
-    result = [
-        [sum(matrix[i][k] * conj_transpose[k][j] for k in range(2)) for j in range(2)]
-        for i in range(2)
-    ]
-
-    return all(
-        isclose(result[i][j], 1 if i == j else 0, abs_tol=1e-10)
-        for i in range(2)
-        for j in range(2)
-    )
-
-
-def _zyz(matrix):
-    a, b = matrix[0]
-    c, d = matrix[1]
-
-    det = cphase(a * d - b * c)
-    phase = det / 2
-
-    theta = 2 * atan2(abs(c), abs(a))
-
-    ang1 = cphase(d)
-    ang2 = cphase(c)
-
-    phi = ang1 + ang2 - det
-    lam = ang1 - ang2
-
-    return phase, phi, theta, lam
-
-
-def unitary(matrix: list[list[complex]]) -> Callable[[Quant], Quant]:
-    """Create a quantum gate from 2x2 unitary matrix.
-
-    The provided unitary matrix is decomposed into a sequence of rotation gates,
-    which together implement an equivalent unitary transformation. When the gate
-    is used in a controlled operation, the resulting unitary is equivalent up to
-    a global phase.
-
-    Args:
-        matrix: Unitary matrix in the format ``[[a, b], [c, d]]``.
-
-    Returns:
-        Returns a new callable that implements the unitary operation.
-
-    Raises:
-        ValueError: If the input matrix is not unitary.
-    """
-    if not _is_unitary(matrix):
-        raise ValueError("Input matrix is not unitary")
-
-    phase, phi, theta, lam = _zyz(matrix)
-
-    @global_phase(phase)
-    def inner(qubits: Quant):
-        RZ(lam.real, qubits)
-        RY(theta.real, qubits)
-        RZ(phi.real, qubits)
-        return qubits
-
-    return inner
 
 
 DRAW_STYLE = {

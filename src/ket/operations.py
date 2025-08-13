@@ -13,12 +13,15 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 
+from collections.abc import Sized
 from contextlib import contextmanager
 from ctypes import c_size_t
 from functools import reduce, wraps
 from operator import add
 from typing import Any, Callable, Sequence
 from inspect import signature
+
+from ket.clib.libket import PAULI_X
 
 
 from .base import (
@@ -55,12 +58,74 @@ __all__ = [
 ]
 
 
+def _flip_to_control(
+    control_state: int | list[int] | None, qubits: Quant | None = None
+) -> Quant | Callable[[Quant], Quant]:
+    r"""Flip qubits from :math:`\ket{\texttt{control_state}}` to :math:`\ket{1\dots1}`.
+
+    The primary usage of this gate is to change the state when controlled applications are applied.
+    For instance, all controlled operations are only applied if the control qubits' state is
+    :math:`\ket{1}`. This gate is useful for using another state as control.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            p = Process()
+            q = p.alloc(3)
+
+            H(q[:2])
+
+            with around(_flip_to_control(0b01), q[:2]):
+                ctrl(q[:2], X)(q[2])
+
+    Args:
+        control_state: The state to flip the control qubits to.
+        qubits: The qubits to apply the flip to.
+    """
+
+    def inner(qubits: Quant) -> Quant:
+        if control_state is None:
+            return qubits
+
+        if not isinstance(qubits, Quant):
+            qubits = reduce(add, qubits)
+
+        length = len(qubits)
+        if isinstance(control_state, Sized):
+            if len(control_state) != length:
+                raise ValueError(
+                    f"'to' received a list of length {len(control_state)} to use on {length} qubits"
+                )
+            state = control_state
+        else:
+            if length < control_state.bit_length():
+                raise ValueError(
+                    f"To flip with control_state={control_state} "
+                    f"you need at least {control_state.bit_length()} qubits"
+                )
+
+            state = [int(i) for i in f"{{:0{length}b}}".format(control_state)]
+
+        for i, qubit in zip(state, qubits):
+            if i == 0:
+                qubit.process.apply_gate(PAULI_X, 0.0, False, 0, qubit.qubits[0])
+        return qubits
+
+    if qubits is None:
+        return inner
+    return inner(qubits)
+
+
 @contextmanager
-def control(control_qubits: Quant):
+def control(control_qubits: Quant, state: int | list[int] | None = None):
     r"""Controlled scope.
 
     Opens a controlled scope where quantum operations are applied only if the qubits of the
-    parameter ``control_qubits`` are in the state :math:`\ket{1}`.
+    parameter ``control_qubits`` are in the state :math:`\ket{1}`. The parameter ``state`` can
+    be used to specify a different state.
 
     :Usage:
 
@@ -95,22 +160,27 @@ def control(control_qubits: Quant):
 
     Args:
         control_qubits: The qubits to control the quantum operations.
+        state: The state to apply to the control qubits. Defaults to :math:`\ket{1}`.
     """
+
     if not isinstance(control_qubits, Quant):
         control_qubits = reduce(add, control_qubits)
-
     process = control_qubits.process
-    process.ctrl_push(
-        (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
-        len(control_qubits.qubits),
-    )
-    try:
-        yield
-    finally:
-        process.ctrl_pop()
+
+    with around(_flip_to_control(state), control_qubits, ket_process=process):
+        process.ctrl_push(
+            (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
+            len(control_qubits.qubits),
+        )
+        try:
+            yield
+        finally:
+            process.ctrl_pop()
 
 
-def ctrl(control_qubits: Quant, gate: Callable) -> Callable:
+def ctrl(
+    control_qubits: Quant, gate: Callable, state: int | list[int] | None = None
+) -> Callable:
     """Add control qubits to a gate.
 
     Create a new callable that applies the given ``gate`` with the control qubits.
@@ -145,7 +215,7 @@ def ctrl(control_qubits: Quant, gate: Callable) -> Callable:
 
     @wraps(gate)
     def inner(*args, **kwargs):
-        with control(control_qubits):
+        with control(control_qubits, state):
             return control_qubits, gate(*args, **kwargs)
 
     return inner

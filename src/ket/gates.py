@@ -64,7 +64,7 @@ from .clib.libket import (
 )
 
 from .base import Process, Quant, Parameter
-from .operations import _search_process, ctrl, cat, kron, around
+from .operations import _search_process, control, ctrl, cat, kron, around
 from .expv import Pauli
 
 __all__ = [
@@ -93,6 +93,7 @@ __all__ = [
     "global_phase",
     "RBS",
     "ham",
+    "QFT",
 ]
 
 
@@ -719,3 +720,33 @@ SX.__doc__ = _gate_docstring(
     r"\sqrt{X}\left|1\right> = & \frac{1}{2} ((1-i)\left|0\right> + (1+i)\left|1\right>)"
     r"\end{matrix}",
 )
+
+
+def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
+    r"""Quantum Fourier Transform.
+
+    .. math::
+
+        \text{QFT}\left|x\right> =
+        \frac{1}{\sqrt{N}} \sum_{k=0}^{N-1} e^{2\pi i x k / N} \left|k\right>
+
+    args:
+        qubits: The qubits to apply the QFT to.
+        do_swap: Whether to invert the qubits after the transformation.
+    """
+    if len(qubits) == 1:
+        H(qubits)
+    else:
+        *init, last = qubits
+        H(last)
+
+        for i, ctrl_qubit in enumerate(reversed(init)):
+            with control(ctrl_qubit):
+                P(pi / 2 ** (i + 1), last)
+
+        QFT(init, do_swap=False)
+
+    if do_swap:
+        size = len(qubits)
+        for i in range(size // 2):
+            SWAP(qubits[i], qubits[size - i - 1])
