@@ -722,7 +722,7 @@ SX.__doc__ = _gate_docstring(
 )
 
 
-def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
+def QFT(qubits: Quant, do_swap: bool = True):  # pylint: disable=invalid-name
     r"""Quantum Fourier Transform.
 
     .. math::
@@ -750,3 +750,5 @@ def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
         size = len(qubits)
         for i in range(size // 2):
             SWAP(qubits[i], qubits[size - i - 1])
+
+    return qubits

@@ -12,12 +12,11 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
 from collections.abc import Sized
 from contextlib import contextmanager
-from ctypes import c_size_t
+from ctypes import c_size_t, c_ssize_t
 from functools import reduce, wraps
-from operator import add
+from operator import add, neg
 from typing import Any, Callable, Sequence
 from inspect import signature
 
@@ -167,9 +166,20 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
         control_qubits = reduce(add, control_qubits)
     process = control_qubits.process
 
-    with around(_flip_to_control(state), control_qubits, ket_process=process):
+    if state is not None:
+        with around(_flip_to_control(state), control_qubits, ket_process=process):
+            process.ctrl_push(
+                (c_ssize_t * len(control_qubits.qubits))(*control_qubits.qubits),
+                len(control_qubits.qubits),
+            )
+            try:
+                yield
+            finally:
+                process.ctrl_pop()
+
+    else:
         process.ctrl_push(
-            (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
+            (c_ssize_t * len(control_qubits.qubits))(*control_qubits.qubits),
             len(control_qubits.qubits),
         )
         try:
@@ -590,10 +600,9 @@ def using_aux(unsafe: bool = False, **names):
                 )
 
                 qubits = Quant(
-                    qubits=[
-                        (i + 1) << 32
-                        for i in range(aux_index.value, aux_index.value + num_qubits)
-                    ],
+                    qubits=list(
+                        map(neg, range(aux_index.value, aux_index.value + num_qubits))
+                    ),
                     process=ket_process,
                 )
 

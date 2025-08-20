@@ -10,6 +10,7 @@ from __future__ import annotations
 from ctypes import (
     CFUNCTYPE,
     Structure,
+    c_ssize_t,
     c_uint32,
     c_void_p,
     c_size_t,
@@ -129,7 +130,7 @@ API_argtypes = {
             c_double,  # angle
             c_bool,  # use_param
             c_size_t,  # param_index
-            c_size_t,  # target
+            c_ssize_t,  # target
         ],
         [],
     ),
@@ -154,7 +155,7 @@ API_argtypes = {
         [c_size_t],
     ),
     "ket_process_dump": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
-    "ket_process_ctrl_push": ([c_void_p, POINTER(c_size_t), c_size_t], []),
+    "ket_process_ctrl_push": ([c_void_p, POINTER(c_ssize_t), c_size_t], []),
     "ket_process_ctrl_pop": ([c_void_p], []),
     "ket_process_ctrl_stack": ([c_void_p], []),
     "ket_process_ctrl_unstack": ([c_void_p], []),
@@ -202,7 +203,7 @@ API_argtypes = {
     "ket_process_around_undo": ([c_void_p], []),
     "ket_process_around_end": ([c_void_p], []),
     "ket_process_allocate_aux": (
-        [c_void_p, c_size_t, POINTER(c_size_t), c_size_t],
+        [c_void_p, c_size_t, POINTER(c_ssize_t), c_size_t],
         [c_size_t, c_size_t],
     ),
     "ket_process_free_aux": (

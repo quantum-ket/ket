@@ -23,7 +23,11 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
 
     """
 
-    p = ket.Process(simulator="dense", num_qubits=size)
+    p = ket.Process(
+        simulator="dense",
+        num_qubits=size,
+        coupling_graph=[[i, j] for i in range(size) for j in range(i)],
+    )
 
     s = ket.H(
         p.alloc(size)
@@ -37,17 +41,18 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
         with ket.around(ket.cat(ket.H, ket.X), s):
             ket.CZ(*s)  # Apply the diffusor function to the state.
 
-    return ket.measure(s).value  # Measure the final state and return the result.
+    return ket.measure(s).get()  # Measure the final state and return the result.
 
 
 if __name__ == "__main__":
     from random import randint
 
-    SIZE = 12
+    SIZE = 8
     looking_for = randint(0, pow(2, SIZE) - 1)
 
     print("Searching for value", looking_for, "using", SIZE, "qubits.")
 
     print(
-        "Dense Simulation: measured", grover(SIZE, ket.qulib.phase_oracle(looking_for))
+        "Dense Simulation: measured",
+        grover(SIZE, ket.qulib.oracle.phase_oracle(looking_for)),
     )
