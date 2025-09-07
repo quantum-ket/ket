@@ -9,15 +9,15 @@ from ket.amazon import AmazonBraket
 from math import sqrt
 
 device = AmazonBraket()                                                                    # LocalSimulator
-# device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')            #TN1
-# device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')            #DM1
-# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')                #IonQ Aria-1
-# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')                #IonQ Aria-2
-# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')               #IonQ Forte-1
-# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')    #IonQ Forte-Enterprise-1
-# device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')                #IQM Garnet
-# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/quera/Aquila')               #QuEra Aquila
-# device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')            #Rigetti Ankaa-3
+# device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')            # TN1
+# device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')            # DM1
+# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')                # IonQ Aria-1
+# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')                # IonQ Aria-2
+# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')               # IonQ Forte-1
+# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')    # IonQ Forte-Enterprise-1
+# device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')                # IQM Garnet
+# device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/quera/Aquila')               # QuEra Aquila
+# device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')            # Rigetti Ankaa-3
 
 
 
@@ -27,7 +27,7 @@ a, b = process.alloc(2)
 X(a + b)
 CNOT(H(a), b)
 
-with ham():
+with obs():
     a0 = Z(a)
     a1 = X(a)
     b0 = -(X(b) + Z(b)) / sqrt(2)

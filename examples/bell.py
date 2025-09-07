@@ -13,7 +13,7 @@ a, b = process.alloc(2)
 X(a + b)
 CNOT(H(a), b)
 
-with ham():
+with obs():
     a0 = Z(a)
     a1 = X(a)
     b0 = -(X(b) + Z(b)) / sqrt(2)

@@ -9,18 +9,7 @@ import pytest
 
 
 def validate(matrix):
-    gate = ket.qulib.dump_matrix(ket.qulib.unitary(matrix))
-
-    a, b = matrix[0]
-    c, d = matrix[1]
-
-    det = a * d - b * c
-    phase = atan2(det.imag, det.real) / 2
-
-    matrix = [
-        [exp(-1j * phase) * matrix[i][j] for j in range(len(matrix[0]))]
-        for i in range(len(matrix))
-    ]
+    gate = ket.qulib.dump_matrix(ket.qulib.gates.unitary(matrix, True))
 
     return all(
         isclose(gate[i][j], matrix[i][j], abs_tol=1e-10)
@@ -45,12 +34,12 @@ def test_unitary():
 def test_not_unitary():
     with pytest.raises(ValueError):
         sqrt_2 = 1 / sqrt(2)
-        ket.qulib.unitary([[sqrt_2, sqrt_2], [sqrt_2, sqrt_2]])
+        ket.qulib.gates.unitary([[sqrt_2, sqrt_2], [sqrt_2, sqrt_2]])
 
 
 def test_not_2x2_matrix():
     with pytest.raises(ValueError):
-        ket.qulib.unitary([[1, 2], [4, 5, 6]])
+        ket.qulib.gates.unitary([[1, 2], [4, 5, 6]])
 
 
 def make_ctrl_gate(matrix):
@@ -63,7 +52,7 @@ def make_ctrl_gate(matrix):
 
 
 def ctrl_validate(matrix):
-    gate = lambda q: ket.ctrl(q[0], ket.qulib.unitary(matrix))(q[1])
+    gate = lambda q: ket.ctrl(q[0], ket.qulib.gates.unitary(matrix))(q[1])
     gate = ket.qulib.dump_matrix(gate, num_qubits=2)
 
     matrix = make_ctrl_gate(matrix)
@@ -81,5 +70,5 @@ def test_ctrl_unitary():
 
 
 if __name__ == "__main__":
-    test_ctrl_unitary()
+    test_unitary()
     print("OK")

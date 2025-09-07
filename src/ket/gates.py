@@ -93,6 +93,7 @@ __all__ = [
     "global_phase",
     "RBS",
     "ham",
+    "obs",
     "QFT",
 ]
 
@@ -108,40 +109,68 @@ def _gate_docstring(name, matrix, effect=None) -> str:
     """
 
 
-_build_hamiltonian = contextvars.ContextVar("build_hamiltonian", default=False)
+_build_obs = contextvars.ContextVar("build_obs", default=False)
 
 
 @contextmanager
-def ham():
+def obs():
     """
-    Context manager to define a Hamiltonian in Ket.
+    Context manager to define a observable in Ket.
 
-    When used within a ``with ham():`` block, any operator expressions
+    When used within a ``with obs():`` block, any operator expressions
     constructed (e.g., sums of Pauli terms) are interpreted as part
-    of a Hamiltonian definition.
+    of a observable definition.
 
     This enables a more natural and symbolic style for building
-    Hamiltonians, closely mirroring their mathematical form.
+    observable, closely mirroring their mathematical form.
 
     Example:
 
         .. code-block:: python
 
-            with ham():
+            with obs():
                 h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
 
     """
-    token = _build_hamiltonian.set(True)
+    token = _build_obs.set(True)
     try:
         yield
     finally:
-        _build_hamiltonian.reset(token)
+        _build_obs.reset(token)
+
+
+def ham():
+    """
+    Context manager to define a observable in Ket.
+
+    When used within a ``with obs():`` block, any operator expressions
+    constructed (e.g., sums of Pauli terms) are interpreted as part
+    of a observable definition.
+
+    This enables a more natural and symbolic style for building
+    observable, closely mirroring their mathematical form.
+
+    Example:
+
+        .. code-block:: python
+
+            with obs():
+                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
+
+    """
+    warnings.warn(
+        "`with ham():` is deprecated and will be removed in future versions."
+        " Use `with obs():` instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return obs()
 
 
 def I(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
-    if _build_hamiltonian.get():
+    if _build_obs.get():
         return Pauli.i(qubits)
 
     if not isinstance(qubits, Quant):
@@ -161,7 +190,7 @@ I.__doc__ = _gate_docstring(
 def X(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
-    if _build_hamiltonian.get():
+    if _build_obs.get():
         return Pauli.x(qubits)
 
     if not isinstance(qubits, Quant):
@@ -183,7 +212,7 @@ X.__doc__ = _gate_docstring(
 def Y(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
-    if _build_hamiltonian.get():
+    if _build_obs.get():
         return Pauli.y(qubits)
 
     if not isinstance(qubits, Quant):
@@ -205,7 +234,7 @@ Y.__doc__ = _gate_docstring(
 def Z(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
-    if _build_hamiltonian.get():
+    if _build_obs.get():
         return Pauli.z(qubits)
 
     if not isinstance(qubits, Quant):

@@ -44,7 +44,7 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
 def test_grover():
     SIZE = 12
     looking_for = randint(0, pow(2, SIZE) - 1)
-    assert looking_for == grover(SIZE, ket.qulib.phase_oracle(looking_for))
+    assert looking_for == grover(SIZE, ket.qulib.oracle.phase_oracle(looking_for))
 
 
 if __name__ == "__main__":

@@ -167,7 +167,17 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
         control_qubits = reduce(add, control_qubits)
     process = control_qubits.process
 
-    with around(_flip_to_control(state), control_qubits, ket_process=process):
+    if state is not None:
+        with around(_flip_to_control(state), control_qubits, ket_process=process):
+            process.ctrl_push(
+                (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
+                len(control_qubits.qubits),
+            )
+            try:
+                yield
+            finally:
+                process.ctrl_pop()
+    else:
         process.ctrl_push(
             (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
             len(control_qubits.qubits),
@@ -442,9 +452,9 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
     ket_process.around_begin()
 
     ket_process.ctrl_stack()
-    ket_process.approximated_decomposition_begin()
+    # ket_process.approximated_decomposition_begin()
     gate(*args, **kwargs)
-    ket_process.approximated_decomposition_end()
+    # ket_process.approximated_decomposition_end()
     ket_process.ctrl_unstack()
 
     ket_process.around_mid()
@@ -456,9 +466,9 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
         ket_process.around_undo()
 
         ket_process.ctrl_stack()
-        ket_process.approximated_decomposition_begin()
+        # ket_process.approximated_decomposition_begin()
         adj(gate)(*args, ket_process=ket_process, **kwargs)
-        ket_process.approximated_decomposition_end()
+        # ket_process.approximated_decomposition_end()
         ket_process.ctrl_unstack()
 
         ket_process.around_end()

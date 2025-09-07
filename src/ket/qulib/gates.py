@@ -65,7 +65,7 @@ def _apply_global_phase(phase: float, qubits: Quant):
 
 
 def unitary(
-    matrix: list[list[complex]], up_to_global_phase: True
+    matrix: list[list[complex]], up_to_global_phase: bool = False
 ) -> Callable[[Quant], Quant]:
     """Create a quantum gate from 2x2 unitary matrix.
 
