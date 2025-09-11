@@ -6,28 +6,14 @@
 
 from math import pi
 from ..base import Quant
-from ..gates import H, P, X
-from ..operations import control, ctrl, around
+from ..gates import QFT, P, X
+from ..operations import ctrl, around
 
 __all__ = [
     "addi",
     "mul",
     "set_int",
 ]
-
-
-def _qft(qubits):
-    if len(qubits) == 1:
-        H(qubits)
-    else:
-        head, *tail = qubits
-        H(head)
-
-        for i, ctrl_qubit in enumerate(tail):
-            with control(ctrl_qubit):
-                P(2 * pi / 2 ** (i + 2), head)
-
-        _qft(tail)
 
 
 def _rotation(l, q, m=1):
@@ -92,7 +78,7 @@ def addi(lhs: Quant, rhs: Quant | int, multiplier: int = 1):
         multiplier: Multiplier for the addition (default is 1).
     """
 
-    with around(_qft, lhs):
+    with around(QFT, reversed(lhs), False):
         if isinstance(rhs, Quant):
             _addi_qq(lhs, rhs, multiplier)
         elif isinstance(rhs, int):
