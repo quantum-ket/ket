@@ -8,6 +8,7 @@ import cmath
 import ket
 from ket import qulib
 
+
 def u3_matrix(theta: float, phi: float, lambda_: float) -> list:
     return [
         [

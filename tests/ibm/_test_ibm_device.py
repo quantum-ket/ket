@@ -1,4 +1,4 @@
-""" Test module for the IBMDevice class """
+"""Test module for the IBMDevice class"""
 
 # SPDX-FileCopyrightText: 2024 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 # SPDX-FileCopyrightText: 2024 Otávio Augusto de Santana Jatobá
