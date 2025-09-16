@@ -550,7 +550,7 @@ class QuantumState:
 
         return Math("+".join(math).replace("+-", "-"))
 
-    def histogram(self, **kwargs) -> go.Figure:
+    def histogram(self, mode: Literal["bin", "dec"] = "dec", **kwargs) -> go.Figure:
         """Generate a histogram representing the quantum state.
 
         This method creates a histogram visualizing the probability distribution
@@ -561,13 +561,23 @@ class QuantumState:
 
             Install with: ``pip install ket-lang[plot]``.
 
+        Args:
+            mode: If ``"bin"``, display the states in binary format. If ``"dec"``,
+            display the states in decimal format. Defaults to ``"dec"``.
+            **kwargs: Additional keyword arguments passed to :func:`plotly.express.bar`.
+
         Returns:
             Histogram of the quantum state.
         """
         _check_visualize()
 
+        state = list(self.get().keys())
+        state_text = (
+            list(map(lambda s: f"|{s:0{self.size}b}⟩", state)) if mode == "bin" else state
+        )
+
         data = {
-            "State": list(self.get().keys()),
+            "State": state,
             "Probability": list(map(lambda a: abs(a) ** 2, self.get().values())),
             "Phase": list(map(phase, self.get().values())),
         }
@@ -582,10 +592,11 @@ class QuantumState:
         )
 
         fig.update_layout(
-            xaxis={
-                "tickmode": "linear",
-                "dtick": 1,
-            },
+            xaxis=dict(
+                tickmode="array",
+                tickvals=state,
+                ticktext=state_text,
+            ),
             bargap=0.75,
         )
 

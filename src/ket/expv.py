@@ -203,6 +203,9 @@ class Pauli:
 
     __rmul__ = __mul__
 
+    def __len__(self) -> int:
+        return len(self.map)
+
     def __add__(self, other) -> Hamiltonian:
         if isinstance(other, Number):
             other = Pauli(None, None, _process=self.process, _map={}, _coef=other)

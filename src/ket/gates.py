@@ -65,7 +65,7 @@ from .clib.libket import (
 
 from .base import Process, Quant, Parameter
 from .operations import _search_process, control, ctrl, cat, kron, around
-from .expv import Pauli
+from .expv import Pauli, Hamiltonian
 
 __all__ = [
     "I",
@@ -95,6 +95,7 @@ __all__ = [
     "ham",
     "obs",
     "QFT",
+    "evolve",
 ]
 
 
@@ -779,3 +780,31 @@ def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
         size = len(qubits)
         for i in range(size // 2):
             SWAP(qubits[i], qubits[size - i - 1])
+
+
+_EVOLVE_GATES = {
+    "X": (RX, RXX),
+    "Y": (RY, RYY),
+    "Z": (RZ, RZZ),
+    "I": (lambda *_: ..., lambda *_: ...),
+}
+
+
+def evolve(hamiltonian: Hamiltonian):
+    """Evolve the quantum state according to the given Hamiltonian."""
+    if max(map(len, hamiltonian.pauli_products)) > 2:
+        raise ValueError("Only 1- and 2-qubit terms are supported in evolve.")
+    for pauli in hamiltonian.pauli_products:
+        if len(pauli) <= 1:
+            continue
+        gates = list(pauli.map.values())
+        if gates[0] != gates[1]:
+            raise ValueError("Only XX, YY, and ZZ interactions are supported")
+
+    process = hamiltonian.process
+    for pauli in hamiltonian.pauli_products:
+        if len(pauli) == 0:
+            continue
+        qubits = Quant(qubits=list(pauli.map.keys()), process=process)
+        gates = list(pauli.map.values())[0]    
+        _EVOLVE_GATES[gates][len(pauli) - 1](pauli.coef, *qubits)

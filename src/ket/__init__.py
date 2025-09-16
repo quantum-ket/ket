@@ -91,7 +91,7 @@ from .quantumstate import *
 from .quantumstate import __all__ as all_state
 from . import qulib
 
-__version__ = "0.9.1rc1"
+__version__ = "0.9.1rc2"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state + ["qulib"]
 

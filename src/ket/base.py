@@ -653,7 +653,7 @@ class Samples:
             self.process.execute()
         return self.value
 
-    def histogram(self, **kwargs) -> go.Figure:
+    def histogram(self, mode: Literal["bin", "dec"] = "dec", **kwargs) -> go.Figure:
         """Generate a histogram representing the sample.
 
         This method creates a histogram visualizing the probability distribution
@@ -664,13 +664,25 @@ class Samples:
 
             Install with: ``pip install ket-lang[plot]``.
 
+        Args:
+            mode: If ``"bin"``, display the states in binary format. If ``"
+            "dec"``, display the states in decimal format. Defaults to ``"dec"``.
+            **kwargs: Additional keyword arguments passed to :func:`plotly.express.bar`.
+
         Returns:
             Histogram of sample measurement.
         """
         _check_visualize()
 
+        state = list(self.get().keys())
+        state_text = (
+            list(map(lambda s: f"|{s:0{len(self.qubits)}b}⟩", state))
+            if mode == "bin"
+            else state
+        )
+
         data = {
-            "State": list(self.get().keys()),
+            "State": state,
             "Count": list(self.get().values()),
         }
 
@@ -679,6 +691,15 @@ class Samples:
             x="State",
             y="Count",
             **kwargs,
+        )
+
+        fig.update_layout(
+            xaxis=dict(
+                tickmode="array",
+                tickvals=state,
+                ticktext=state_text,
+            ),
+            bargap=0.75,
         )
 
         return fig
