@@ -21,7 +21,7 @@ from ..clib.libket import BatchExecution
 from ..base import Process
 from ..operations import dump
 from ..gates import H, CNOT
-from . import gates, prepare, math, oracle
+from . import gates, prepare, math, oracle, ham
 
 try:
     import google.colab  # pylint: disable=unused-import
@@ -45,12 +45,13 @@ except ImportError:
     QISKIT_AVAILABLE = False
 
 __all__ = [
-    "prepare",
-    "gates",
-    "oracle",
-    "math",
-    "dump_matrix",
     "draw",
+    "dump_matrix",
+    "gates",
+    "ham",
+    "math",
+    "oracle",
+    "prepare",
 ]
 
 
