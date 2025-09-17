@@ -368,9 +368,7 @@ def cat(*gates) -> Callable[[Any], Any]:
 
     def inner(*args):
         for gate in gates:
-            args = gate(*args)
-            if not isinstance(args, tuple):
-                args = (args,)
+            gate(*args)
 
         if len(args) == 1:
             return args[0]
