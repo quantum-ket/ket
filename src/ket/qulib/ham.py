@@ -13,18 +13,18 @@ __all__ = [
 ]
 
 
-def maxcut(vertices: list[tuple[int, int]], qubits: Quant) -> Hamiltonian:
+def maxcut(edges: list[tuple[int, int]], qubits: Quant) -> Hamiltonian:
     r"""Max-Cut Hamiltonian.
 
     .. math::
-        \sum_{a, b\,\in\, \mathcal{V}}\frac{1}{2}(1-Z_a Z_b)
+        \sum_{a, b\,\in\, \mathcal{E}}\frac{1}{2}(1-Z_a Z_b)
 
     Args:
-        vertices: List of edges in the graph.
+        edges: List of edges in the graph.
         qubits: Qubits representing the graph nodes.
     """
     with obs():
-        return 1 / 2 * sum(1 - Z(a) * Z(b) for a, b in map(qubits.at, vertices))
+        return 1 / 2 * sum(1 - Z(a) * Z(b) for a, b in map(qubits.at, edges))
 
 
 def x_mixer(qubits: Quant) -> Hamiltonian:
@@ -40,27 +40,27 @@ def x_mixer(qubits: Quant) -> Hamiltonian:
         return sum(X(q) for q in qubits)
 
 
-def xy_mixer(qubits, vertices: list[tuple[int, int]] | None = None) -> Hamiltonian:
+def xy_mixer(qubits, edges: list[tuple[int, int]] | None = None) -> Hamiltonian:
     r"""XY-Mixer Hamiltonian.
 
     .. math::
-        \frac{1}{2}\sum_{a, b\,\in\, \mathcal{V}} X_a X_b + Y_a Y_b
+        \frac{1}{2}\sum_{a, b\,\in\, \mathcal{E}} X_a X_b + Y_a Y_b
 
 
-    If vertices is None, a ring topology is assumed.
+    If edges is None, a ring topology is assumed.
 
     Args:
         qubits: Qubits to apply the mixer.
-        vertices: List of edges in the graph.
+        edges: List of edges in the graph.
     """
-    if vertices is None:
+    if edges is None:
         n = len(qubits)
-        vertices = [(i, (i + 1) % n) for i in range(n)]
+        edges = [(i, (i + 1) % n) for i in range(n)]
 
     with obs():
         return (
-            sum(X(a) * X(b) for a, b in map(qubits.at, vertices))
-            + sum(Y(a) * Y(b) for a, b in map(qubits.at, vertices))
+            sum(X(a) * X(b) for a, b in map(qubits.at, edges))
+            + sum(Y(a) * Y(b) for a, b in map(qubits.at, edges))
         ) / 2
 
 
