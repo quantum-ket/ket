@@ -95,6 +95,10 @@ def qubo(model, qubits: Quant) -> Hamiltonian:
 def falqon_a(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
     """FALQON A operator.
 
+    .. math::
+        A = i[H_d, H_p]
+
+
     See https://arxiv.org/abs/2103.08619.
 
     Args:
@@ -107,6 +111,10 @@ def falqon_a(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
 def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
     """FALQON B operator.
 
+    .. math::
+        B = [ [H_d, H_p], H_d ]
+
+
     See https://arxiv.org/abs/2407.17810.
 
     Args:
@@ -118,6 +126,9 @@ def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
 
 def falqon_c(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
     """FALQON C operator.
+
+    .. math::
+        C = [ [H_d, H_p], H_p ]
 
     See https://arxiv.org/abs/2407.17810.
 

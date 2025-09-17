@@ -7,6 +7,22 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.9.1](https://pypi.org/project/ket-lang/0.9.1)
+
+### Added
+
+- Added Hamiltonian library with QUBO, MaxCut and Mixers Hamiltonians, and FALQON operators.
+- Reorganized `qulib` with `oracle` and `gates` submodules.
+- Added `evolve` function for Hamiltonian evolution.
+- Added `QFT` gate.
+- Change the context manager `ham` to `obs`.
+
+### Fixed
+
+- Disable approximated decomposition (need fix).
+  
+
+
 ## [0.9.0](https://pypi.org/project/ket-lang/0.9.0)
 
 ### Added

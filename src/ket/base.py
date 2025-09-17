@@ -665,8 +665,8 @@ class Samples:
             Install with: ``pip install ket-lang[plot]``.
 
         Args:
-            mode: If ``"bin"``, display the states in binary format. If ``"
-            "dec"``, display the states in decimal format. Defaults to ``"dec"``.
+            mode: If ``"bin"``, display the states in binary format. If ``"dec"``,
+                display the states in decimal format. Defaults to ``"dec"``.
             **kwargs: Additional keyword arguments passed to :func:`plotly.express.bar`.
 
         Returns:
