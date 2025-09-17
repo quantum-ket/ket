@@ -1,4 +1,4 @@
-"""Hamiltonian Library."""
+"""Hamiltonian library."""
 
 # SPDX-FileCopyrightText: 2025 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #
@@ -6,10 +6,19 @@
 
 from ..gates import X, Y, Z, obs
 from ..base import Quant
-from ..expv import Hamiltonian
+from ..expv import Hamiltonian, commutator
+from ..operations import exp_value
 
 __all__ = [
     "maxcut",
+    "x_mixer",
+    "xy_mixer",
+    "qubo",
+    "falqon_a",
+    "falqon_b",
+    "falqon_a",
+    "falqon_get_beta_fo",
+    "falqon_get_beta_so",
 ]
 
 
@@ -81,3 +90,78 @@ def qubo(model, qubits: Quant) -> Hamiltonian:
             + sum(c * -Z(qubits[i]) for i, c in linear.items())
             + sum(c * Z(qubits[i]) * Z(qubits[j]) for (i, j), c in quadratic.items())
         )
+
+
+def falqon_a(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
+    """FALQON A operator.
+
+    See https://arxiv.org/abs/2103.08619.
+
+    Args:
+        hp: Problem Hamiltonian.
+        hd: Driver Hamiltonian.
+    """
+    return 1j * commutator(hd, hp)
+
+
+def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
+    """FALQON B operator.
+
+    See https://arxiv.org/abs/2407.17810.
+
+    Args:
+        hp: Problem Hamiltonian.
+        hd: Driver Hamiltonian.
+    """
+    return commutator(commutator(hd, hp), hd)
+
+
+def falqon_c(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
+    """FALQON C operator.
+
+    See https://arxiv.org/abs/2407.17810.
+
+    Args:
+        hp: Problem Hamiltonian.
+        hd: Driver Hamiltonian.
+    """
+    return commutator(commutator(hd, hp), hp)
+
+
+def falqon_get_beta_fo(hp: Hamiltonian, hd: Hamiltonian) -> float:
+    """Get FALQON first-order beta parameter.
+
+    See https://arxiv.org/abs/2103.08619.
+
+    This function computes the expectation value, triggering the circuit execution.
+
+    Args:
+        hp: Problem Hamiltonian.
+        hd: Driver Hamiltonian.
+    """
+    return -exp_value(falqon_a(hp, hd)).get()
+
+
+def falqon_get_beta_so(delta_t, hp: Hamiltonian, hd: Hamiltonian) -> float:
+    """Get FALQON second-order beta parameter.
+
+    See https://arxiv.org/abs/2407.17810.
+
+    This function computes the expectation values, triggering the circuit execution.
+
+    Args:
+        delta_t: Time step.
+        hp: Problem Hamiltonian.
+        hd: Driver Hamiltonian.
+    """
+    a = exp_value(falqon_a(hp, hd))
+    b = exp_value(falqon_b(hp, hd))
+    c = exp_value(falqon_c(hp, hd))
+
+    a = a.get()
+    b = b.get()
+    c = c.get()
+
+    so = -(a + delta_t * c) / (2 * delta_t * b)
+
+    return -a if abs(so) > abs(a) else so

@@ -1,4 +1,4 @@
-"""Quantum Gate Construction."""
+"""Quantum gate construction."""
 
 from __future__ import annotations
 
