@@ -694,11 +694,11 @@ class Samples:
         )
 
         fig.update_layout(
-            xaxis=dict(
-                tickmode="array",
-                tickvals=state,
-                ticktext=state_text,
-            ),
+            xaxis={
+                "tickmode": "array",
+                "tickvals": state,
+                "ticktext": state_text,
+            },
             bargap=0.75,
         )
 

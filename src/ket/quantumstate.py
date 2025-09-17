@@ -573,7 +573,9 @@ class QuantumState:
 
         state = list(self.get().keys())
         state_text = (
-            list(map(lambda s: f"|{s:0{self.size}b}⟩", state)) if mode == "bin" else state
+            list(map(lambda s: f"|{s:0{self.size}b}⟩", state))
+            if mode == "bin"
+            else state
         )
 
         data = {
@@ -592,11 +594,11 @@ class QuantumState:
         )
 
         fig.update_layout(
-            xaxis=dict(
-                tickmode="array",
-                tickvals=state,
-                ticktext=state_text,
-            ),
+            xaxis={
+                "tickmode": "array",
+                "ticktext": state_text,
+                "tickvals": state,
+            },
             bargap=0.75,
         )
 

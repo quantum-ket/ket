@@ -806,5 +806,5 @@ def evolve(hamiltonian: Hamiltonian):
         if len(pauli) == 0:
             continue
         qubits = Quant(qubits=list(pauli.map.keys()), process=process)
-        gates = list(pauli.map.values())[0]    
+        gates = list(pauli.map.values())[0]
         _EVOLVE_GATES[gates][len(pauli) - 1](pauli.coef, *qubits)
