@@ -407,7 +407,8 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
     def inner(*args):
         if len(gates) != len(args):
             raise ValueError(
-                f"Number of gates ({len(gates)}) is different from number of arguments ({len(args)})"
+                f"Number of gates ({len(gates)}) is different from"
+                " number of arguments ({len(args)})"
             )
 
         return tuple(

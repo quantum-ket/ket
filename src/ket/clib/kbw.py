@@ -15,7 +15,7 @@ from os import environ
 from os.path import dirname
 from .wrapper import load_lib, os_lib_name
 
-API_argtypes = {
+api_argtypes = {
     "kbw_set_log_level": ([c_uint32], []),
     "kbw_build_info": ([], [POINTER(c_uint8), c_size_t]),
     "kbw_make_configuration": (
@@ -45,7 +45,7 @@ def kbw_path():
     return path
 
 
-API = load_lib("KBW", kbw_path(), API_argtypes, "kbw_error_message")
+API = load_lib("KBW", kbw_path(), api_argtypes, "kbw_error_message")
 
 
 def set_log(level: int):

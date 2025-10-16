@@ -115,7 +115,7 @@ class LiveCExecution(Structure):  # pylint: disable=too-few-public-methods
     ]
 
 
-API_argtypes = {
+api_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
     "ket_set_log_level": ([c_uint32], []),
     "ket_build_info": ([], [POINTER(c_uint8), c_size_t]),
@@ -225,7 +225,7 @@ def libket_path():
     return path
 
 
-API = load_lib("Libket", libket_path(), API_argtypes, "ket_error_message")
+API = load_lib("Libket", libket_path(), api_argtypes, "ket_error_message")
 
 
 def set_log(level: int):
@@ -344,7 +344,9 @@ class BatchExecution(ABC):
             return gate, {}
         return list(gate.items())[0]
 
-    def process_instructions(self, instructions: dict):
+    def process_instructions(
+        self, instructions: dict
+    ):  # pylint: disable=too-many-branches
         """Parse the instructions to execute."""
         for instruction in instructions:
             match instruction:

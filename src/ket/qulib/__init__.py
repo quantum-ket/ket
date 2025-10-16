@@ -26,15 +26,15 @@ from . import gates, prepare, math, oracle, ham
 try:
     import google.colab  # pylint: disable=unused-import
 
-    IN_NOTEBOOK = True
+    _in_notebook = True
 except ImportError:
     try:
         from IPython import get_ipython
 
-        IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+        _in_notebook = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
 
     except ImportError:
-        IN_NOTEBOOK = False
+        _in_notebook = False
 
 try:
     from qiskit import QuantumCircuit, QuantumRegister
@@ -348,7 +348,7 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
     gate(*args, *q)
     p.execute()
 
-    if "output" not in kwargs and IN_NOTEBOOK:
+    if "output" not in kwargs and _in_notebook:
         kwargs["output"] = "mpl"
 
     kwargs["style"] = {**DRAW_STYLE, **kwargs.get("style", {})}

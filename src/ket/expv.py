@@ -149,7 +149,7 @@ class Pauli:
             _coef=self.coef * other.coef,
         )
 
-    def __matmul__(self, rhs: Pauli) -> Pauli:
+    def __matmul__(self, rhs: Pauli) -> Pauli:  # pylint:disable=too-many-branches
         if isinstance(rhs, Hamiltonian):
             return Hamiltonian([self], self.process) @ rhs
 

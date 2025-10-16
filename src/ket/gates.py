@@ -741,7 +741,7 @@ def global_phase(
     return _global_phase
 
 
-SX = global_phase(pi / 4)(RX(pi / 2))
+SX = global_phase(pi / 4)(RX(pi / 2))  # pylint: disable=invalid-name
 SX.__doc__ = _gate_docstring(
     "Sqrt X",
     r"\frac{1}{2} \begin{bmatrix} 1+i & 1-i \\ 1-i & 1+i \end{bmatrix}",

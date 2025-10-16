@@ -33,11 +33,11 @@ try:
     try:
         import google.colab  # pylint: disable=unused-import
 
-        IN_NOTEBOOK = True
+        _in_notebook = True
     except ImportError:
-        IN_NOTEBOOK = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
+        _in_notebook = get_ipython().__class__.__name__ == "ZMQInteractiveShell"
 except ImportError:
-    IN_NOTEBOOK = False
+    _in_notebook = False
 
 __all__ = ["QuantumState"]
 
@@ -429,7 +429,7 @@ class QuantumState:
         """
 
         if mode is None:
-            if IN_NOTEBOOK:
+            if _in_notebook:
                 mode = "latex"
             else:
                 mode = "str"
