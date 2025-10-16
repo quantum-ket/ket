@@ -367,6 +367,8 @@ class BatchExecution(ABC):
                             self.rotation_z(target, control, **param)
                         case "Phase":
                             self.phase(target, control, **param)
+                        case _:
+                            raise RuntimeError(f"Undefined gate '{gate}'")
                 case {"ExpValue": {"index": index, "hamiltonian": hamiltonian}}:
                     self.exp_value(index, hamiltonian)
                 case {"Measure": {"index": index, "qubits": qubits}}:

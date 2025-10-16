@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from math import pi, sqrt, atan2
+from math import pi, sqrt, cos, sin
 from cmath import isclose, exp
 import ket
 import pytest
@@ -24,10 +24,29 @@ Z = [[1, 0], [0, -1]]
 H = [[1 / sqrt(2), 1 / sqrt(2)], [1 / sqrt(2), -1 / sqrt(2)]]
 T = [[1, 0], [0, exp(1j * pi / 4)]]
 S = [[1, 0], [0, 1j]]
+RX = lambda theta: [
+    [cos(theta / 2), -1j * sin(theta / 2)],
+    [-1j * sin(theta / 2), cos(theta / 2)],
+]
+RY = lambda theta: [
+    [cos(theta / 2), -sin(theta / 2)],
+    [sin(theta / 2), cos(theta / 2)],
+]
+RZ = lambda theta: [[exp(-1j * theta / 2), 0], [0, exp(1j * theta / 2)]]
 
 
 def test_unitary():
-    for gate in [X, Y, Z, H, T, S]:
+    for gate in [
+        X,
+        Y,
+        Z,
+        H,
+        T,
+        S,
+        *[RX(2 * pi / i) for i in range(1, 11)],
+        *[RY(2 * pi / i) for i in range(1, 11)],
+        *[RZ(2 * pi / i) for i in range(1, 11)],
+    ]:
         assert validate(gate)
 
 

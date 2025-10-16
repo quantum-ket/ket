@@ -405,6 +405,11 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
     gates = gates * n
 
     def inner(*args):
+        if len(gates) != len(args):
+            raise ValueError(
+                f"Number of gates ({len(gates)}) is different from number of arguments ({len(args)})"
+            )
+
         return tuple(
             gate(*arg) if isinstance(arg, tuple) else gate(arg)
             for gate, arg in zip(gates, args)

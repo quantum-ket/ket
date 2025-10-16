@@ -39,33 +39,6 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
     return ket.measure(s).get()
 
 
-def qft(qubits: ket.Quant, do_swap: bool = True):
-    """
-    Applies the Quantum Fourier Transform (QFT) to the given qubits.
-
-    Args:
-        qubits (quant): A quantum register containing the qubits to be transformed.
-        invert (bool): Whether inverse the qubits order at the end of the QFT. Default is True.
-    """
-    if len(qubits) == 1:
-        ket.H(qubits)
-    else:
-        *head, tail = qubits
-        ket.H(tail)
-
-        for i, ctrl_qubit in enumerate(reversed(head)):
-            with ket.control(ctrl_qubit):
-                r = i + 2
-                ket.P(2 * pi / 2**r, tail)
-
-        qft(head, do_swap=False)
-
-    if do_swap:
-        size = len(qubits)
-        for i in range(size // 2):
-            ket.SWAP(qubits[i], qubits[size - i - 1])
-
-
 def oracle(phase: float, i: int, tgr):
     """Performs a phase shift operation on the target
     qubit based on a given phase and index value.
@@ -102,7 +75,7 @@ def phase_estimator(oracle_gate, precision: int) -> float:
         with ket.control(c):
             oracle_gate(i, trg)
 
-    ket.adj(qft)(ctr)
+    ket.adj(ket.QFT)(ctr)
 
     return ket.measure(reversed(ctr)).get() / 2**precision
 
@@ -112,7 +85,7 @@ def quantum_sum(a, b, size):
     p = ket.Process(execution_target=braket)
 
     qa = p.alloc(size + 1)
-    qb = p.alloc(size)
+    qb = p.alloc(size - 1)
 
     ket.qulib.math.set_int(qa, a)
     ket.qulib.math.set_int(qb, b)
@@ -139,14 +112,16 @@ def test_grover():
 
 
 def test_phase_estimator():
-    estimate_pi = partial(phase_estimator, partial(oracle, pi / 10))
-    assert abs((estimate_pi(16) * 10) - pi) < 1e-3
+    phase = 0.5791015625
+    estimate_pi = partial(phase_estimator, partial(oracle, phase))
+    result = estimate_pi(10)
+    assert result == phase
 
 
 def test_quantum_adder():
     SIZE = 5
 
-    for _ in range(6):
+    for _ in range(10):
         a = randint(0, pow(2, SIZE) - 1)
         b = randint(0, pow(2, SIZE - 1) - 1)
 

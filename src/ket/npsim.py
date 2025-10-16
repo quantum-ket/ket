@@ -112,7 +112,7 @@ class NPSim(LiveExecution):
         assert len(control) == 0, "Control qubits are not supported"
         gate = np.array(
             [
-                [np.cos(angle / 2), -1j * np.sin(angle / 2)],
+                [np.cos(angle / 2), -np.sin(angle / 2)],
                 [np.sin(angle / 2), np.cos(angle / 2)],
             ],
             dtype=complex,
