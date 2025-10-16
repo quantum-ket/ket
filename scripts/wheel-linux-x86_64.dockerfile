@@ -3,16 +3,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM almalinux:8-minimal AS rust
-RUN microdnf install gcc -y
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain 1.88 -y
-
-FROM rust AS build_libket_amd64
+FROM registry.gitlab.com/quantum-ket/ket-building-images:linux-1.88 AS build_libket_amd64
 COPY src/ket/clib/libs/libket/ /workdir/
 WORKDIR /workdir/
 RUN . "$HOME/.cargo/env" && cargo build --release
 
-FROM rust AS build_kbw_amd64
+FROM registry.gitlab.com/quantum-ket/ket-building-images:linux-1.88 AS build_kbw_amd64
 COPY src/ket/clib/libs/kbw/ /workdir/
 WORKDIR /workdir/
 RUN . "$HOME/.cargo/env" && cargo build --release

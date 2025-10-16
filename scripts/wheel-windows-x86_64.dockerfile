@@ -3,16 +3,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM rust:1.88 AS rust
-RUN apt update && apt install mingw-w64 -y
-RUN rustup target add x86_64-pc-windows-gnu
-
-FROM rust AS build_libket_amd64
+FROM registry.gitlab.com/quantum-ket/ket-building-images:windows-1.88 AS build_libket_amd64
 COPY src/ket/clib/libs/libket/ /workdir/
 WORKDIR /workdir/
 RUN cargo build --release --target x86_64-pc-windows-gnu
 
-FROM rust AS build_kbw_amd64
+FROM registry.gitlab.com/quantum-ket/ket-building-images:windows-1.88 AS build_kbw_amd64
 COPY src/ket/clib/libs/kbw/ /workdir/
 WORKDIR /workdir/
 RUN cargo build --release --target x86_64-pc-windows-gnu
