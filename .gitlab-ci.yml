@@ -4,74 +4,89 @@
 # SPDX-License-Identifier: Apache-2.0
 
 stages:
-  - lint
-  - build
-  - test
-  - deploy
+- lint
+- build
+- test
+- deploy
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-Build Linux x86_64 Wheels:
-  image: docker:latest
+Package Linux x86_64 Wheels:
+  image: python:3.10
   stage: build
-  services:
-    - docker:dind
   script:
-    - ./scripts/wheel-linux-x86_64.sh
+  - pip install build auditwheel patchelf
+  - |
+    curl --location \
+    "https://gitlab.com/api/v4/projects/16627872/packages/generic/kbw/`git submodule status | grep kbw | awk '{print substr($1, 1, 8)}'`/libkbw.so" \
+    --output src/ket/clib/libs/libkbw.so
+  - |
+    curl --location \
+    "https://gitlab.com/api/v4/projects/16638729/packages/generic/libket/`git submodule status | grep libket | awk '{print substr($1, 1, 8)}'`/libket.so" \
+    --output src/ket/clib/libs/libket.so
+  - python -m build -w
+  - python -m auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
   artifacts:
     paths:
-      - wheelhouse/*.whl
+    - wheelhouse/*.whl
 
-Build Windows x86_64 Wheels:
-  image: docker:latest
+Package Windows x86_64 Wheels:
+  image: python:3.10
   stage: build
-  services:
-    - docker:dind
   script:
-    - ./scripts/wheel-windows-x86_64.sh
+  - pip install build auditwheel patchelf
+  - |
+    curl --location \
+    "https://gitlab.com/api/v4/projects/16627872/packages/generic/kbw/`git submodule status | grep kbw | awk '{print substr($1, 1, 8)}'`/kbw.dll" \
+    --output src/ket/clib/libs/kbw.dll
+  - |
+    curl --location \
+    "https://gitlab.com/api/v4/projects/16638729/packages/generic/libket/`git submodule status | grep libket | awk '{print substr($1, 1, 8)}'`/ket.dll" \
+    --output src/ket/clib/libs/ket.dll
+  - python setup.py bdist_wheel -p win-amd64
   artifacts:
     paths:
-      - wheelhouse/*.whl
+    - dist/*.whl
 
 Package Source Code:
   image: python:3.10-slim
   stage: build
   script:
-    - pip install build
-    - python -m build -s
+  - pip install build
+  - python -m build -s
   artifacts:
     paths:
-      - dist/ket_lang*.tar.gz
+    - dist/ket_lang*.tar.gz
 
 Lint:
   image: python:3.10-slim
   stage: lint
   script:
-    - pip install pipx
-    - pipx run pylint src
-    - pipx run reuse lint
+  - pip install pipx
+  - pipx run pylint src
+  - pipx run reuse lint
 
 Test:
   image: python:3.10-slim
   stage: test
   script:
-    - pip install `ls wheelhouse/ket_lang*manylinux_2_28_x86_64.whl`[ibm,amazon] pytest pytest-cov
-    - pytest
+  - pip install `ls wheelhouse/ket_lang*manylinux_2_28_x86_64.whl`[ibm,amazon] pytest pytest-cov
+  - pytest
   artifacts:
     paths:
-      - htmlcov
+    - htmlcov
 
 PyPI Upload:
   image: python:3.10-alpine
   stage: deploy
   script:
-    - pip install twine
-    - python -m twine upload dist/* wheelhouse/*
+  - pip install twine
+  - python -m twine upload dist/* wheelhouse/*
   only:
-    - master
+  - master
 
 sast:
   stage: test
 include:
-  - template: Security/SAST.gitlab-ci.yml
+- template: Security/SAST.gitlab-ci.yml
