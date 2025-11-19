@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Callable, Literal
 from cmath import phase
-from math import sqrt, asin
+from math import sqrt, asin, acos
 
 from ..base import Quant
 from ..gates import X, H, RY, CNOT, S, P
@@ -46,12 +46,13 @@ def w(qubits: Quant) -> Quant:
     r"""Prepare a W = :math:`\frac{1}{\sqrt{n}}\sum_{k=0}^{n}\ket{2^k}` state."""
 
     size = len(qubits)
+    RY(2 * acos(sqrt(1 / (size))), qubits[0])
+    for i in range(1, size - 1):
+        ctrl(qubits[i - 1], RY(2 * acos(sqrt(1 / (size - i)))))(qubits[i])
 
+    for i in range(size - 1, 0, -1):
+        CNOT(qubits[i - 1], qubits[i])
     X(qubits[0])
-    for i in range(size - 1):
-        n = size - i
-        ctrl(qubits[i], RY(2 * asin(sqrt((n - 1) / n)))(qubits[i + 1]))
-        CNOT(qubits[i + 1], qubits[i])
 
     return qubits
 
