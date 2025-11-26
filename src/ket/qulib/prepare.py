@@ -25,6 +25,7 @@ __all__ = [
     "bell",
     "pauli_state",
     "state",
+    "dicke",
 ]
 
 
@@ -167,3 +168,59 @@ def state(
     if amp.right is not None:
         with control(head):
             state(amp.right, tail)
+
+
+def dicke(k: int, qubits: Quant) -> Quant:
+    r"""Prepares an :math:`n`-qubit Dicke state :math:`\ket{D_k^n}`.
+
+    A Dicke state is the equal superposition of all computational basis
+    states with Hamming weight :math:`k`. Formally:
+
+    .. math::
+
+        \ket{D_k^n} =
+        \frac{1}{\sqrt{\binom{n}{k}}}
+        \sum_{\substack{x \in \{0,1\}^n \\ |x| = k}} \ket{x}.
+
+    This implementation uses the standard recursive identity:
+
+    .. math::
+
+        \ket{D_k^n} =
+        \sqrt{\frac{k}{n}}\, \ket{1}\!\otimes\!\ket{D_{k-1}^{n-1}}
+        +
+        \sqrt{\frac{n-k}{n}}\, \ket{0}\!\otimes\!\ket{D_k^{n-1}}.
+
+    Args:
+        k: Number of excitations. Must satisfy :math:`0 \le k \le n`.
+        qubits: A register of :math:`n` qubits.
+
+    Returns:
+        Quant: The same register, transformed in-place into
+        :math:`\ket{D_k^n}`.
+
+    Raises:
+        ValueError: If ``k`` is negative.
+    """
+    if k < 0:
+        raise ValueError("k must be non-negative")
+
+    n = len(qubits)
+    if k == 0:
+        return qubits
+    if n <= k:
+        X(qubits)
+        return qubits
+
+    head, *tail = qubits
+
+    # Prepare sqrt(k/n) * |1> + sqrt((n-k)/n) * |0>
+    RY(2 * asin(sqrt(k / n)))(head)
+
+    with control(head):
+        dicke(k - 1, tail)
+
+    with control(head, 0):
+        dicke(k, tail)
+
+    return qubits
