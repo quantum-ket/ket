@@ -262,9 +262,10 @@ class _IBMDeviceForDraw(BatchExecution):
 
 def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
     gate: Callable,
-    qubits: int | list[int],
+    num_qubits: int | list[int] | None = None,
     args: tuple = (),
     *,
+    qubits: int | list[int] | None = None,
     qpu_size: int | None = None,
     u4_gate: Literal["CX", "CZ"] | None = None,
     u2_gates: Literal["ZYZ", "RzSx"] | None = None,
@@ -282,7 +283,7 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
 
     Args:
         gate: Quantum gate function.
-        qubits: Number of qubits.
+        num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
         qpu_size: Size of the quantum processing unit (QPU).
             If specified, the number of qubits will be adjusted to fit the QPU size.
@@ -298,29 +299,37 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
         Qiskit circuit diagram of the quantum gate.
     """
 
+    # only qubits or num_qubits can be specified
+    if qubits is not None and num_qubits is not None:
+        raise ValueError("Only one of 'qubits' or 'num_qubits' can be specified.")
+    if qubits is None and num_qubits is None:
+        raise ValueError("One of 'qubits' or 'num_qubits' must be specified.")
+    if qubits is not None:
+        num_qubits = qubits
+
     if not QISKIT_AVAILABLE:
         raise RuntimeError(
             "Visualization optional dependence are required. Install with: "
             "pip install ket-lang[plot]"
         )
 
-    if not isinstance(qubits, Iterable):
-        qubits = [qubits]
+    if not isinstance(num_qubits, Iterable):
+        num_qubits = [num_qubits]
     if not isinstance(args, Iterable):
         args = [args]
 
-    names = list(signature(gate).parameters)[len(args) : len(args) + len(qubits)]
-    if len(names) != len(qubits):
-        names = [None for _ in range(len(qubits))]
+    names = list(signature(gate).parameters)[len(args) : len(args) + len(num_qubits)]
+    if len(names) != len(num_qubits):
+        names = [None for _ in range(len(num_qubits))]
 
     if qpu_size is not None:
-        qubits = list(qubits)
-        total = sum(qubits)
+        num_qubits = list(num_qubits)
+        total = sum(num_qubits)
         if total > qpu_size:
             raise ValueError(
-                f"Total number of qubits {sum(qubits)} exceeds the QPU size {qpu_size}"
+                f"Total number of qubits {sum(num_qubits)} exceeds the QPU size {qpu_size}"
             )
-        qubits.append(qpu_size - total)
+        num_qubits.append(qpu_size - total)
         names.append("AUX")
 
     qpu = {}
@@ -337,14 +346,14 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
         qpu["coupling_graph"] = coupling_graph
 
     device = _IBMDeviceForDraw(
-        [qpu_size] if coupling_graph is not None else qubits,
+        [qpu_size] if coupling_graph is not None else num_qubits,
         ["Q"] if coupling_graph is not None else names,
         qpu if len(qpu) else None,
         keep_order,
     )
 
     p = Process(device)
-    q = [p.alloc(n) for n in (qubits if qpu_size is None else qubits[:-1])]
+    q = [p.alloc(n) for n in (num_qubits if qpu_size is None else num_qubits[:-1])]
     gate(*args, *q)
     p.execute()
 
