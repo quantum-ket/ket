@@ -127,7 +127,9 @@ class Process(LibketProcess):
         self,
         execution_target: BatchExecution | LiveExecution | None = None,
         num_qubits: Optional[int] = None,
-        simulator: Optional[Literal["sparse", "dense", "dense v2", "dense gpu"]] = None,
+        simulator: Optional[
+            Literal["sparse", "dense", "dense v2", "dense gpu", "dense cuda"]
+        ] = None,
         execution: Optional[Literal["live", "batch"]] = None,
         gradient: bool = False,
         **kwargs,
