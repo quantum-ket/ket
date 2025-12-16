@@ -22,7 +22,7 @@ jobs:
       run: git submodule update --init --recursive
     - name: Compile Rust Libs
       run: |
-        rustup default 1.88
+        rustup default 1.92
         rustup target add x86_64-apple-darwin
         rustup target add aarch64-apple-darwin
 

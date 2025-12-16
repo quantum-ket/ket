@@ -59,6 +59,7 @@ _SIMULATOR = {
     "dense v1": 0,
     "sparse": 1,
     "dense v2": 2,
+    "dense gpu": 3,
 }
 
 
@@ -68,7 +69,7 @@ _CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
 def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     execution: Literal["live", "batch"] = "live",
-    simulator: Literal["sparse", "dense", "dense v2"] = "sparse",
+    simulator: Literal["sparse", "dense", "dense v2", "dense gpu"] = "sparse",
     coupling_graph: list[tuple[int, int]] | None = None,
     gradient: bool = False,
     classical_shadows=None,

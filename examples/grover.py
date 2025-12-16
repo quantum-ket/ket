@@ -49,5 +49,6 @@ if __name__ == "__main__":
     print("Searching for value", looking_for, "using", SIZE, "qubits.")
 
     print(
-        "Dense Simulation: measured", grover(SIZE, ket.qulib.phase_oracle(looking_for))
+        "Dense Simulation: measured",
+        grover(SIZE, ket.qulib.oracle.phase_oracle(looking_for)),
     )
