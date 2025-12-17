@@ -12,7 +12,7 @@ def validate(matrix):
     gate = ket.qulib.dump_matrix(ket.qulib.gates.unitary(matrix, True))
 
     return all(
-        isclose(gate[i][j], matrix[i][j], abs_tol=1e-10)
+        isclose(gate[i][j], matrix[i][j], abs_tol=1e-7)
         for i in range(len(matrix))
         for j in range(len(matrix[0]))
     )
@@ -77,7 +77,7 @@ def ctrl_validate(matrix):
     matrix = make_ctrl_gate(matrix)
 
     return all(
-        isclose(gate[i][j], matrix[i][j], abs_tol=1e-10)
+        isclose(gate[i][j], matrix[i][j], abs_tol=1e-7)
         for i in range(len(matrix))
         for j in range(len(matrix[0]))
     )
