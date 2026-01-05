@@ -60,7 +60,6 @@ _SIMULATOR = {
     "sparse": 1,
     "dense v2": 2,
     "dense gpu": 3,
-    "dense cuda": 4,
 }
 
 
@@ -75,7 +74,6 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
         "dense",
         "dense v2",
         "dense gpu",
-        "dense cuda",
     ] = "sparse",
     coupling_graph: list[tuple[int, int]] | None = None,
     gradient: bool = False,
