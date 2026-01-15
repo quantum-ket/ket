@@ -51,7 +51,7 @@ if __name__ == "__main__":
         "time": [],
     }
 
-    for size in range(2, 20):
+    for size in range(4, 20):
         looking_for = randint(0, pow(2, size) - 1)
         for simulator in ["dense", "dense gpu"]:
             start = time()
@@ -71,6 +71,7 @@ if __name__ == "__main__":
         data,
         x="size",
         y="time",
+        log_y=True,
         color="simulator",
         title="Grover's Algorithm Simulation Time",
         labels={"size": "Number of Qubits", "time": "Time (s)"},
