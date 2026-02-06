@@ -55,11 +55,15 @@ def set_log(level: int):
 
 
 _SIMULATOR = {
-    "dense": 0,
-    "dense v1": 0,
-    "sparse": 1,
-    "dense v2": 2,
-    "dense gpu": 3,
+    "sparse": 1110,
+    "sparse v1": 1110,
+    "sparse v2": 1210,
+    "dense": 2110,
+    "dense v1": 2110,
+    "dense v2": 2210,
+    "dense v2 block": 2211,
+    "dense gpu": 2120,
+    "dense gpu block": 2121,
 }
 
 

@@ -64,15 +64,46 @@ def validate(gate, simulator, verbose):
     )
 
 
+def validate_ctrl(gate, simulator, verbose):
+
+    if verbose:
+        print(f"{gate=}, {simulator=}")
+
+    p = ket.Process(simulator=simulator)
+
+    gate_func, matrix = GATES[gate]
+    matrix = [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, matrix[0][0], matrix[0][1]],
+        [0, 0, matrix[1][0], matrix[1][1]],
+    ]
+
+    gate = ket.qulib.dump_matrix(ket.C(gate_func), (1, 1), process=p)
+    if verbose:
+        print(f"{gate[0][0]:+2.4f} {gate[0][1]:+2.4f}")
+        print(f"{gate[1][0]:+2.4f} {gate[1][1]:+2.4f}")
+
+    return all(
+        isclose(gate[i][j], matrix[i][j], abs_tol=1e-7)
+        for i in range(len(matrix))
+        for j in range(len(matrix[0]))
+    )
+
+
 def test_gates(verbose=False):
     for simulator in [
         "sparse",
+        "sparse v2",
         "dense",
         "dense v2",
         # "dense gpu",
     ]:
         for gate in GATES:
             assert validate(
+                gate, simulator, verbose
+            ), f"assert fail {gate=}, {simulator=}"
+            assert validate_ctrl(
                 gate, simulator, verbose
             ), f"assert fail {gate=}, {simulator=}"
 
