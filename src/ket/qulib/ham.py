@@ -67,10 +67,7 @@ def xy_mixer(qubits, edges: list[tuple[int, int]] | None = None) -> Hamiltonian:
         edges = [(i, (i + 1) % n) for i in range(n)]
 
     with obs():
-        return (
-            sum(X(a) * X(b) for a, b in map(qubits.at, edges))
-            + sum(Y(a) * Y(b) for a, b in map(qubits.at, edges))
-        ) / 2
+        return sum(X(a) * X(b) + Y(a) * Y(b) for a, b in map(qubits.at, edges)) / 2
 
 
 def qubo(model, qubits: Quant) -> Hamiltonian:
