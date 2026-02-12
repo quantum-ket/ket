@@ -72,6 +72,7 @@ __all__ = [
     "X",
     "Y",
     "Z",
+    "B",
     "H",
     "RX",
     "RY",
@@ -780,6 +781,23 @@ def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
         size = len(qubits)
         for i in range(size // 2):
             SWAP(qubits[i], qubits[size - i - 1])
+
+
+def B(qubit):  # pylint: disable=invalid-name
+    r"""Binary-encoded observable.
+
+    Construct an observable that has eigenvalue 0 for :math:`\left|0\right>`
+    and 1 for :math:`\left|1\right>`. This is useful for QUBO
+    Hamiltonian construction.
+
+    .. math::
+
+        \frac{1 - Z}{2}
+
+    """
+
+    with obs():
+        return (1 - Z(qubit)) / 2
 
 
 _EVOLVE_GATES = {

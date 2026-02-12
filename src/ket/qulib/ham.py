@@ -4,7 +4,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ..gates import X, Y, Z, obs
+import warnings
+from ..gates import X, Y, Z, B, obs
 from ..base import Quant
 from ..expv import Hamiltonian, commutator
 from ..operations import exp_value
@@ -34,6 +35,130 @@ def maxcut(edges: list[tuple[int, int]], qubits: Quant) -> Hamiltonian:
     """
     with obs():
         return 1 / 2 * sum(1 - Z(a) * Z(b) for a, b in map(qubits.at, edges))
+
+
+def knapsack(
+    weights: list[float],
+    values: list[float],
+    capacity: float,
+    qubits: Quant,
+    penalty: None | float = None,
+) -> Hamiltonian:
+    r"""Knapsack Hamiltonian.
+
+    Implements the QUBO formulation of the 0/1 Knapsack problem
+    using a quadratic penalty to enforce the capacity constraint.
+
+    The Hamiltonian minimized is:
+
+    .. math::
+
+        -\sum_i v_i x_i
+        +
+        A \left(\sum_i w_i x_i - C\right)^2
+
+    where :math:`x_i = \frac{1 - Z_i}{2}` and :math:`A` is the
+    penalty coefficient.
+
+    If ``penalty`` is not provided, it defaults to
+    ``max(values)``, which is typically sufficient to discourage
+    capacity violations in practical QAOA runs.
+
+    Args:
+        weights: List of item weights :math:`w_i`.
+        values: List of item values :math:`v_i`.
+        capacity: Maximum allowed total weight :math:`C`.
+        qubits: Qubits representing the binary decision variables.
+        penalty: Penalty coefficient :math:`A`. If ``None``,
+            defaults to ``max(values)``.
+
+    Returns:
+        Hamiltonian representing the knapsack objective.
+    """
+    if penalty is None:
+        penalty = max(values)
+
+    with obs():
+        objective = sum(v * B(q) for v, q in zip(values, qubits))
+        restriction = (sum(w * B(q) for w, q in zip(weights, qubits)) - capacity) ** 2
+        return -objective + penalty * restriction
+
+
+def tsp(
+    cities: dict[tuple[int, int], float],
+    n: int,
+    qubits: list,
+    penalty: float | None = None,
+) -> Hamiltonian:
+    r"""Traveling Salesman Problem (TSP) Hamiltonian.
+
+    Implements the QUBO formulation of the TSP using a
+    quadratic penalty to enforce permutation constraints.
+
+    The Hamiltonian minimized is:
+
+    .. math::
+
+        \sum_{t=0}^{n-1} \sum_{i,j} d_{ij} x_{i,t} x_{j,t+1}
+        +
+        A \sum_i \left(\sum_t x_{i,t} - 1\right)^2
+        +
+        A \sum_t \left(\sum_i x_{i,t} - 1\right)^2
+
+    where:
+
+    - :math:`d_{ij}` is the directed distance from city :math:`i`
+      to city :math:`j`,
+    - :math:`x_{i,t} \in \{0,1\}` indicates whether city :math:`i`
+      is visited at tour position :math:`t`,
+    - :math:`x_{i,t} = \frac{1 - Z_{i,t}}{2}`,
+    - :math:`A` is the penalty coefficient.
+
+    The first term minimizes the total tour length.
+    The second term enforces that each city is visited exactly once.
+    The third term enforces that exactly one city is assigned to
+    each tour position.
+
+    If ``penalty`` is not provided, it defaults to
+    ``2 * max(cities.values())``, which is typically sufficient
+    to discourage constraint violations.
+
+    Args:
+        cities: Dictionary mapping directed edges ``(i, j)`` to
+            distances :math:`d_{ij}`.
+        n: Number of cities.
+        qubits: Flat list of :math:`n^2` qubits representing the
+            binary variables :math:`x_{i,t}`.
+        penalty: Penalty coefficient :math:`A`. If ``None``,
+            defaults to ``2 * max(cities.values())``.
+
+    Returns:
+        Hamiltonian representing the directed TSP cost function
+        with quadratic constraint penalties.
+    """
+    if penalty is None:
+        penalty = 2 * max(cities.values())
+
+    # Reshape flat qubit list into n x n grid
+    qubits = [qubits[i * n : (i + 1) * n] for i in range(n)]
+
+    visit_once = sum(
+        (sum(B(qubits[i][t]) for t in range(n)) - 1) ** 2 for i in range(n)
+    )
+
+    one_per_time = sum(
+        (sum(B(qubits[i][t]) for i in range(n)) - 1) ** 2 for t in range(n)
+    )
+
+    distance = sum(
+        sum(
+            d * B(qubits[i][t]) * B(qubits[j][(t + 1) % n])
+            for (i, j), d in cities.items()
+        )
+        for t in range(n)
+    )
+
+    return distance + penalty * (visit_once + one_per_time)
 
 
 def x_mixer(qubits: Quant) -> Hamiltonian:
@@ -79,12 +204,19 @@ def qubo(model, qubits: Quant) -> Hamiltonian:
         model: QUBO model.
         qubits: Qubits representing the variables in the model.
     """
+    warnings.warn(
+        "`qulib.ham.qubo` is deprecated and will be removed in future versions."
+        " Use `B(x)` instead to construct the Hamiltonian with binary values.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     linear, quadratic, offset = model.to_ising(index_label=True)
 
     with obs():
         return (
             offset
-            + sum(c * -Z(qubits[i]) for i, c in linear.items())
+            + sum(c * Z(qubits[i]) for i, c in linear.items())
             + sum(c * Z(qubits[i]) * Z(qubits[j]) for (i, j), c in quadratic.items())
         )
 
@@ -102,7 +234,7 @@ def falqon_a(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
         hp: Problem Hamiltonian.
         hd: Driver Hamiltonian.
     """
-    return 1j * commutator(hd, hp)
+    return 1j * commutator(hp, hd)
 
 
 def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:

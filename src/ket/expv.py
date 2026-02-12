@@ -12,6 +12,7 @@ from __future__ import annotations
 
 # pylint: disable=duplicate-code
 
+from copy import copy
 from ctypes import c_int32, c_size_t
 from numbers import Number
 from itertools import product
@@ -357,6 +358,13 @@ class Hamiltonian:
         )
 
     __rmul__ = __mul__
+
+    def __pow__(self, exp: int) -> Hamiltonian:
+        exp = int(exp)
+        result = copy(self)
+        for _ in range(exp - 1):
+            result = result @ self
+        return result
 
     def __truediv__(self, other: float) -> Hamiltonian:
         return self.__mul__(1.0 / other)
