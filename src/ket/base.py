@@ -780,6 +780,9 @@ class Parameter:
             + f" index={self._index}, pid={hex(id(self._process))}>"
         )
 
+    def __float__(self):
+        return self.value
+
     @property
     def value(self) -> float:
         """Retrieve the parameter actual value."""

@@ -20,7 +20,7 @@ from functools import reduce
 from operator import add
 from typing import Literal
 
-from .base import Process, Quant
+from .base import Parameter, Process, Quant
 
 from .clib.libket import API
 
@@ -124,7 +124,7 @@ class Pauli:
 
     def __mul__(self, other: float | Pauli) -> Pauli:
 
-        if isinstance(other, Number):
+        if isinstance(other, (Number, Parameter)):
             return Pauli(
                 None,
                 None,
@@ -341,7 +341,7 @@ class Hamiltonian:
         return -self + other
 
     def __mul__(self, other: float | Hamiltonian | Pauli) -> Hamiltonian:
-        if isinstance(other, (Number, Pauli)):
+        if isinstance(other, (Number, Pauli, Parameter)):
             return Hamiltonian(
                 [p * other for p in self.pauli_products], process=self.process
             )
