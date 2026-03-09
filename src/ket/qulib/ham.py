@@ -234,7 +234,7 @@ def falqon_a(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
         hp: Problem Hamiltonian.
         hd: Driver Hamiltonian.
     """
-    return 1j * commutator(hp, hd)
+    return 1j * commutator(hd, hp)
 
 
 def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:

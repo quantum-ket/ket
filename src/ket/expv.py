@@ -315,6 +315,8 @@ class Hamiltonian:
         new_terms = {}
         for term in self.pauli_products:
             str_term = term._str_no_coef()  # pylint: disable=protected-access
+            if all(c not in str_term for c in "XYZ"):
+                str_term = ""
             if str_term not in new_terms:
                 new_terms[str_term] = term
             else:
