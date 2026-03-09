@@ -18,9 +18,10 @@ from collections.abc import Iterable
 from inspect import signature
 
 from ..clib.libket import BatchExecution
-from ..base import Process
+from ..base import Process, Quant
 from ..operations import dump
 from ..gates import H, CNOT
+from ..expv import Hamiltonian
 from . import gates, prepare, math, oracle, ham
 
 try:
@@ -366,3 +367,48 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
     if title is not None:
         fig.suptitle(title)
     return fig
+
+
+def pauli_string(
+    hamiltonian: Callable[[Quant], Hamiltonian],
+    num_qubits: int,
+    reversed_qubits: bool = False,
+) -> tuple[list[str], list[float]]:
+    """
+    Extracts the Pauli strings and their corresponding coefficients from a Hamiltonian.
+
+    This function evaluates a given Hamiltonian over a dynamically allocated
+    quantum process and parses its terms into a list of string representations
+    (e.g., "IXYI") alongside their scalar coefficients. Any qubit not explicitly
+    acted upon by a Pauli operator in a term defaults to the Identity operator ("I").
+
+    Args:
+        hamiltonian: A callable that takes a collection of qubits
+            (``Quant``) and returns a ``Hamiltonian`` object.
+        num_qubits (int): The total number of qubits the Hamiltonian acts on.
+        reversed_qubits: If True, the order of the allocated qubits is reversed
+            before being passed to the `hamiltonian` function. Defaults to False.
+
+    Returns:
+        A list of tuple:
+          - String represents a Pauli product (e.g., "ZIZX")
+            across all ``num_qubits``.
+          - Float representing the coefficients.
+    """
+    process = Process(num_qubits=num_qubits)
+    qubits = process.alloc(num_qubits)
+    if reversed_qubits:
+        qubits = reversed(qubits)
+    h = hamiltonian(qubits)
+
+    coef = []
+    pauli_str = []
+
+    for term in h.pauli_products:
+        p = ["I"] * num_qubits
+        for qubit, pauli in term.map.items():
+            p[qubit] = pauli
+        coef.append(term.coef)
+        pauli_str.append("".join(p))
+
+    return list(zip(pauli_str, coef))
