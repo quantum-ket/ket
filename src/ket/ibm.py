@@ -21,8 +21,9 @@ try:
     from qiskit import QuantumCircuit
     from qiskit.circuit import library
     from qiskit.providers import BackendV2
+    from qiskit.quantum_info import SparsePauliOp
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
-    from qiskit_ibm_runtime import SamplerV2 as Sampler
+    from qiskit_ibm_runtime import SamplerV2 as Sampler, EstimatorV2 as Estimator
     from qiskit_aer import AerSimulator
 
     QISKIT_AVAILABLE = True
@@ -50,32 +51,17 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     Args:
         backend: The backend to be used for the quantum execution. If not
             provided, it defaults to the AerSimulator.
-        use_qiskit_transpiler: Use Qiskit transpiler instead of Ket's.
-        shots: The number of shots for the execution to estimate
-            the expectation values of an Hamiltonian term. If ``classical_shadows``
-            and ``shots`` are not specified, it defaults to 2048.
-        classical_shadows: If specified, it will use the classical
-            shadows technique for state estimation.
     """
 
     def __init__(
         self,
         backend: BackendV2 | None = None,
-        *,
-        shots: int | None = None,
-        classical_shadows: dict | None = None,
-        use_qiskit_transpiler: bool = False,
+        optimization_level=2,
     ):
         if not QISKIT_AVAILABLE:
             raise ImportError(
                 "IBMDevice requires the qiskit module to be used. You can install them"
-                " alongside ket by running `pip install ket[ibm]`."
-            )
-
-        if shots is not None and classical_shadows is not None:
-            raise ValueError(
-                "You cannot specify both 'shots' and 'classical_shadows'. Please"
-                " choose one of them."
+                " alongside ket by running `pip install ket-lang[ibm]`."
             )
 
         super().__init__()
@@ -88,31 +74,20 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.client = None
         self.backend = backend
 
-        if not use_qiskit_transpiler:
-            self.coupling_graph = (
-                list(backend.coupling_map.graph.edge_list())
-                if backend.coupling_map
-                else [
-                    [i, j]
-                    for i in range(self.num_qubits)
-                    for j in range(self.num_qubits)
-                    if i != j
-                ]
-            )
-        else:
-            self.coupling_graph = None
+        self.pm = generate_preset_pass_manager(
+            backend=self.backend,
+            optimization_level=optimization_level,
+        )
 
-        self.circuit = QuantumCircuit(self.num_qubits)
+        self.circuit = None
         self.parameters = None
-
-        self.shots = 2048 if shots is None and classical_shadows is None else shots
-        self.classical_shadows = classical_shadows
 
         self.qubits_from_sample = None
         self.result = None
+        self.exp_value_result = []
 
     def clear(self):
-        self.circuit = QuantumCircuit(self.num_qubits)
+        self.circuit = QuantumCircuit(self.num_qubits, self.num_qubits)
         self.parameters = None
         self.qubits_from_sample = None
         self.result = None
@@ -122,17 +97,19 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.process_instructions(circuit)
 
     def get_result(self):
-        self.result = {
-            "".join(s[-q - 1] for q in self.qubits_from_sample): c
-            for s, c in self.result.items()
-        }
-
-        result = list(zip(*((int(s, 2), c) for s, c in self.result.items())))
+        if self.result is not None:
+            self.result = {
+                "".join(s[-q - 1] for q in self.qubits_from_sample): c
+                for s, c in self.result.items()
+            }
+            result = [list(zip(*((int(s, 2), c) for s, c in self.result.items())))]
+        else:
+            result = []
 
         results_dict = {
             "measurements": [],
-            "exp_values": [],
-            "samples": [result],
+            "exp_values": self.exp_value_result,
+            "samples": result,
             "dumps": [],
             "gradients": None,
         }
@@ -200,33 +177,42 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.circuit.append(gate, control + [target])
 
     def sample(self, _, qubits, shots):
-        self.circuit.measure_all()
-        pm = generate_preset_pass_manager(
-            backend=self.backend,
-            initial_layout=(
-                list(range(self.num_qubits))
-                if self.coupling_graph is not None
-                else None
-            ),
-        )
-        isa_circuit = pm.run(self.circuit)
+        self.circuit.measure(qubits, qubits)
+
+        isa_circuit = self.pm.run(self.circuit)
         sampler = Sampler(mode=self.backend)
         job = sampler.run([isa_circuit], shots=shots)
-        self.result = job.result()[0].data.meas.get_counts()
+        self.result = job.result()[0].data.c.get_counts()
         self.qubits_from_sample = qubits
+
+    def exp_value(self, _, hamiltonian):
+        """Compute the expectation value.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        pauli_strings = []
+        for pauli, coef in zip(hamiltonian["products"], hamiltonian["coefficients"]):
+            string = ["I"] * self.num_qubits
+            for item in pauli:
+                string[item["qubit"]] = item["pauli"][-1]
+            pauli_strings.append(("".join(reversed(string)), coef))
+
+        observable = SparsePauliOp.from_list(pauli_strings)
+
+        isa_circuit = self.pm.run(self.circuit)
+        isa_observables = observable.apply_layout(isa_circuit.layout)
+        estimator = Estimator(mode=self.backend)
+        job = estimator.run([(isa_circuit, isa_observables)])
+        self.exp_value_result = [float(job.result()[0].data.evs)]
 
     def connect(self):
         self.clear()
 
-        qpu_params = {
-            "coupling_graph": self.coupling_graph,
-            "u4_gate_type": "CX",
-            "u2_gate_set": "All",
-        }
-
         return super().configure(
             num_qubits=self.num_qubits,
-            direct_sample_exp_value=self.shots,
-            classical_shadows_exp_value=self.classical_shadows,
-            qpu=qpu_params if self.coupling_graph is not None else None,
+            execution_managed_by_target={
+                "sample": "Basic",
+                "exp_value": "Basic",
+            },
         )
