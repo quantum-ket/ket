@@ -12,8 +12,7 @@ from typing import Callable
 from ..base import Quant
 from ..operations import control, ctrl, around
 from ..gates import X, Z
-from . import math
-
+from ..qint import Qint
 
 __all__ = [
     "xor_oracle",
@@ -50,7 +49,7 @@ def xor_oracle(func):
     def inner(x: Quant, y: Quant):
         for state in range(2 ** len(x)):
             with control(x, state):
-                math.set_int(y, func(state))
+                Qint(y, func(state))
 
     return inner
 

@@ -26,7 +26,7 @@ from ..base import Process, Quant
 from ..operations import dump, exp_value
 from ..gates import H, CNOT, X
 from ..expv import Hamiltonian
-from . import gates, prepare, math, oracle, ham
+from . import gates, prepare, oracle, ham
 
 try:
     import google.colab  # pylint: disable=unused-import
@@ -54,9 +54,12 @@ __all__ = [
     "dump_matrix",
     "gates",
     "ham",
-    "math",
     "oracle",
     "prepare",
+    "pauli_string",
+    "energy",
+    "simulated_annealing",
+    "exact_solver",
 ]
 
 
@@ -377,7 +380,7 @@ def pauli_string(
     hamiltonian: Callable[[Quant], Hamiltonian],
     num_qubits: int,
     reversed_qubits: bool = False,
-) -> tuple[list[str], list[float]]:
+) -> list[tuple[str, float]]:
     """
     Extracts the Pauli strings from a Hamiltonian.
 

@@ -14,8 +14,9 @@ from math import pi
 from random import Random
 from cmath import sqrt, phase
 from collections import defaultdict
-from typing import Literal
+from typing import Literal, TypedDict
 from ctypes import c_size_t
+import re
 
 from .base import Quant, _check_visualize
 
@@ -40,6 +41,91 @@ except ImportError:
     _IN_NOTEBOOK = False
 
 __all__ = ["QuantumState"]
+
+
+def _to_int(num: str, unsigned: bool):
+    if unsigned:
+        return int(num, 2)
+
+    n_bits = len(num)
+    value = int(num, 2)
+
+    if num[0] == "1":
+        value -= 1 << n_bits
+
+    return value
+
+
+class _KetFormat(TypedDict):
+    """TypedDict defining the structure of a parsed format block."""
+
+    f_type: Literal["b", "u", "i"]
+    start: int
+    end: int
+    fixed_point: int | None
+
+
+def _parse_format_str(format_str: str | None, total_size: int) -> list[_KetFormat]:
+    """Parses the format string and returns a list of structured formatting rules."""
+    if not format_str:
+        return [{"f_type": "b", "start": 0, "end": total_size, "fixed_point": None}]
+
+    pattern = re.compile(r"([bui])(?:(\d+)(?:\.(\d+))?)?")
+
+    fmt_list: list[_KetFormat] = []
+    current_bit = 0
+
+    for part in format_str.split(":"):
+        match = pattern.fullmatch(part)
+        if not match:
+            raise ValueError(
+                f"Invalid format block: '{part}'. Expected pattern [b|u|i]<a>.<b>"
+            )
+
+        f_type = match.group(1)
+
+        if match.group(2) is None:
+            # If no size is provided, consume all remaining qubits
+            size = total_size - current_bit
+            fixed_point = None
+        else:
+            int_bits = int(match.group(2))
+            if match.group(3) is not None:
+                fixed_point = int(match.group(3))
+                size = int_bits + fixed_point
+            else:
+                fixed_point = None
+                size = int_bits
+
+        if size <= 0:
+            raise ValueError(f"Size must be greater than 0 in format block '{part}'")
+
+        fmt_list.append(
+            {
+                "f_type": f_type,
+                "start": current_bit,
+                "end": current_bit + size,
+                "fixed_point": fixed_point,
+            }
+        )
+        current_bit += size
+
+    if current_bit < total_size:
+        fmt_list.append(
+            {
+                "f_type": "b",
+                "start": current_bit,
+                "end": total_size,
+                "fixed_point": None,
+            }
+        )
+    elif current_bit > total_size:
+        raise ValueError(
+            f"Format string requires {current_bit} bits, but the register "
+            f"only has {total_size} bits."
+        )
+
+    return fmt_list
 
 
 class QuantumState:
@@ -375,124 +461,106 @@ class QuantumState:
         self,
         format_str: str | None = None,
         mode: Literal["latex", "str"] | None = None,
-    ) -> str | Math:
-        r"""Return the quantum state as a string.
+    ) -> str:
+        r"""Return the quantum state as a formatted string or LaTeX Math object.
 
-        Use the format string to change the print format of the basis states:
+        Use the format string to change the print format of the basis states.
+        Format syntax: `[type]<a>.<b>` separated by colons `:`
 
-        * ``i``: print the state in the decimal base
-        * ``b``: print the state in the binary base (default)
-        * ``i|b<n>``: separate the ``n`` first qubits; the remaining print in the binary base
-        * ``i|b<n1>:i|b<n2>[:i|b<n3>...]``: separate the ``n1, n2, n3, ...`` first qubits
+        Types:
+        * ``b``: binary base (default)
+        * ``u``: unsigned integer
+        * ``i``: signed integer (two's complement)
 
-        :Example:
+        `a` is the number of bits before the comma (integer bits).
+        `b` is the number of bits after the comma (fractional bits).
 
-            .. code-block:: py
-
-                from ket import *
-
-                p = Process()
-
-                q = p.alloc(19)
-                X(ctrl(H(q[0]), X, q[1:])[1::2])
-                d = dump(q)
-
-                print(d.show('i'))
-                # |87381⟩ (50.00%)
-                #  0.707107               ≅      1/√2
-                # |436906⟩        (50.00%)
-                #  0.707107               ≅      1/√2
-                print(d.show('b'))
-                # |0010101010101010101⟩   (50.00%)
-                #  0.707107               ≅      1/√2
-                # |1101010101010101010⟩   (50.00%)
-                #  0.707107               ≅      1/√2
-                print(d.show('i4'))
-                # |2⟩|101010101010101⟩    (50.00%)
-                #  0.707107               ≅      1/√2
-                # |13⟩|010101010101010⟩   (50.00%)
-                #  0.707107               ≅      1/√2
-                print(d.show('b5:i4'))
-                # |00101⟩|5⟩|0101010101⟩  (50.00%)
-                #  0.707107               ≅      1/√2
-                # |11010⟩|10⟩|1010101010⟩ (50.00%)
-                #  0.707107               ≅      1/√2
+        Examples:
+        * ``u``: Print the whole register as an unsigned integer.
+        * ``b2:i3.2``: First 2 bits in binary, next 5 bits (3 int, 2 frac) as a signed
+          fixed-point number.
+        * ``i5:b``: First 5 bits as a signed integer, the rest in binary.
 
         Args:
-            format: Format string that matches ``(i|b)\d*(:(i|b)\d+)*``.
-            mode: If ``"str"``, return a string representation of the quantum state. If ``"latex"``,
-                return a LaTeX Math representation of the quantum state. If in Jupyter Notebook,
-                defaults to ``"latex"``, otherwise defaults to ``"str"``.
+            format_str: Format string specifying how to slice and parse the quantum register.
+                mode: If ``"str"``, returns a plain text string. If ``"latex"``, returns a LaTeX
+                Math representation. Defaults to ``"latex"`` in Jupyter Notebooks,
+                otherwise ``"str"``.
 
         Returns:
             The formatted quantum state as a string, or Latex Math.
         """
-
         if mode is None:
-            if _IN_NOTEBOOK:
-                mode = "latex"
-            else:
-                mode = "str"
+            mode = "latex" if _IN_NOTEBOOK else "str"
         elif mode not in ("latex", "str"):
             raise ValueError(f"Unknown mode: {mode}")
 
-        if format_str is not None:
-            if format_str in ("b", "i"):
-                format_str += str(self.size)
-            fmt = []
-            count = 0
-            for b, size in map(lambda f: (f[0], int(f[1:])), format_str.split(":")):
-                fmt.append((b, count, count + size))
-                count += size
-            if count < self.size:
-                fmt.append(("b", count, self.size))
-        else:
-            fmt = [("b", 0, self.size)]
+        fmt_rules = _parse_format_str(format_str, self.size)
 
         if mode == "latex":
-            return self._show_latex(fmt)
-        return self._show_str(fmt)
+            return self._show_latex(fmt_rules)
+        return self._show_str(fmt_rules)
 
-    def _show_str(self, fmt=list[tuple[Literal["i", "b"], int, int]]) -> str:
+    def _get_ket_val(self, state_bin: str, spec: _KetFormat) -> str:
+        """Helper to extract and format the inner value of a ket state."""
+        if spec["f_type"] == "b":
+            return state_bin[spec["start"] : spec["end"]]
 
-        def fmt_ket(state, begin, end, f):
-            return (
-                f"|{state[begin:end]}⟩"
-                if f == "b"
-                else f"|{int(state[begin:end], base=2)}⟩"
-            )
+        is_unsigned = spec["f_type"] == "u"
+        val = _to_int(state_bin[spec["start"] : spec["end"]], unsigned=is_unsigned)
+
+        if spec["fixed_point"] is not None:
+            val = val / (2 ** spec["fixed_point"])
+
+        return str(val)
+
+    def _show_str(self, fmt_rules: list[_KetFormat], round_tol: float = 1e-6) -> str:
 
         def state_amp_str(state, amp):
-            dump_str = "".join(
-                fmt_ket(f"{state:0{self.size}b}", b, e, f) for f, b, e in fmt
-            )
+            if abs(amp) < round_tol:
+                return ""
+
+            state_bin = f"{state:0{self.size}b}"
+
+            ket_parts = [
+                f"|{self._get_ket_val(state_bin, spec)}⟩" for spec in fmt_rules
+            ]
+            dump_str = "".join(ket_parts)
+
             dump_str += f"\t({100*abs(amp)**2:.2f}%)\n"
-            real = abs(amp.real) > 1e-10
+
+            real = abs(amp.real) > round_tol
             real_l0 = amp.real < 0
 
-            imag = abs(amp.imag) > 1e-10
+            imag = abs(amp.imag) > round_tol
             imag_l0 = amp.imag < 0
 
-            sqrt_dem = 1 / abs(amp) ** 2
-            use_sqrt = abs(round(sqrt_dem) - sqrt_dem) < 0.001
+            amp_sq = abs(amp) ** 2
+            sqrt_dem_val = 1 / amp_sq
+
+            use_sqrt = abs(round(sqrt_dem_val) - sqrt_dem_val) < round_tol
             use_sqrt = use_sqrt and (
-                (abs(abs(amp.real) - abs(amp.imag)) < 1e-6) or (real != imag)
+                (abs(abs(amp.real) - abs(amp.imag)) < round_tol) or (real != imag)
             )
-            sqrt_dem = f"/√{round(1/abs(amp)**2)}"
+
+            sqrt_dem = f"/√{round(sqrt_dem_val)}"
 
             if real and imag:
-                sqrt_dem = f"/√{round(2*(1/abs(amp)**2))}"
+                sqrt_dem = f"/√{round(2 * sqrt_dem_val)}"
                 sqrt_num = ("(-1" if real_l0 else " (1") + ("-i" if imag_l0 else "+i")
+
                 sqrt_str = (
                     f"\t≅ {sqrt_num}){sqrt_dem}"
-                    if use_sqrt and (abs(amp.real) - abs(amp.real) < 1e-10)
+                    if use_sqrt and (abs(abs(amp.real) - abs(amp.imag)) < round_tol)
                     else ""
                 )
                 dump_str += f"{amp.real:9.6f}{amp.imag:+.6f}i" + sqrt_str
+
             elif real:
                 sqrt_num = "  -1" if real_l0 else "   1"
                 sqrt_str = f"\t≅   {sqrt_num}{sqrt_dem}" if use_sqrt else ""
                 dump_str += f"{amp.real:9.6f}       " + sqrt_str
+
             else:
                 sqrt_num = "  -i" if imag_l0 else "   i"
                 sqrt_str = f"\t≅   {sqrt_num}{sqrt_dem}" if use_sqrt else ""
@@ -500,55 +568,70 @@ class QuantumState:
 
             return dump_str
 
-        return "\n".join(
+        lines = [
             state_amp_str(state, amp)
             for state, amp in sorted(self.get().items(), key=lambda k: k[0])
-        )
+        ]
+        return "\n".join(line for line in lines if line)
 
-    def _show_latex(self, fmt=list[tuple[Literal["i", "b"], int, int]]) -> Math:
+    def _show_latex(self, fmt_rules: list[_KetFormat], round_tol: float = 1e-6) -> Math:
+
         def float_to_math(num: float, is_complex: bool) -> str | None:
-            num_str = None
-            if abs(num) > 1e-14:
+            if abs(num) < round_tol:
+                return None
 
-                sqrt_dem_float = 1 / num**2
-                sqrt_dem = round(sqrt_dem_float)
-                if abs(sqrt_dem - sqrt_dem_float) < 1e-10 and sqrt_dem != 1:
-                    num_str = f"\\frac{{{'-' if num < 0.0 else ''}{'i' if is_complex else '1'}}}{{\\sqrt{{{sqrt_dem}}}}}"  # pylint: disable=line-too-long
+            sqrt_dem_float = 1 / num**2
+            sqrt_dem = round(sqrt_dem_float)
+            if abs(sqrt_dem - sqrt_dem_float) < round_tol and sqrt_dem != 1:
+                sign = "-" if num < 0.0 else ""
+                numerator = "i" if is_complex else "1"
+                return f"\\frac{{{sign}{numerator}}}{{\\sqrt{{{sqrt_dem}}}}}"
+
+            round_num = round(num)
+            if abs(round_num - num) < round_tol:
+                if round_num == 1:
+                    num_str = ""
+                elif round_num == -1:
+                    num_str = "-"
                 else:
-                    round_num = round(num)
-                    if abs(round_num - num) > 1e-14:
-                        num_str = str(num)
-                        if "e" in num_str:
-                            num_str = num_str.replace("e", "\\times10^{") + "}"
-                    else:
-                        num_str = ""
-                    if is_complex:
-                        num_str += "i"
+                    num_str = str(round_num)
+            else:
+                num_str = str(num)
+                if "e" in num_str:
+                    num_str = num_str.replace("e", "\\times10^{") + "}"
+
+            if is_complex:
+                num_str += "i"
+                if num_str in ("i", "-i"):
+                    pass
+
             return num_str
 
-        math = []
+        math_terms = []
         for state, amp in self.get().items():
-            if abs(amp) < 1e-13:
+            if abs(amp) < round_tol:
                 continue
 
             real_str = float_to_math(amp.real, False)
             imag_str = float_to_math(amp.imag, True)
 
-            state_str = f"{state:0{len(self.qubits)}b}"
-            state_str = [
-                f"\\left|{state_str[start:end] if fmt == 'b' else int(state_str[start:end], 2)}\\right>"  # pylint: disable=line-too-long
-                for fmt, start, end in fmt
+            state_bin = f"{state:0{len(self.qubits)}b}"
+
+            # Use the same exact helper to guarantee LaTeX and String match logic
+            state_parts = [
+                f"\\left|{self._get_ket_val(state_bin, spec)}\\right>"
+                for spec in fmt_rules
             ]
-            state_str = "".join(state_str)
+            state_str_joined = "".join(state_parts)
 
             if real_str is not None and imag_str is not None:
-                math.append(f"({real_str}+{imag_str}) {state_str}")
+                math_terms.append(f"({real_str}+{imag_str}){state_str_joined}")
             else:
-                math.append(
-                    f"{real_str if real_str is not None else imag_str} {state_str}"
-                )
+                coeff = real_str if real_str is not None else imag_str
+                math_terms.append(f"{coeff}{state_str_joined}")
 
-        return Math("+".join(math).replace("+-", "-"))
+        # Clean up any "+-" instances created during formatting
+        return Math("+".join(math_terms).replace("+-", "-"))
 
     def histogram(self, mode: Literal["bin", "dec"] = "dec", **kwargs) -> go.Figure:
         """Generate a histogram representing the quantum state.

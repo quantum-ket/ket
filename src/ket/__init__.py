@@ -89,11 +89,13 @@ from .expv import *
 from .expv import __all__ as all_expv
 from .quantumstate import *
 from .quantumstate import __all__ as all_state
+from .qint import *
+from .qint import __all__ as all_qint
 from . import qulib
 
-__version__ = "0.9.2.8"
+__version__ = "0.9.3b0"
 
-__all__ = all_base + all_func + all_gate + all_expv + all_state + ["qulib"]
+__all__ = all_base + all_func + all_gate + all_expv + all_state + all_qint + ["qulib"]
 
 
 def ket_version() -> list[str]:
