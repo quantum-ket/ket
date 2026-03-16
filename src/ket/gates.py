@@ -44,7 +44,7 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 from contextlib import contextmanager
-from math import pi
+from math import pi, prod
 from functools import reduce
 from operator import add
 from typing import Any, Callable
@@ -797,7 +797,7 @@ def B(qubit):  # pylint: disable=invalid-name
     """
 
     with obs():
-        return (1 - Z(qubit)) / 2
+        return prod((1 - Z(q)) / 2 for q in qubit)
 
 
 _EVOLVE_GATES = {
