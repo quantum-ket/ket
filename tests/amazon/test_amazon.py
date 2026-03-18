@@ -36,7 +36,7 @@ def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
         with ket.around(ket.cat(ket.H, ket.X), s):
             ket.CZ(*s)
 
-    return ket.measure(s).get()
+    return ket.sample(s).most_frequent_state()
 
 
 def oracle(phase: float, i: int, tgr):
@@ -77,7 +77,7 @@ def phase_estimator(oracle_gate, precision: int) -> float:
 
     ket.adj(ket.QFT)(ctr)
 
-    return ket.measure(reversed(ctr)).get() / 2**precision
+    return ket.sample(reversed(ctr)).most_frequent_state() / 2**precision
 
 
 def quantum_sum(a, b, size):
@@ -89,7 +89,7 @@ def quantum_sum(a, b, size):
 
     ket.qint.Qint(qa, a).__iadd__(ket.qint.Qint(qb, b))
 
-    return ket.measure(qa).get()
+    return ket.sample(qa).most_frequent_state()
 
 
 def test_grover():

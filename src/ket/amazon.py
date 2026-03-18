@@ -65,8 +65,9 @@ from .clib.libket import BatchExecution
 try:
     # pip3 install amazon-braket-sdk
     from braket.aws import AwsDevice
-    from braket.circuits import Circuit
+    from braket.circuits import Circuit, Observable
     from braket.devices import LocalSimulator
+    from braket.program_sets import CircuitBinding, ProgramSet
 
     BRAKET_AVAILABLE = True
 except ImportError:
@@ -111,20 +112,13 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
     def __init__(
         self,
         device: Optional[str] = None,
-        shots: int | None = None,
-        classical_shadows: dict | None = None,
+        shots: int = 1024,
         **kwargs,
     ):
         if not BRAKET_AVAILABLE:
             raise RuntimeError(
                 "Amazon-Braket is not available. Please install it with: pip install \
                     ket-lang[amazon]"
-            )
-
-        if shots is not None and classical_shadows is not None:
-            raise ValueError(
-                "You cannot specify both 'shots' and 'classical_shadows'. "
-                "Please choose one of them."
             )
 
         super().__init__()
@@ -161,14 +155,14 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
 
         self.circuit = Circuit()
         self.result = None
+        self.exp_value_result = None
 
         self.sample_results_by_index: Dict[int, List[int]] = {}
         self.executed_operation_indices: List[int] = []
 
         self.parameters = None
 
-        self.shots = 2048 if shots is None and classical_shadows is None else shots
-        self.classical_shadows = classical_shadows
+        self.shots = shots
 
     def clear(self):
         self.circuit = Circuit()
@@ -182,10 +176,17 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         self.process_instructions(circuit)
 
     def get_result(self):
+        if self.result is not None:
+            samples = [list(zip(*self.result.items()))]
+            exp_values = []
+        else:
+            exp_values = [float(self.exp_value_result)]
+            samples = []
+
         results_dict = {
             "measurements": [],
-            "exp_values": [],
-            "samples": [list(zip(*self.result.items()))],
+            "exp_values": exp_values,
+            "samples": samples,
             "dumps": [],
             "gradients": None,
         }
@@ -275,13 +276,52 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             for k, v in result.measurement_counts.items()
         }
 
+    def exp_value(self, _, hamiltonian):
+        gates = {
+            "I": Observable.I,
+            "X": Observable.X,
+            "Y": Observable.Y,
+            "Z": Observable.Z,
+        }
+
+        def observable_from_string(s: str) -> Observable:
+            return Observable.TensorProduct(
+                [gates[pauli](idx) for idx, pauli in enumerate(s)]
+            )
+
+        terms = []
+        for pauli, coef in zip(hamiltonian["products"], hamiltonian["coefficients"]):
+            string = ["I"] * self.num_qubits
+            for item in pauli:
+                string[item["qubit"]] = item["pauli"][-1]
+            terms.append(
+                (
+                    observable_from_string("".join(string)),
+                    coef,
+                )
+            )
+
+        observables = terms[0][1] * terms[0][0]
+        for p, c in terms[1:]:
+            observables += c * p
+
+        binding = CircuitBinding(self.circuit, [], observables=observables)
+
+        program_set = ProgramSet(binding)
+
+        self.exp_value_result = (
+            self.device.run(program_set, shots=self.shots).result()[0].expectation()
+        )
+
     def connect(self):
         self.clear()
 
         return super().configure(
+            execution_managed_by_target={
+                "sample": "Basic",
+                "exp_value": "Basic",
+            },
             num_qubits=self.num_qubits,
-            direct_sample_exp_value=self.shots,
-            classical_shadows_exp_value=self.classical_shadows,
             qpu={
                 "coupling_graph": self.coupling_graph,
                 "u4_gate_type": "CX",
