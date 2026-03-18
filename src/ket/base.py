@@ -669,6 +669,14 @@ class Samples:
             self.process.execute()
         return self.value
 
+    def most_frequent_state(self) -> int:
+        """Retrieve the most frequent state.
+
+        If the value is not available, the quantum process will execute to get the result.
+        """
+
+        return max(self.get().items(), key=lambda sc: sc[1])[0]
+
     def histogram(self, mode: Literal["bin", "dec"] = "dec", **kwargs) -> go.Figure:
         """Generate a histogram representing the sample.
 
