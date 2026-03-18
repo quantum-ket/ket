@@ -461,6 +461,7 @@ class QuantumState:
         self,
         format_str: str | None = None,
         mode: Literal["latex", "str"] | None = None,
+        round_tol: float = 1e-6,
     ) -> str:
         r"""Return the quantum state as a formatted string or LaTeX Math object.
 
@@ -483,9 +484,10 @@ class QuantumState:
 
         Args:
             format_str: Format string specifying how to slice and parse the quantum register.
-                mode: If ``"str"``, returns a plain text string. If ``"latex"``, returns a LaTeX
+            mode: If ``"str"``, returns a plain text string. If ``"latex"``, returns a LaTeX
                 Math representation. Defaults to ``"latex"`` in Jupyter Notebooks,
                 otherwise ``"str"``.
+            round_tol: Numerical tolerance used when rounding values.
 
         Returns:
             The formatted quantum state as a string, or Latex Math.
@@ -498,8 +500,8 @@ class QuantumState:
         fmt_rules = _parse_format_str(format_str, self.size)
 
         if mode == "latex":
-            return self._show_latex(fmt_rules)
-        return self._show_str(fmt_rules)
+            return self._show_latex(fmt_rules, round_tol)
+        return self._show_str(fmt_rules, round_tol)
 
     def _get_ket_val(self, state_bin: str, spec: _KetFormat) -> str:
         """Helper to extract and format the inner value of a ket state."""

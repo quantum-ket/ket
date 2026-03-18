@@ -500,6 +500,7 @@ def _simulated_annealing(  # pylint: disable=too-many-arguments,too-many-positio
     alpha,
     seed,
 ):
+    os.environ["KBW_PB"] = "false"
     random.seed(seed)
 
     max_val = (1 << n_bits) - 1
@@ -530,12 +531,6 @@ def _simulated_annealing(  # pylint: disable=too-many-arguments,too-many-positio
         temp *= alpha
 
     return best_state, best_energy
-
-
-def _mute_worker():
-    devnull = os.open(os.devnull, os.O_WRONLY)
-    os.dup2(devnull, sys.stdout.fileno())
-    os.dup2(devnull, sys.stderr.fileno())
 
 
 def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
@@ -613,7 +608,7 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
     ]
 
     if num_evaluations > 1:
-        with mp.Pool(processes=num_cores, initializer=_mute_worker) as pool:
+        with mp.Pool(processes=num_cores) as pool:
             results = pool.starmap(_simulated_annealing, args)
 
         return min(results, key=lambda se: se[1])

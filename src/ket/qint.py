@@ -48,17 +48,17 @@ def _addi_qq(lhs: Quant, rhs: Quant, m=1):
         _addi_qq(lhs[1:], rhs, m)
 
 
-def _addi_qi(lhs: Quant, rhs: int | str, m=1, unsigned=False):
+def _addi_qi(lhs: Quant, rhs: int | str, m=1):
     n_lhs = len(lhs)
     if isinstance(rhs, int):
-        if unsigned:
-            n_rhs = rhs.bit_length()
-            if n_rhs > n_lhs:
-                raise RuntimeError(
-                    "The number of bits in the right-hand side must be"
-                    "less than or equal to the left-hand side."
-                )
+        n_rhs = rhs.bit_length()
 
+        if n_rhs > n_lhs:
+            raise RuntimeError(
+                "The number of bits in the right-hand side must be"
+                "less than or equal to the left-hand side."
+            )
+        if rhs >= 0:
             rhs = f"{rhs:0{n_rhs}b}"
         else:
             n_rhs = n_lhs
@@ -94,7 +94,6 @@ def _addi(lhs, rhs, m: int = 1):
                 lhs.qubits,
                 rhs,
                 m=m,
-                unsigned=lhs.unsigned,
             )
         else:
             raise TypeError("`other` must be a Qint or an integer.")
@@ -111,14 +110,11 @@ class Qint:  # pylint: disable=too-few-public-methods
         qubits: The quantum register to allocate for this integer.
         number: The initial classical integer value to set
             the quantum register to. Defaults to 0.
-        unsigned: Flag indicating whether the integer
-            should be treated as unsigned. Defaults to False.
     """
 
-    def __init__(self, qubits: Quant, number: int = 0, unsigned: bool = False):
+    def __init__(self, qubits: Quant, number: int = 0):
 
         self.qubits = qubits
-        self.unsigned = unsigned
         self.process = qubits.process
         _set_int(qubits, number)
 

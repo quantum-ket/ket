@@ -10,9 +10,11 @@ from __future__ import annotations
 from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_int32, c_uint32, c_uint8
 from functools import reduce
 from operator import iconcat
+import os
 from typing import Literal
 from os import environ
 from os.path import dirname
+import warnings
 from .wrapper import load_lib, os_lib_name
 
 api_argtypes = {
@@ -67,6 +69,26 @@ _SIMULATOR = {
 }
 
 
+def _get_simulator_code(num_qubits: int, simulator: str):
+    simulator = simulator.lower()
+    if simulator not in _SIMULATOR:
+        warnings.warn(
+            f"Unknown simulator {simulator}. "
+            f'Available options {list(_SIMULATOR.keys())}. Default to "sparse"'
+        )
+        simulator = "sparse"
+
+    if simulator == "dense gpu":
+        try:
+            kbw_block_size = int(os.environ.get("KBW_BLOCK_SIZE", "20"))
+        except ValueError:
+            kbw_block_size = 20
+        if num_qubits > kbw_block_size:
+            simulator = "dense gpu block"
+
+    return _SIMULATOR[simulator]
+
+
 _CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
 
 
@@ -107,7 +129,7 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
 
     return API["kbw_make_configuration"](
         num_qubits,  # num_qubits
-        _SIMULATOR[simulator.lower()],  # simulator
+        _get_simulator_code(num_qubits, simulator),  # simulator
         execution == "live",  # use_live
         coupling_graph,  # coupling_graph
         coupling_graph_size,  # coupling_graph_size
