@@ -29,7 +29,6 @@ from abc import ABC, abstractmethod
 
 from .wrapper import load_lib, os_lib_name
 
-
 HADAMARD = 0
 PAULI_X = 1
 PAULI_Y = 2

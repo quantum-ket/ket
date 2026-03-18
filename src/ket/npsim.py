@@ -151,7 +151,7 @@ class NPSim(LiveExecution):
         for q in reversed(qubits):
             p1 = self._p1(q)
             p0 = 1.0 - p1
-            (m, p) = choices([(0, p0), (1, p1)], [p0, p1])[0]
+            m, p = choices([(0, p0), (1, p1)], [p0, p1])[0]
             result.append(m)
             self._colapse(q, m, p)
         return int("".join(map(str, result)), 2)

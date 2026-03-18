@@ -18,7 +18,6 @@ from ..base import Quant
 from ..gates import X, H, RY, CNOT, S, P
 from ..operations import ctrl, control, around
 
-
 __all__ = [
     "ghz",
     "w",
