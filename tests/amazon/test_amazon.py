@@ -87,10 +87,7 @@ def quantum_sum(a, b, size):
     qa = p.alloc(size + 1)
     qb = p.alloc(size - 1)
 
-    ket.qulib.math.set_int(qa, a)
-    ket.qulib.math.set_int(qb, b)
-
-    ket.qulib.math.addi(qa, qb)
+    ket.qint.Qint(qa, a).__iadd__(ket.qint.Qint(qb, b))
 
     return ket.measure(qa).get()
 
