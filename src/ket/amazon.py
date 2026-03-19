@@ -101,11 +101,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         device: The ARN (Amazon Resource Name) string of the
             Braket device (QPU or simulator) to be used for execution. If
             ``None``, it defaults to using the local Braket simulator.
-        shots: The number of shots for the execution to estimate
-            the expectation values of an Hamiltonian term. If ``classical_shadows``
-            and ``shots`` are not specified, it defaults to 2048.
-        classical_shadows: If specified, it will use the classical
-            shadows technique for state estimation.
+        shots: The number of shots for the expectation values of an Hamiltonian.
         kwargs: Additional keyword arguments to be passed to the Braket device.
     """
 

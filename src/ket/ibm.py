@@ -38,16 +38,6 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     execution is performed for estimating expectation values of an
     Hamiltonian term. Only one of these arguments can be specified at a time.
 
-    If ``shots`` is specified, it will run the circuit multiple times
-    (the number of shots) to estimate the expectation values.
-    If ``classical_shadows`` is specified, it will use the classical shadows
-    technique for state estimation. The dictionary should be in the
-    format: ``{"bias": (int, int, int), "samples": int, "shots": int}``.
-    The ``bias`` tuple represents the bias for the randomized measurements on the
-    X, Y, and Z axes, respectively. The ``samples`` is the number of
-    classical shadows to be generated, and ``shots`` is the number of shots
-    for each sample.
-
     Args:
         backend: The backend to be used for the quantum execution. If not
             provided, it defaults to the AerSimulator.

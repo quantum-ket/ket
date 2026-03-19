@@ -12,7 +12,7 @@ Explore the documentation of individual submodules for in-depth information and 
 examples.
 
 All the functionality from the submodules is conveniently accessible within the ``ket`` namespace.
-Except for the `qulib` module.
+Except for the ``qulib`` module.
 
 Examples:
 
@@ -92,7 +92,7 @@ from .qint import *
 from .qint import __all__ as all_qint
 from . import qulib
 
-__version__ = "0.9.3b2"
+__version__ = "0.9.3b3"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state + all_qint + ["qulib"]
 

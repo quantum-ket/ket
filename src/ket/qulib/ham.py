@@ -4,7 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import warnings
 from ..gates import X, Y, Z, B, obs
 from ..base import Quant
 from ..expv import Hamiltonian, commutator
@@ -12,9 +11,10 @@ from ..operations import exp_value
 
 __all__ = [
     "maxcut",
+    "knapsack",
+    "tsp",
     "x_mixer",
     "xy_mixer",
-    "qubo",
     "falqon_a",
     "falqon_b",
     "falqon_a",
@@ -193,32 +193,6 @@ def xy_mixer(qubits, edges: list[tuple[int, int]] | None = None) -> Hamiltonian:
 
     with obs():
         return sum(X(a) * X(b) + Y(a) * Y(b) for a, b in map(qubits.at, edges)) / 2
-
-
-def qubo(model, qubits: Quant) -> Hamiltonian:
-    """Convert a QUBO model to a Hamiltonian.
-
-    Converts a QUBO model from the pyQUBO library to a Hamiltonian observable.
-
-    Args:
-        model: QUBO model.
-        qubits: Qubits representing the variables in the model.
-    """
-    warnings.warn(
-        "`qulib.ham.qubo` is deprecated and will be removed in future versions."
-        " Use `B(x)` instead to construct the Hamiltonian with binary values.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-
-    linear, quadratic, offset = model.to_ising(index_label=True)
-
-    with obs():
-        return (
-            offset
-            + sum(c * Z(qubits[i]) for i, c in linear.items())
-            + sum(c * Z(qubits[i]) * Z(qubits[j]) for (i, j), c in quadratic.items())
-        )
 
 
 def falqon_a(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:

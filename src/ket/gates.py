@@ -49,7 +49,6 @@ from functools import reduce
 from operator import add
 from typing import Any, Callable
 import functools
-import warnings
 import contextvars
 
 from .clib.libket import (
@@ -77,7 +76,6 @@ __all__ = [
     "RX",
     "RY",
     "RZ",
-    "PHASE",
     "P",
     "S",
     "T",
@@ -93,7 +91,6 @@ __all__ = [
     "SX",
     "global_phase",
     "RBS",
-    "ham",
     "obs",
     "QFT",
     "evolve",
@@ -139,34 +136,6 @@ def obs():
         yield
     finally:
         _build_obs.reset(token)
-
-
-def ham():
-    """
-    Context manager to define a observable in Ket.
-
-    When used within a ``with obs():`` block, any operator expressions
-    constructed (e.g., sums of Pauli terms) are interpreted as part
-    of a observable definition.
-
-    This enables a more natural and symbolic style for building
-    observable, closely mirroring their mathematical form.
-
-    Example:
-
-        .. code-block:: python
-
-            with obs():
-                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
-
-    """
-    warnings.warn(
-        "`with ham():` is deprecated and will be removed in future versions."
-        " Use `with obs():` instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return obs()
 
 
 def I(  # pylint: disable=invalid-name missing-function-docstring
@@ -434,25 +403,6 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
     if qubits is None:
         return inner
     return inner(qubits)
-
-
-def PHASE(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits: Quant | None = None
-) -> Quant | Callable[[Quant], Quant]:
-    warnings.warn(
-        "PHASE is deprecated and will be removed in future versions. Use P(theta, qubits) instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    return P(theta, qubits)
-
-
-PHASE.__doc__ = _gate_docstring(
-    "Phase shift",
-    r"\begin{bmatrix} 1 & 0 \\ 0 & e^{i\theta} \end{bmatrix}",
-    r"\begin{matrix} P\left|0\right> = & \left|0\right> \\"
-    r"P\left|1\right> = & e^{i\theta}\left|1\right> \end{matrix}",
-)
 
 
 P.__doc__ = _gate_docstring(
