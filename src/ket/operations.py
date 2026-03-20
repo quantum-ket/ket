@@ -20,6 +20,8 @@ from functools import reduce, wraps
 from operator import add
 from typing import Any, Callable, Sequence
 from inspect import signature
+import warnings
+import weakref
 
 from ket.clib.libket import PAULI_X
 
@@ -54,6 +56,7 @@ __all__ = [
     "using_aux",
     "is_permutation",
     "is_diagonal",
+    "undo",
     "C",
 ]
 
@@ -124,8 +127,7 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
     r"""Controlled scope.
 
     Opens a controlled scope where quantum operations are applied only if the qubits of the
-    parameter ``control_qubits`` are in the state :math:`\ket{1}`. The parameter ``state`` can
-    be used to specify a different state.
+    parameter ``control_qubits`` are in the state :math:`\ket{1}`.
 
     :Usage:
 
@@ -160,7 +162,8 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
 
     Args:
         control_qubits: The qubits to control the quantum operations.
-        state: The state to apply to the control qubits. Defaults to :math:`\ket{1}`.
+        state: **Deprecated.** The state to apply to the control qubits.
+            Defaults to :math:`\ket{1}`.
     """
 
     if not isinstance(control_qubits, Quant):
@@ -168,6 +171,13 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
     process = control_qubits.process
 
     if state is not None:
+        warnings.warn(
+            "The 'state' parameter in 'control' is deprecated and will be"
+            " removed in a future release."
+            " Use with control('control_qubits' == 'state') instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         with around(_flip_to_control(state), control_qubits, ket_process=process):
             process.ctrl_push(
                 (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
@@ -417,6 +427,50 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
         )
 
     return inner
+
+
+class QuantUndo(Quant):  # pylint: disable=too-few-public-methods
+    """A Quant with an associated undo operation.
+
+    This class automatically execute a specified undo
+    operation when the object is garbage-collected.
+    """
+
+    def __init__(self, *, qubits, process, undo_gate):
+        super().__init__(qubits=qubits, process=process)
+        self._finalizer = weakref.finalize(self, undo_gate)
+
+
+def undo(gate: Callable[[Quant], Any], qubits: Quant) -> Quant:
+    """Automatic uncomputation of a quantum operation.
+
+    Applies the specified ``gate`` on the ``qubits`` and returns a
+    :class:`~ket.operations.QuantUndo` instance. At the end of the returned
+    object's lifecycle (when it is garbage-collected), the adjoint (inverse)
+    of the gate is automatically applied to uncompute the operation.
+
+    This is highly useful for managing temporary quantum states and ensuring
+    they are properly disentangled before disposal.
+
+    Args:
+        gate: A callable representing the quantum gate/operation to apply.
+        qubits: The quantum bits on which the gate will be applied.
+    """
+    ket_process = qubits._get_ket_process()  # pylint: disable=protected-access
+    ket_process.around_begin()
+    ket_process.ctrl_stack()
+    gate(qubits)
+    ket_process.ctrl_unstack()
+    ket_process.around_mid()
+
+    def undo_gate():
+        ket_process.around_undo()
+        ket_process.ctrl_stack()
+        adj(gate)(qubits)
+        ket_process.ctrl_unstack()
+        ket_process.around_end()
+
+    return QuantUndo(qubits=qubits.qubits, process=ket_process, undo_gate=undo_gate)
 
 
 @contextmanager

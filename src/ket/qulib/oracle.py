@@ -65,7 +65,7 @@ def phase_oracle(
     def inner(qubits: Quant) -> Quant:
         init, last = qubits[:-1], qubits[-1]
         with around(lambda q: X(q) if state & 1 == 0 else None, last):
-            ctrl(init, Z, state >> 1)(last)
+            ctrl(init == state >> 1, Z)(last)
         return qubits
 
     if qubits is None:

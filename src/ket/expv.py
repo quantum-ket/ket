@@ -37,51 +37,13 @@ class Pauli:
 
     .. tip::
         The preferred way to create a Hamiltonian is by using the
-        :func:`~ket.gates.ham` context manager, which allows you to define a Hamiltonian
+        :func:`~ket.gates.obs` context manager, which allows you to define a Hamiltonian
         using a more intuitive syntax. However, you can also create Hamiltonians directly by
         instantiating this class.
 
     This class represents a Pauli operator for Hamiltonian creation. The primary usage of this class
     is to prepare a Hamiltonian by adding and multiplying Pauli operators and scalars for
     calculating the expected value of a quantum state.
-
-    Allowed operations:
-    - Multiply by a scalar or another :class:`~ket.expv.Pauli` operator.
-    - Add another :class:`~ket.expv.Pauli` or :class:`~ket.expv.Hamiltonian` operator.
-
-    Example:
-
-        .. code-block::
-
-            from ket import *
-
-            p = Process()
-            qubits = p.alloc(3)
-            H(qubits[1])
-            S(H(qubits[2]))
-
-            # Example 1: Single Pauli term
-            pauli_term = Pauli("X", qubits[0])
-            print(repr(pauli_term))
-            # <Ket 'Pauli' 1.0*X0, pid=0x...>
-
-            # Example 2: Sum of Pauli terms
-            sum_pauli = Pauli("Y", qubits[1]) + Pauli("Z", qubits[2])
-            print(repr(sum_pauli))
-            # <Ket 'Hamiltonian' 1.0*Y1 + 1.0*Z2, pid=0x...>
-
-            # Example 3: Pauli multiplication
-            multiplied_pauli = 2.0 * Pauli("X", qubits[0]) * Pauli("Y", qubits[1])
-            print(repr(multiplied_pauli))
-            # <Ket 'Pauli' 2.0*X0Y1, pid=0x...>
-
-            # Example 4: Calculating expected value
-            h = Pauli("Z", qubits[0]) + Pauli("X", qubits[1]) + Pauli("Y", qubits[2])
-            print(repr(h))
-            # <Ket 'Hamiltonian' 1.0*Z0 + 1.0*X1 + 1.0*Y2, pid=0x...>
-            result = exp_value(h)
-            print(result.value)  # 3.0000000000000013
-
 
     Args:
         pauli: Pauli operator type.
@@ -396,7 +358,7 @@ class ExpValue:
     after the measurement call, especially in batch execution.
 
     To read the value, access the attribute :attr:`~ket.base.ExpValue.value`. If the value is not
-    available, the measurement will return `None`; otherwise, it will return a float.
+    available, the measurement will return ``None``; otherwise, it will return a float.
 
     You can instantiate this class by calling the :func:`~ket.operations.exp_value` function.
 
@@ -409,7 +371,8 @@ class ExpValue:
             p = Process()
             q = p.alloc(2)
             CNOT(H(q[0]), q[1])
-            result = exp_value(Pauli("X", q))
+            with obs():
+                result = exp_value(X(q))
             print(result.value) # 1.0000000000000004
 
     """

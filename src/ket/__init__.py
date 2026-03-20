@@ -92,7 +92,7 @@ from .qint import *
 from .qint import __all__ as all_qint
 from . import qulib
 
-__version__ = "0.9.3b3"
+__version__ = "0.9.3b4"
 
 __all__ = all_base + all_func + all_gate + all_expv + all_state + all_qint + ["qulib"]
 

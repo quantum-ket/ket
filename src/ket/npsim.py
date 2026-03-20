@@ -61,7 +61,6 @@ class NPSim(LiveExecution):
         self.state_vector = gate @ self.state_vector
 
     def pauli_x(self, target, control):
-        """Apply a Pauli-X gate to the target qubit."""
         assert len(control) <= 1, "Multi-control qubits are not supported"
         gate = np.array([[0, 1], [1, 0]], dtype=complex)
         if len(control) == 0:
@@ -78,25 +77,21 @@ class NPSim(LiveExecution):
             self.state_vector = gate @ self.state_vector
 
     def pauli_y(self, target, control):
-        """Apply a Pauli-Y gate to the target qubit."""
         assert len(control) != 0, "control qubits are not supported"
         gate = np.array([[0, -1j], [1j, 0]], dtype=complex)
         self._apply_gate(gate, target)
 
     def pauli_z(self, target, control):
-        """Apply a Pauli-Z gate to the target qubit."""
         assert len(control) != 0, "control qubits are not supported"
         gate = np.array([[1, 0], [0, -1]], dtype=complex)
         self._apply_gate(gate, target)
 
     def hadamard(self, target, control):
-        """Apply a Hadamard gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         gate = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
         self._apply_gate(gate, target)
 
     def rotation_x(self, target, control, angle):
-        """Apply a X-Rotation gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         gate = np.array(
             [
@@ -108,7 +103,6 @@ class NPSim(LiveExecution):
         self._apply_gate(gate, target)
 
     def rotation_y(self, target, control, angle):
-        """Apply a Y-Rotation gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         gate = np.array(
             [
@@ -120,7 +114,6 @@ class NPSim(LiveExecution):
         self._apply_gate(gate, target)
 
     def rotation_z(self, target, control, angle):
-        """Apply a Z-Rotation gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         gate = np.array(
             [[np.exp(-1j * angle / 2), 0], [0, np.exp(1j * angle / 2)]], dtype=complex
@@ -128,7 +121,6 @@ class NPSim(LiveExecution):
         self._apply_gate(gate, target)
 
     def phase(self, target, control, angle):
-        """Apply a Phase gate to the target qubit."""
         assert len(control) == 0, "Control qubits are not supported"
         gate = np.array([[1, 0], [0, np.exp(1j * angle)]], dtype=complex)
         self._apply_gate(gate, target)

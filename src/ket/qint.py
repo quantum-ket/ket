@@ -82,16 +82,16 @@ def _addi_qi(lhs: Quant, rhs: int | str, m=1):
 
 
 def _addi(lhs, rhs, m: int = 1):
-    with around(QFT, reversed(lhs.qubits), False):
+    with around(QFT, reversed(lhs), False):
         if isinstance(rhs, Qint):
             _addi_qq(
-                lhs.qubits,
-                rhs.qubits,
+                lhs,
+                rhs,
                 m=m,
             )
         elif isinstance(rhs, int):
             _addi_qi(
-                lhs.qubits,
+                lhs,
                 rhs,
                 m=m,
             )
@@ -99,7 +99,7 @@ def _addi(lhs, rhs, m: int = 1):
             raise TypeError("`other` must be a Qint or an integer.")
 
 
-class Qint:  # pylint: disable=too-few-public-methods
+class Qint(Quant):  # pylint: disable=too-few-public-methods
     """A quantum integer data structure.
 
     This class represents an integer encoded within a quantum register.
@@ -113,13 +113,9 @@ class Qint:  # pylint: disable=too-few-public-methods
     """
 
     def __init__(self, qubits: Quant, number: int = 0):
+        super().__init__(qubits=qubits.qubits, process=qubits.process)
 
-        self.qubits = qubits
-        self.process = qubits.process
         _set_int(qubits, number)
-
-    def _get_ket_process(self):
-        return self.process
 
     def __iadd__(self, other):
         _addi(self, other)
@@ -143,5 +139,5 @@ class Qint:  # pylint: disable=too-few-public-methods
         if isinstance(result, Quant):
             result = Qint(result)
 
-        for i, q in enumerate(reversed(self.qubits)):
+        for i, q in enumerate(reversed(self)):
             ctrl(q, _addi)(result, other, m=2**i)
