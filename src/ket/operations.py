@@ -23,7 +23,6 @@ from operator import add
 from typing import Any, Callable, Sequence
 from inspect import signature
 import warnings
-import weakref
 
 from ket.clib.libket import PAULI_X
 
@@ -429,31 +428,17 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
     return inner
 
 
-class QuantUndo(Quant):  # pylint: disable=too-few-public-methods
-    """A Quant with an associated undo operation.
-
-    This class automatically execute a specified undo
-    operation when the object is garbage-collected.
-    """
-
-    def __init__(self, *, qubits, process, undo_gate):
-        super().__init__(qubits=qubits, process=process)
-        self._finalizer = weakref.finalize(self, undo_gate)
-
-
 _allow_permutation = contextvars.ContextVar("allow_permutation", default=False)
 
 
 def undo(
     gate: Callable[[Quant], Any],
     qubits: Quant,
-    *,
-    _free_aux: bool = False,
 ) -> Quant:
     """Automatic uncomputation of a quantum operation.
 
     Applies the specified ``gate`` on the ``qubits`` and returns a
-    :class:`~ket.operations.QuantUndo` instance. At the end of the returned
+    :class:`~ket.operations.Quant` instance. At the end of the returned
     object's lifecycle (when it is garbage-collected), the adjoint (inverse)
     of the gate is automatically applied to uncompute the operation.
 
@@ -476,7 +461,7 @@ def undo(
 
     _allow_permutation.reset(token)
 
-    def undo_gate():
+    def undo_func():
         ket_process._blocked_pop()
         ket_process._blocked_push()
 
@@ -489,10 +474,7 @@ def undo(
         _allow_permutation.reset(token)
         ket_process._blocked_pop()
 
-        if _free_aux:
-            ket_process._free_aux(qubits)
-
-    return QuantUndo(qubits=qubits.qubits, process=ket_process, undo_gate=undo_gate)
+    return Quant(qubits=qubits.qubits, process=ket_process, undo=undo_func)
 
 
 @contextmanager
@@ -638,8 +620,6 @@ def using_aux(unsafe: bool = False, **names):
         def call(*args, ket_process: Process | None = None, **kwargs):
             ket_process = _search_process(ket_process, args, kwargs)
 
-            free_stack = []
-
             kwargs_ex = {**kwargs, **dict(zip(param, args))}
 
             for name, num_qubits in names.items():
@@ -662,18 +642,11 @@ def using_aux(unsafe: bool = False, **names):
                     kwargs[name] = None
                     continue
 
-                qubits = ket_process._alloc_aux(num_qubits)
-
-                free_stack.append(qubits)
-
-                kwargs[name] = qubits
+                kwargs[name] = ket_process.alloc_aux(num_qubits)
 
             token = _unsafe_aux.set(unsafe)
             func(*args, **kwargs)
             _unsafe_aux.reset(token)
-
-            for qubits in reversed(free_stack):
-                ket_process._free_aux(qubits)
 
         return call
 

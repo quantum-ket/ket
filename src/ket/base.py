@@ -20,6 +20,7 @@ from __future__ import annotations
 from ctypes import c_size_t, c_uint8, c_void_p
 from json import loads
 from typing import Literal, Optional, Any
+import weakref
 
 from .clib.libket import LiveExecution, Process as LibketProcess, BatchExecution
 from .clib.kbw import get_simulator
@@ -235,7 +236,8 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         qubits_index = [self._alloc() for _ in range(num_qubits)]
         return Quant(qubits=qubits_index, process=self)
 
-    def _alloc_aux(self, num_qubits: int = 1) -> Quant:
+    def alloc_aux(self, num_qubits: int = 1) -> Quant:
+        """Allocate axillary qubits"""
         if num_qubits < 1:
             raise ValueError("Cannot allocate less than 1 qubit")
 
@@ -248,14 +250,18 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         )
         self._aux.update(aux_index)
 
-        return Quant(qubits=aux_index, process=self)
+        return Quant(
+            qubits=aux_index,
+            process=self,
+            undo=lambda: self._free_aux(aux_index),
+        )
 
-    def _free_aux(self, qubits: Quant):
-        if any(q not in self._aux for q in qubits.qubits):
+    def _free_aux(self, qubits: list[int]):
+        if any(q not in self._aux for q in qubits):
             raise RuntimeError("Cannot free an non-auxiliary qubit")
 
-        self._aux.difference_update(qubits.qubits)
-        self._aux_pool.extend(qubits.qubits)
+        self._aux.difference_update(qubits)
+        self._aux_pool.extend(qubits)
 
     def _get_ket_process(self):
         return self
@@ -466,9 +472,11 @@ class Quant:
 
     """
 
-    def __init__(self, *, qubits: list[int], process: Process):
+    def __init__(self, *, qubits: list[int], process: Process, undo=None):
         self.qubits = qubits
         self.process = process
+        if undo is not None:
+            self._finalizer = weakref.finalize(self, undo)
 
     def _get_ket_process(self):
         return self.process

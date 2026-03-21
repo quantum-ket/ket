@@ -133,7 +133,7 @@ class Qint(Quant):  # pylint: disable=too-few-public-methods
             for s, o in zip(self, other):
                 C(X)(s, o)
 
-        return Qint(undo(inner_copy, other, _free_aux=True))
+        return Qint(undo(inner_copy, other))
 
     def __add__(self, other):
         result = self.copy()
@@ -174,4 +174,4 @@ class Qint(Quant):  # pylint: disable=too-few-public-methods
 
     def __mul__(self, other):
         result = self._get_ket_process()._alloc_aux(len(self))
-        return undo(partial(self.mul, other), result, _free_aux=True)
+        return undo(partial(self.mul, other), result)
