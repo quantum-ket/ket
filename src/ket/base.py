@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 
-class Process(LibketProcess):
+class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
     """
     Quantum program process.
 
@@ -176,10 +176,36 @@ class Process(LibketProcess):
                 )
             )
 
+        self._aux_pool = []
+        self._aux = set()
+        self._blocked = []
+
+        self._ctrl_buffer_size = 512
+        self._ctrl_buffer = (c_size_t * self._ctrl_buffer_size)()
         self._metadata_buffer_size = 512
         self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
         self._buffer_size = 2048
         self._buffer = (c_uint8 * self._buffer_size)()
+
+    def _alloc(self) -> int:
+        if self._aux_pool:
+            return self._aux_pool.pop(0)
+        return self.allocate_qubit().value
+
+    def _blocked_push(self):
+        self._blocked.append(set())
+
+    def _blocked_pop(self):
+        self._blocked.pop()
+
+    def _block_ctrl(self):
+        self._blocked[-1].update(self._ctrl_list())
+
+    def _is_blocked(self, index):
+        return any(index in blocked for blocked in self._blocked)
+
+    def _is_aux(self, index):
+        return index in self._aux
 
     def alloc(self, num_qubits: int = 1) -> Quant:
         """Allocate qubits and return a :class:`~ket.base.Quant` object.
@@ -206,8 +232,30 @@ class Process(LibketProcess):
         if num_qubits < 1:
             raise ValueError("Cannot allocate less than 1 qubit")
 
-        qubits_index = [self.allocate_qubit().value for _ in range(num_qubits)]
+        qubits_index = [self._alloc() for _ in range(num_qubits)]
         return Quant(qubits=qubits_index, process=self)
+
+    def _alloc_aux(self, num_qubits: int = 1) -> Quant:
+        if num_qubits < 1:
+            raise ValueError("Cannot allocate less than 1 qubit")
+
+        while len(self._aux_pool) < num_qubits:
+            self._aux_pool.append(self.allocate_qubit().value)
+
+        aux_index, self._aux_pool = (
+            self._aux_pool[:num_qubits],
+            self._aux_pool[num_qubits:],
+        )
+        self._aux.update(aux_index)
+
+        return Quant(qubits=aux_index, process=self)
+
+    def _free_aux(self, qubits: Quant):
+        if any(q not in self._aux for q in qubits.qubits):
+            raise RuntimeError("Cannot free an non-auxiliary qubit")
+
+        self._aux.difference_update(qubits.qubits)
+        self._aux_pool.extend(qubits.qubits)
 
     def _get_ket_process(self):
         return self
@@ -334,6 +382,15 @@ class Process(LibketProcess):
             return self.get_metadata()
 
         return loads(bytearray(self._metadata_buffer[: write_size.value]))
+
+    def _ctrl_list(self) -> list[int]:
+        write_size = self.get_ctrl(self._ctrl_buffer, self._ctrl_buffer_size)
+        if write_size.value > self._ctrl_buffer_size:
+            self._ctrl_buffer_size = write_size.value + 1
+            self._ctrl_buffer = (c_uint8 * self._ctrl_buffer_size)()
+            return self._ctrl_list()
+
+        return self._ctrl_buffer[: write_size.value]
 
     def param(self, *param) -> list[Parameter] | Parameter:
         """Register a parameter for gradient calculation.

@@ -3,10 +3,14 @@
 # SPDX-FileCopyrightText: 2026 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #
 # SPDX-License-Identifier: Apache-2.0
+
+# pylint: disable=duplicate-code,protected-access
+
+from functools import partial
 from math import pi
 from .base import Quant
 from .gates import X, QFT, P
-from .operations import ctrl, around, adj
+from .operations import C, ctrl, around, adj, undo
 
 __all__ = ["Qint"]
 
@@ -121,6 +125,32 @@ class Qint(Quant):  # pylint: disable=too-few-public-methods
         _addi(self, other)
         return self
 
+    def copy(self):
+        """Copy the quantum state"""
+        other = self._get_ket_process()._alloc_aux(len(self))
+
+        def inner_copy(other):
+            for s, o in zip(self, other):
+                C(X)(s, o)
+
+        return Qint(undo(inner_copy, other, _free_aux=True))
+
+    def __add__(self, other):
+        result = self.copy()
+
+        def inner_add(result):
+            result += other
+
+        return undo(inner_add, result)
+
+    def __sub__(self, other):
+        result = self.copy()
+
+        def inner_sub(result):
+            result -= other
+
+        return undo(inner_sub, result)
+
     __isub__ = adj(__iadd__)
 
     def mul(self: Quant, other, result):
@@ -141,3 +171,7 @@ class Qint(Quant):  # pylint: disable=too-few-public-methods
 
         for i, q in enumerate(reversed(self)):
             ctrl(q, _addi)(result, other, m=2**i)
+
+    def __mul__(self, other):
+        result = self._get_ket_process()._alloc_aux(len(self))
+        return undo(partial(self.mul, other), result, _free_aux=True)

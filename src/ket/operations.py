@@ -12,9 +12,11 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=protected-access
 
 from collections.abc import Sized
 from contextlib import contextmanager
+import contextvars
 from ctypes import c_size_t
 from functools import reduce, wraps
 from operator import add
@@ -54,8 +56,6 @@ __all__ = [
     "dump",
     "exp_value",
     "using_aux",
-    "is_permutation",
-    "is_diagonal",
     "undo",
     "C",
 ]
@@ -261,7 +261,7 @@ def C(gate: Callable) -> Callable:  # pylint: disable=invalid-name
 def _search_process(ket_process, args, kwargs):
     def inner(ket_process, arg):
         if hasattr(arg, "_get_ket_process"):
-            arg_process = arg._get_ket_process()  # pylint: disable=protected-access
+            arg_process = arg._get_ket_process()
             if ket_process is not None and ket_process is not arg_process:
                 raise ValueError("parameter with different Ket processes")
             ket_process = arg_process
@@ -441,7 +441,15 @@ class QuantUndo(Quant):  # pylint: disable=too-few-public-methods
         self._finalizer = weakref.finalize(self, undo_gate)
 
 
-def undo(gate: Callable[[Quant], Any], qubits: Quant) -> Quant:
+_allow_permutation = contextvars.ContextVar("allow_permutation", default=False)
+
+
+def undo(
+    gate: Callable[[Quant], Any],
+    qubits: Quant,
+    *,
+    _free_aux: bool = False,
+) -> Quant:
     """Automatic uncomputation of a quantum operation.
 
     Applies the specified ``gate`` on the ``qubits`` and returns a
@@ -456,19 +464,33 @@ def undo(gate: Callable[[Quant], Any], qubits: Quant) -> Quant:
         gate: A callable representing the quantum gate/operation to apply.
         qubits: The quantum bits on which the gate will be applied.
     """
-    ket_process = qubits._get_ket_process()  # pylint: disable=protected-access
-    ket_process.around_begin()
+
+    token = _allow_permutation.set(True)
+
+    ket_process = qubits._get_ket_process()
+    ket_process._blocked_push()
+
     ket_process.ctrl_stack()
     gate(qubits)
     ket_process.ctrl_unstack()
-    ket_process.around_mid()
+
+    _allow_permutation.reset(token)
 
     def undo_gate():
-        ket_process.around_undo()
+        ket_process._blocked_pop()
+        ket_process._blocked_push()
+
+        token = _allow_permutation.set(True)
+
         ket_process.ctrl_stack()
         adj(gate)(qubits)
         ket_process.ctrl_unstack()
-        ket_process.around_end()
+
+        _allow_permutation.reset(token)
+        ket_process._blocked_pop()
+
+        if _free_aux:
+            ket_process._free_aux(qubits)
 
     return QuantUndo(qubits=qubits.qubits, process=ket_process, undo_gate=undo_gate)
 
@@ -505,31 +527,32 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
 
     """
 
-    ket_process = _search_process(ket_process, args, kwargs)
+    token = _allow_permutation.set(True)
 
-    ket_process.around_begin()
+    ket_process = _search_process(ket_process, args, kwargs)
+    ket_process._blocked_push()
 
     ket_process.ctrl_stack()
-    # ket_process.approximated_decomposition_begin()
     gate(*args, **kwargs)
-    # ket_process.approximated_decomposition_end()
     ket_process.ctrl_unstack()
 
-    ket_process.around_mid()
+    _allow_permutation.reset(token)
 
     try:
         yield
     finally:
+        ket_process._blocked_pop()
+        ket_process._blocked_push()
 
-        ket_process.around_undo()
+        token = _allow_permutation.set(True)
 
         ket_process.ctrl_stack()
-        # ket_process.approximated_decomposition_begin()
         adj(gate)(*args, ket_process=ket_process, **kwargs)
-        # ket_process.approximated_decomposition_end()
         ket_process.ctrl_unstack()
 
-        ket_process.around_end()
+        _allow_permutation.reset(token)
+
+        ket_process._blocked_pop()
 
 
 def measure(qubits: Quant) -> Measurement:
@@ -590,6 +613,9 @@ def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
     return ExpValue(hamiltonian)
 
 
+_unsafe_aux = contextvars.ContextVar("unsafe_aux", default=False)
+
+
 def using_aux(unsafe: bool = False, **names):
     """Add axillary qubits to a quantum gate.
 
@@ -603,9 +629,6 @@ def using_aux(unsafe: bool = False, **names):
                     else:
                         with around(ctrl(c[:2], X), a):
                             v_chain(a + c[2:], t)
-
-    Args:
-        unsafe: Use dirty unsafe qubits. Defaults to False.
     """
 
     def inner(func):
@@ -614,20 +637,6 @@ def using_aux(unsafe: bool = False, **names):
         @wraps(func)
         def call(*args, ket_process: Process | None = None, **kwargs):
             ket_process = _search_process(ket_process, args, kwargs)
-
-            if unsafe:
-                q_args = [q for q in args if isinstance(q, Quant)] + [
-                    q for q in kwargs.values() if isinstance(q, Quant)
-                ]
-                interacting_qubits = reduce(add, q_args)
-                interacting_qubits = interacting_qubits.qubits
-                interacting_qubits_size = len(interacting_qubits)
-                interacting_qubits = (c_size_t * interacting_qubits_size)(
-                    *interacting_qubits
-                )
-            else:
-                interacting_qubits_size = 0
-                interacting_qubits = None
 
             free_stack = []
 
@@ -653,67 +662,19 @@ def using_aux(unsafe: bool = False, **names):
                     kwargs[name] = None
                     continue
 
-                aux_index, aux_id = ket_process.allocate_aux(
-                    num_qubits, interacting_qubits, interacting_qubits_size
-                )
+                qubits = ket_process._alloc_aux(num_qubits)
 
-                qubits = Quant(
-                    qubits=[
-                        (i + 1) << 32
-                        for i in range(aux_index.value, aux_index.value + num_qubits)
-                    ],
-                    process=ket_process,
-                )
-
-                free_stack.append(aux_id.value)
+                free_stack.append(qubits)
 
                 kwargs[name] = qubits
 
+            token = _unsafe_aux.set(unsafe)
             func(*args, **kwargs)
+            _unsafe_aux.reset(token)
 
-            for aux_id in reversed(free_stack):
-                ket_process.free_aux(aux_id)
+            for qubits in reversed(free_stack):
+                ket_process._free_aux(qubits)
 
         return call
-
-    return inner
-
-
-def is_diagonal(gate: Callable) -> Callable:
-    """Force to consider as a diagonal gate.
-
-    Args:
-        gate: Quantum gate
-    """
-
-    @wraps(gate)
-    def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
-        ket_process = _search_process(ket_process, args, kwargs)
-
-        ket_process.is_diagonal_begin()
-        try:
-            return gate(*args, **kwargs)
-        finally:
-            ket_process.is_diagonal_end()
-
-    return inner
-
-
-def is_permutation(gate: Callable) -> Callable:
-    """Force to consider as a permutation gate.
-
-    Args:
-        gate: Quantum gate
-    """
-
-    @wraps(gate)
-    def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
-        ket_process = _search_process(ket_process, args, kwargs)
-
-        ket_process.is_permutation_begin()
-        try:
-            return gate(*args, **kwargs)
-        finally:
-            ket_process.is_permutation_end()
 
     return inner

@@ -43,9 +43,11 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# pylint: disable=protected-access
+
 from contextlib import contextmanager
-from math import pi, prod
-from functools import reduce
+from math import isclose, pi, prod
+from functools import reduce, wraps
 from operator import add
 from typing import Any, Callable
 import functools
@@ -63,7 +65,17 @@ from .clib.libket import (
 )
 
 from .base import Process, Quant, Parameter
-from .operations import _search_process, control, ctrl, cat, kron, around
+from .operations import (
+    _search_process,
+    control,
+    ctrl,
+    cat,
+    kron,
+    around,
+    _allow_permutation,
+    _unsafe_aux,
+)
+
 from .expv import Pauli, Hamiltonian
 
 __all__ = [
@@ -167,8 +179,26 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
+    process = qubits._get_ket_process()
+
+    is_diag = _is_diagonal.get()
+    allow_perm = _allow_permutation.get()
+    unsafe_aux = _unsafe_aux.get()
+
+    aux_allowed = is_diag or allow_perm
+
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_X, 0.0, False, 0, qubit)
+        is_aux = process._is_aux(qubit)
+
+        if not unsafe_aux and (
+            process._is_blocked(qubit) or (is_aux and not aux_allowed)
+        ):
+            raise RuntimeError("Gate application blocked for safe uncomputation")
+
+        if is_aux and not is_diag:
+            process._block_ctrl()
+
+        process.apply_gate(PAULI_X, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -189,8 +219,26 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
+    process = qubits._get_ket_process()
+
+    is_diag = _is_diagonal.get()
+    allow_perm = _allow_permutation.get()
+    unsafe_aux = _unsafe_aux.get()
+
+    aux_allowed = is_diag or allow_perm
+
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Y, 0.0, False, 0, qubit)
+        is_aux = process._is_aux(qubit)
+
+        if not unsafe_aux and (
+            process._is_blocked(qubit) or (is_aux and not aux_allowed)
+        ):
+            raise RuntimeError("Gate application blocked for safe uncomputation")
+
+        if is_aux and not is_diag:
+            process._block_ctrl()
+
+        process.apply_gate(PAULI_Y, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -230,7 +278,26 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(add, qubits)
 
+    process = qubits._get_ket_process()
+
+    is_diag = _is_diagonal.get()
+    is_perm = _is_permutation.get()
+    allow_perm = _allow_permutation.get()
+    unsafe_aux = _unsafe_aux.get()
+
+    aux_allowed = is_diag or (is_perm and allow_perm)
+
     for qubit in qubits.qubits:
+        is_aux = process._is_aux(qubit)
+
+        if not unsafe_aux and (
+            process._is_blocked(qubit) or (is_aux and not aux_allowed)
+        ):
+            raise RuntimeError("Gate application blocked for safe uncomputation")
+
+        if is_aux and not is_diag:
+            process._block_ctrl()
+
         qubits.process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
     return qubits
 
@@ -245,25 +312,60 @@ H.__doc__ = _gate_docstring(
 )
 
 
+def _isclose_mod(value: float, target: float, tolerance: float = 1e-8) -> bool:
+    remainder = value % target
+
+    is_zero = isclose(remainder, 0.0, abs_tol=tolerance)
+    is_target = isclose(remainder, target, abs_tol=tolerance)
+
+    return is_zero or is_target
+
+
 def RX(  # pylint: disable=invalid-name missing-function-docstring
     theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
+
+    if not isinstance(theta, Parameter):
+        theta_diagonal = _isclose_mod(theta, 2 * pi)
+        theta_permutation = _isclose_mod(theta, pi)
+    else:
+        theta_diagonal = False
+        theta_permutation = False
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
+        process = qubits._get_ket_process()
+
+        is_diag = _is_diagonal.get() or theta_diagonal
+        is_perm = _is_permutation.get() or theta_permutation
+        allow_perm = _allow_permutation.get()
+        unsafe_aux = _unsafe_aux.get()
+
+        aux_allowed = is_diag or (is_perm and allow_perm)
+
         for qubit in qubits.qubits:
+            is_aux = process._is_aux(qubit)
+
+            if not unsafe_aux and (
+                process._is_blocked(qubit) or (is_aux and not aux_allowed)
+            ):
+                raise RuntimeError("Gate application blocked for safe uncomputation")
+
+            if is_aux and not is_diag:
+                process._block_ctrl()
+
             if isinstance(theta, Parameter):
-                qubits.process.apply_gate(
+                process.apply_gate(
                     ROTATION_X,
-                    theta._multiplier,  # pylint: disable=protected-access
+                    theta._multiplier,
                     True,
-                    theta._index,  # pylint: disable=protected-access
+                    theta._index,
                     qubit,
                 )
             else:
-                qubits.process.apply_gate(
+                process.apply_gate(
                     ROTATION_X,
                     theta,
                     False,
@@ -293,17 +395,43 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
     theta: float, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
+    if not isinstance(theta, Parameter):
+        theta_diagonal = _isclose_mod(theta, 2 * pi)
+        theta_permutation = _isclose_mod(theta, pi)
+    else:
+        theta_diagonal = False
+        theta_permutation = False
+
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(add, qubits)
 
+        process = qubits._get_ket_process()
+
+        is_diag = _is_diagonal.get() or theta_diagonal
+        is_perm = _is_permutation.get() or theta_permutation
+        allow_perm = _allow_permutation.get()
+        unsafe_aux = _unsafe_aux.get()
+
+        aux_allowed = is_diag or (is_perm and allow_perm)
+
         for qubit in qubits.qubits:
+            is_aux = process._is_aux(qubit)
+
+            if not unsafe_aux and (
+                process._is_blocked(qubit) or (is_aux and not aux_allowed)
+            ):
+                raise RuntimeError("Gate application blocked for safe uncomputation")
+
+            if is_aux and not is_diag:
+                process._block_ctrl()
+
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     ROTATION_Y,
-                    theta._multiplier,  # pylint: disable=protected-access
+                    theta._multiplier,
                     True,
-                    theta._index,  # pylint: disable=protected-access
+                    theta._index,
                     qubit,
                 )
             else:
@@ -345,9 +473,9 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     ROTATION_Z,
-                    theta._multiplier,  # pylint: disable=protected-access
+                    theta._multiplier,
                     True,
-                    theta._index,  # pylint: disable=protected-access
+                    theta._index,
                     qubit,
                 )
             else:
@@ -385,9 +513,9 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
             if isinstance(theta, Parameter):
                 qubits.process.apply_gate(
                     PHASE_SHIFT,
-                    theta._multiplier,  # pylint: disable=protected-access
+                    theta._multiplier,
                     True,
-                    theta._index,  # pylint: disable=protected-access
+                    theta._index,
                     qubit,
                 )
             else:
@@ -776,3 +904,45 @@ def evolve(hamiltonian: Hamiltonian):
         qubits = Quant(qubits=list(pauli.map.keys()), process=process)
         gates = list(pauli.map.values())[0]
         _EVOLVE_GATES[gates][len(pauli) - 1](2 * pauli.coef, *qubits)
+
+
+_is_diagonal = contextvars.ContextVar("is_diagonal", default=False)
+
+
+def is_diagonal(gate: Callable) -> Callable:
+    """Force to consider as a diagonal gate.
+
+    Args:
+        gate: Quantum gate
+    """
+
+    @wraps(gate)
+    def inner(*args, **kwargs) -> Any:
+        token = _is_diagonal.set(True)
+        try:
+            return gate(*args, **kwargs)
+        finally:
+            _is_diagonal.reset(token)
+
+    return inner
+
+
+_is_permutation = contextvars.ContextVar("is_permutation", default=False)
+
+
+def is_permutation(gate: Callable) -> Callable:
+    """Force to consider as a permutation gate.
+
+    Args:
+        gate: Quantum gate
+    """
+
+    @wraps(gate)
+    def inner(*args, **kwargs) -> Any:
+        token = _is_permutation.set(True)
+        try:
+            return gate(*args, **kwargs)
+        finally:
+            _is_permutation.reset(token)
+
+    return inner

@@ -10,7 +10,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,protected-access
 
 from copy import copy
 from ctypes import c_int32, c_size_t
@@ -276,7 +276,7 @@ class Hamiltonian:
     def _filter(self):
         new_terms = {}
         for term in self.pauli_products:
-            str_term = term._str_no_coef()  # pylint: disable=protected-access
+            str_term = term._str_no_coef()
             if all(c not in str_term for c in "XYZ"):
                 str_term = ""
             if str_term not in new_terms:
