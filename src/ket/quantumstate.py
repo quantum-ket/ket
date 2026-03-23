@@ -14,9 +14,8 @@ from math import pi
 from random import Random
 from cmath import sqrt, phase
 from collections import defaultdict
-from typing import Literal, TypedDict
+from typing import Literal, Callable
 from ctypes import c_size_t
-import re
 
 from .base import Quant, _check_visualize
 
@@ -43,91 +42,6 @@ except ImportError:
 __all__ = ["QuantumState"]
 
 
-def _to_int(num: str, unsigned: bool):
-    if unsigned:
-        return int(num, 2)
-
-    n_bits = len(num)
-    value = int(num, 2)
-
-    if num[0] == "1":
-        value -= 1 << n_bits
-
-    return value
-
-
-class _KetFormat(TypedDict):
-    """TypedDict defining the structure of a parsed format block."""
-
-    f_type: Literal["b", "u", "i"]
-    start: int
-    end: int
-    fixed_point: int | None
-
-
-def _parse_format_str(format_str: str | None, total_size: int) -> list[_KetFormat]:
-    """Parses the format string and returns a list of structured formatting rules."""
-    if not format_str:
-        return [{"f_type": "b", "start": 0, "end": total_size, "fixed_point": None}]
-
-    pattern = re.compile(r"([bui])(?:(\d+)(?:\.(\d+))?)?")
-
-    fmt_list: list[_KetFormat] = []
-    current_bit = 0
-
-    for part in format_str.split(":"):
-        match = pattern.fullmatch(part)
-        if not match:
-            raise ValueError(
-                f"Invalid format block: '{part}'. Expected pattern [b|u|i]<a>.<b>"
-            )
-
-        f_type = match.group(1)
-
-        if match.group(2) is None:
-            # If no size is provided, consume all remaining qubits
-            size = total_size - current_bit
-            fixed_point = None
-        else:
-            int_bits = int(match.group(2))
-            if match.group(3) is not None:
-                fixed_point = int(match.group(3))
-                size = int_bits + fixed_point
-            else:
-                fixed_point = None
-                size = int_bits
-
-        if size <= 0:
-            raise ValueError(f"Size must be greater than 0 in format block '{part}'")
-
-        fmt_list.append(
-            {
-                "f_type": f_type,
-                "start": current_bit,
-                "end": current_bit + size,
-                "fixed_point": fixed_point,
-            }
-        )
-        current_bit += size
-
-    if current_bit < total_size:
-        fmt_list.append(
-            {
-                "f_type": "b",
-                "start": current_bit,
-                "end": total_size,
-                "fixed_point": None,
-            }
-        )
-    elif current_bit > total_size:
-        raise ValueError(
-            f"Format string requires {current_bit} bits, but the register "
-            f"only has {total_size} bits."
-        )
-
-    return fmt_list
-
-
 class QuantumState:
     """Snapshot of a quantum state.
 
@@ -137,40 +51,26 @@ class QuantumState:
 
     You can instantiate this class by calling the :func:`~ket.operations.dump` function.
 
-    :Example:
-
-        .. code-block:: python
-
-            from ket import *
-
-            p = Process()
-            a, b = p.alloc(2)
-            with around(cat(kron(H, I), CNOT), a, b):
-                Y(a)
-                inside = dump(a+b)
-
-            outside = dump(a+b)
-            print(inside.show())
-            # |01⟩    (50.00%)
-            #  -0.707107i     ≅     -i/√2
-            # |10⟩    (50.00%)
-            #  0.707107i     ≅      i/√2
-
-            print(outside.show())
-            # |11⟩    (100.00%)
-            #  -1.000000i     ≅     -i/√1
-
     Args:
         qubits: Qubits from which to capture a quantum state snapshot.
     """
 
-    def __init__(self, qubits: Quant):
-        self.qubits = qubits
-        self.process = qubits.process
-        self.index = self.process.dump(
-            (c_size_t * len(qubits.qubits))(*qubits.qubits), len(qubits.qubits)
-        ).value
-        self.size = len(qubits)
+    def __init__(self, *qubits: Quant):
+        self.qubits = []
+        self.qubits_info: list[tuple[int, Callable[[int], str]]] = []
+
+        for qubit in qubits:
+            self.qubits.extend(qubit.qubits)
+            self.qubits_info.append((len(qubit), qubit.dump_format()))
+
+        self.process = qubits[0].process if qubits else None
+
+        if self.process:
+            self.index = self.process.dump(
+                (c_size_t * len(self.qubits))(*self.qubits), len(self.qubits)
+            ).value
+
+        self.size = len(self.qubits)
         self._states = None
 
     def _get_ket_process(self):
@@ -211,7 +111,6 @@ class QuantumState:
         Returns:
             The quantum state, or None if the quantum state information is not available.
         """
-
         self._check()
         return self._states
 
@@ -220,7 +119,6 @@ class QuantumState:
 
         If the quantum state is not available, the quantum process will execute to get the result.
         """
-
         self._check()
         if self._states is None:
             self.process.execute()
@@ -255,7 +153,6 @@ class QuantumState:
             A dictionary mapping measurement outcomes to their frequencies in the generated sample,
             or None if the quantum state information is not available.
         """
-
         self._check()
         if self._states is None:
             return None
@@ -366,7 +263,6 @@ class QuantumState:
 
         This method creates a Bloch sphere plot visualizing of one qubit quantum state.
 
-
         Note:
             This method requires additional dependencies from ``ket-lang[plot]``.
 
@@ -375,7 +271,6 @@ class QuantumState:
         Returns:
             A Bloch sphere plot illustrating the quantum state.
         """
-
         if len(self.qubits) != 1:
             raise ValueError("Bloch sphere plot is available only for 1 qubit")
         _check_visualize()
@@ -459,31 +354,12 @@ class QuantumState:
 
     def show(
         self,
-        format_str: str | None = None,
         mode: Literal["latex", "str"] | None = None,
         round_tol: float = 1e-6,
     ) -> str:
         r"""Return the quantum state as a formatted string or LaTeX Math object.
 
-        Use the format string to change the print format of the basis states.
-        Format syntax: `[type]<a>.<b>` separated by colons `:`
-
-        Types:
-        * ``b``: binary base (default)
-        * ``u``: unsigned integer
-        * ``i``: signed integer (two's complement)
-
-        `a` is the number of bits before the comma (integer bits).
-        `b` is the number of bits after the comma (fractional bits).
-
-        Examples:
-        * ``u``: Print the whole register as an unsigned integer.
-        * ``b2:i3.2``: First 2 bits in binary, next 5 bits (3 int, 2 frac) as a signed
-          fixed-point number.
-        * ``i5:b``: First 5 bits as a signed integer, the rest in binary.
-
         Args:
-            format_str: Format string specifying how to slice and parse the quantum register.
             mode: If ``"str"``, returns a plain text string. If ``"latex"``, returns a LaTeX
                 Math representation. Defaults to ``"latex"`` in Jupyter Notebooks,
                 otherwise ``"str"``.
@@ -497,26 +373,28 @@ class QuantumState:
         elif mode not in ("latex", "str"):
             raise ValueError(f"Unknown mode: {mode}")
 
-        fmt_rules = _parse_format_str(format_str, self.size)
-
         if mode == "latex":
-            return self._show_latex(fmt_rules, round_tol)
-        return self._show_str(fmt_rules, round_tol)
+            return self._show_latex(round_tol)
+        return self._show_str(round_tol)
 
-    def _get_ket_val(self, state_bin: str, spec: _KetFormat) -> str:
-        """Helper to extract and format the inner value of a ket state."""
-        if spec["f_type"] == "b":
-            return state_bin[spec["start"] : spec["end"]]
+    def _get_ket_parts(self, state_bin: str, latex: bool = False) -> list[str]:
+        """Helper to extract, slice and format the inner value of a ket state."""
+        parts = []
+        current = 0
+        for size, formatter in self.qubits_info:
+            slice_bin = state_bin[current : current + size]
+            val = int(slice_bin, 2) if slice_bin else 0
+            formatted_val = formatter(val)
 
-        is_unsigned = spec["f_type"] == "u"
-        val = _to_int(state_bin[spec["start"] : spec["end"]], unsigned=is_unsigned)
+            if latex:
+                parts.append(f"\\left|{formatted_val}\\right>")
+            else:
+                parts.append(f"|{formatted_val}⟩")
 
-        if spec["fixed_point"] is not None:
-            val = val / (2 ** spec["fixed_point"])
+            current += size
+        return parts
 
-        return str(val)
-
-    def _show_str(self, fmt_rules: list[_KetFormat], round_tol: float = 1e-6) -> str:
+    def _show_str(self, round_tol: float = 1e-6) -> str:
 
         def state_amp_str(state, amp):
             if abs(amp) < round_tol:
@@ -524,9 +402,7 @@ class QuantumState:
 
             state_bin = f"{state:0{self.size}b}"
 
-            ket_parts = [
-                f"|{self._get_ket_val(state_bin, spec)}⟩" for spec in fmt_rules
-            ]
+            ket_parts = self._get_ket_parts(state_bin, latex=False)
             dump_str = "".join(ket_parts)
 
             dump_str += f"\t({100*abs(amp)**2:.2f}%)\n"
@@ -576,7 +452,7 @@ class QuantumState:
         ]
         return "\n".join(line for line in lines if line)
 
-    def _show_latex(self, fmt_rules: list[_KetFormat], round_tol: float = 1e-6) -> Math:
+    def _show_latex(self, round_tol: float = 1e-6) -> Math:
 
         def float_to_math(num: float, is_complex: bool) -> str | None:
             if abs(num) < round_tol:
@@ -619,11 +495,7 @@ class QuantumState:
 
             state_bin = f"{state:0{len(self.qubits)}b}"
 
-            # Use the same exact helper to guarantee LaTeX and String match logic
-            state_parts = [
-                f"\\left|{self._get_ket_val(state_bin, spec)}\\right>"
-                for spec in fmt_rules
-            ]
+            state_parts = self._get_ket_parts(state_bin, latex=True)
             state_str_joined = "".join(state_parts)
 
             if real_str is not None and imag_str is not None:

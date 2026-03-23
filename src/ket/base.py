@@ -18,6 +18,7 @@ from __future__ import annotations
 
 
 from ctypes import c_size_t, c_uint8, c_void_p
+from functools import partial
 from json import loads
 from typing import Callable, Literal, Optional, Any
 import weakref
@@ -605,6 +606,17 @@ class Quant:
         from .qint import Qreal  # pylint: disable=import-outside-toplevel,cyclic-import
 
         return Qreal(self, exp, number)
+
+    def dump_format(self):
+        """Format for dump.
+
+        Used internally em calling :func:`~ket.operations.dump`.
+        """
+
+        def dump_format(size, state):
+            return f"{state:0{size}b}"
+
+        return partial(dump_format, len(self))
 
     def __repr__(self):
         return f"<Ket 'Quant' {self.qubits} pid={hex(id(self.process))}>"

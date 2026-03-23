@@ -561,7 +561,7 @@ def measure(qubits: Quant) -> Measurement:
     return Measurement(qubits, postprocessing)
 
 
-def dump(qubits: Quant) -> QuantumState:
+def dump(*qubits: list[Quant]) -> QuantumState:
     """Obtain the quantum state snapshot.
 
     Args:
@@ -570,10 +570,8 @@ def dump(qubits: Quant) -> QuantumState:
     Returns:
         Object representing the quantum state.
     """
-    if not isinstance(qubits, Quant):
-        qubits = reduce(Quant.__add__, qubits)
 
-    return QuantumState(qubits)
+    return QuantumState(*qubits)
 
 
 def sample(qubits: Quant, shots: int = 2048) -> Samples:

@@ -238,6 +238,12 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
         return partial(postprocessing, int(self.exp))
 
+    def dump_format(self):
+        def dump_format(pp, state):
+            return str(pp(state))
+
+        return partial(dump_format, self.postprocessing())
+
 
 class Qint(Qreal):
     """A quantum integer data structure.
@@ -251,3 +257,17 @@ class Qint(Qreal):
 
     def __init__(self, qubits, number: int = 0):
         super().__init__(qubits, exp=0, number=number)
+
+    def postprocessing(self):
+        """Returns a function to convert the internal integer state back to a int."""
+
+        def postprocessing(value):
+            return value
+
+        return postprocessing
+
+    def dump_format(self):
+        def dump_format(pp, state):
+            return str(pp(state))
+
+        return partial(dump_format, self.postprocessing())
