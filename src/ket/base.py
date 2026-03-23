@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from ctypes import c_size_t, c_uint8, c_void_p
 from json import loads
-from typing import Literal, Optional, Any
+from typing import Callable, Literal, Optional, Any
 import weakref
 
 from .clib.libket import LiveExecution, Process as LibketProcess, BatchExecution
@@ -472,11 +472,12 @@ class Quant:
 
     """
 
-    def __init__(self, *, qubits: list[int], process: Process, undo=None):
+    def __init__(self, *, qubits: list[int], process: Process, undo=None, source=None):
         self.qubits = qubits
         self.process = process
         if undo is not None:
             self._finalizer = weakref.finalize(self, undo)
+        self.source = source
 
     def _get_ket_process(self):
         return self.process
@@ -486,7 +487,11 @@ class Quant:
             raise ValueError("Cannot concatenate qubits from different processes")
         if any(qubit in other.qubits for qubit in self.qubits):
             raise ValueError("Cannot concatenate qubits with overlapping indices")
-        return Quant(qubits=self.qubits + other.qubits, process=self.process)
+        return Quant(
+            qubits=self.qubits + other.qubits,
+            process=self.process,
+            source=[self, other],
+        )
 
     def at(self, index: list[int]) -> Quant:
         """Return a subset of qubits at specified indices.
@@ -517,16 +522,25 @@ class Quant:
             A new :class:`~ket.base.Quant` object containing the selected qubits.
         """
 
-        return Quant(qubits=[self.qubits[i] for i in index], process=self.process)
+        return Quant(
+            qubits=[self.qubits[i] for i in index],
+            process=self.process,
+            source=self,
+        )
 
     def __reversed__(self):
-        return Quant(qubits=list(reversed(self.qubits)), process=self.process)
+        return Quant(
+            qubits=list(reversed(self.qubits)),
+            process=self.process,
+            source=self,
+        )
 
     def __getitem__(self, key):
         qubits = self.qubits.__getitem__(key)
         return Quant(
             qubits=qubits if isinstance(qubits, list) else [qubits],
             process=self.process,
+            source=self,
         )
 
     class _QuantIter:
@@ -558,6 +572,40 @@ class Quant:
 
         return undo(_flip_to_control(other), self)
 
+    def as_int(self, number: int = 0):
+        """Interprets and initializes the quantum register as a quantum integer.
+
+        Args:
+            number: The initial classical integer value to set the quantum
+                register to. Defaults to 0.
+
+        Returns:
+            :class:`~ket.qint.Qint`: A quantum integer data
+            structure wrapping this register.
+        """
+        from .qint import Qint  # pylint: disable=import-outside-toplevel,cyclic-import
+
+        return Qint(self, number)
+
+    def as_real(self, exp: int, number: float = 0.0):
+        r"""Interprets and initializes the quantum register as a fixed-point quantum real.
+
+        The real number is represented internally as an integer scaled by :math:`2^\texttt{exp}`.
+        A positive exponent provides fractional precision, while a negative exponent
+        allows representing larger numbers at the cost of fine-grained precision.
+
+        Args:
+            exp: The exponent defining the fixed-point scale (value x 2**exp).
+            number: The initial classical float value to set the quantum register to.
+                Defaults to 0.0.
+
+        Returns:
+            :class:`~ket.qint.Qreal`: A quantum real number data structure wrapping this register.
+        """
+        from .qint import Qreal  # pylint: disable=import-outside-toplevel,cyclic-import
+
+        return Qreal(self, exp, number)
+
     def __repr__(self):
         return f"<Ket 'Quant' {self.qubits} pid={hex(id(self.process))}>"
 
@@ -586,16 +634,19 @@ class Measurement:
             print(result.value)  # 0 or 3
     """
 
-    def __init__(self, qubits: Quant):
+    def __init__(
+        self,
+        qubits: Quant,
+        postprocessing: Callable[[int], Any] | None = None,
+    ):
         self.process = qubits.process
-        self.qubits = [qubits[i : i + 64] for i in range(0, len(qubits), 64)]
+        self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
         self.indexes = [
-            self.process.measure(
-                (c_size_t * len(qubit.qubits))(*qubit.qubits), len(qubit.qubits)
-            ).value
+            self.process.measure((c_size_t * len(qubit))(*qubit), len(qubit)).value
             for qubit in self.qubits
         ]
         self._value = None
+        self.postprocessing = postprocessing
 
     def _get_ket_process(self):
         return self.process
@@ -615,6 +666,8 @@ class Measurement:
     def value(self) -> int | None:
         """Retrieve the measurement value if available."""
         self._check()
+        if self.postprocessing is not None:
+            return self.postprocessing(self._value)
         return self._value
 
     def get(self) -> int:
@@ -667,14 +720,22 @@ class Samples:
 
     """
 
-    def __init__(self, qubits: Quant, shots: int = 2048):
-        self.qubits = qubits
+    def __init__(
+        self,
+        qubits: Quant,
+        shots: int = 2048,
+        postprocessing: Callable[[int], Any] | None = None,
+    ):
+        self.qubits = qubits.qubits
         self.process = qubits.process
         self.index = self.process.sample(
-            (c_size_t * len(qubits.qubits))(*qubits.qubits), len(qubits.qubits), shots
+            (c_size_t * len(self.qubits))(*self.qubits),
+            len(self.qubits),
+            shots,
         ).value
         self._value = None
         self.shots = shots
+        self.postprocessing = postprocessing
 
     def _check(self):
         if self._value is None:
@@ -691,6 +752,11 @@ class Samples:
     def value(self) -> dict[int, int] | None:
         """Retrieve the measurement samples if available."""
         self._check()
+        if self.postprocessing is not None:
+            return {
+                self.postprocessing(state): count
+                for state, count in self._value.items()
+            }
         return self._value
 
     def get(self) -> dict[int, int]:

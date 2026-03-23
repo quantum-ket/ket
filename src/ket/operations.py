@@ -93,7 +93,7 @@ def _flip_to_control(
             return qubits
 
         if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
+            qubits = reduce(Quant.__add__, qubits)
 
         length = len(qubits)
         if isinstance(control_state, Sized):
@@ -474,7 +474,12 @@ def undo(
         _allow_permutation.reset(token)
         ket_process._blocked_pop()
 
-    return Quant(qubits=qubits.qubits, process=ket_process, undo=undo_func)
+    return Quant(
+        qubits=qubits.qubits,
+        process=ket_process,
+        undo=undo_func,
+        source=qubits,
+    )
 
 
 @contextmanager
@@ -547,9 +552,13 @@ def measure(qubits: Quant) -> Measurement:
         Object representing the measurement results.
     """
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
-    return Measurement(qubits)
+    postprocessing = (
+        qubits.postprocessing() if hasattr(qubits, "postprocessing") else None
+    )
+
+    return Measurement(qubits, postprocessing)
 
 
 def dump(qubits: Quant) -> QuantumState:
@@ -562,7 +571,7 @@ def dump(qubits: Quant) -> QuantumState:
         Object representing the quantum state.
     """
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
     return QuantumState(qubits)
 
@@ -578,9 +587,13 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
         Object representing the measurement samples.
     """
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
-    return Samples(qubits, int(shots))
+    postprocessing = (
+        qubits.postprocessing() if hasattr(qubits, "postprocessing") else None
+    )
+
+    return Samples(qubits, int(shots), postprocessing)
 
 
 def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:

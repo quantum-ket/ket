@@ -17,7 +17,6 @@ from ctypes import c_int32, c_size_t
 from numbers import Number
 from itertools import product
 from functools import reduce
-from operator import add
 from typing import Literal
 
 from .base import Parameter, Process, Quant
@@ -65,7 +64,7 @@ class Pauli:
         _coef: float | None = None,
     ):
         if qubits is not None and not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
+            qubits = reduce(Quant.__add__, qubits)
 
         if pauli is not None and qubits is not None:
             self.process = qubits.process

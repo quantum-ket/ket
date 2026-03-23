@@ -48,7 +48,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from math import isclose, pi, prod
 from functools import reduce, wraps
-from operator import add
 from typing import Any, Callable
 import functools
 import contextvars
@@ -157,7 +156,7 @@ def I(  # pylint: disable=invalid-name missing-function-docstring
         return Pauli.i(qubits)
 
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
     return qubits
 
@@ -177,7 +176,7 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         return Pauli.x(qubits)
 
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
     process = qubits._get_ket_process()
 
@@ -217,7 +216,7 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         return Pauli.y(qubits)
 
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
     process = qubits._get_ket_process()
 
@@ -257,7 +256,7 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
         return Pauli.z(qubits)
 
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
     for qubit in qubits.qubits:
         qubits.process.apply_gate(PAULI_Z, 0.0, False, 0, qubit)
@@ -276,7 +275,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
     qubits: Quant,
 ) -> Quant:
     if not isinstance(qubits, Quant):
-        qubits = reduce(add, qubits)
+        qubits = reduce(Quant.__add__, qubits)
 
     process = qubits._get_ket_process()
 
@@ -334,7 +333,7 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
+            qubits = reduce(Quant.__add__, qubits)
 
         process = qubits._get_ket_process()
 
@@ -404,7 +403,7 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
+            qubits = reduce(Quant.__add__, qubits)
 
         process = qubits._get_ket_process()
 
@@ -467,7 +466,7 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
+            qubits = reduce(Quant.__add__, qubits)
 
         for qubit in qubits.qubits:
             if isinstance(theta, Parameter):
@@ -507,7 +506,7 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
-            qubits = reduce(add, qubits)
+            qubits = reduce(Quant.__add__, qubits)
 
         for qubit in qubits.qubits:
             if isinstance(theta, Parameter):
