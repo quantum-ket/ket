@@ -23,7 +23,12 @@ from json import loads
 from typing import Callable, Literal, Optional, Any
 import weakref
 
-from .clib.libket import LiveExecution, Process as LibketProcess, BatchExecution
+from .clib.libket import (
+    HasProcess,
+    LiveExecution,
+    Process as LibketProcess,
+    BatchExecution,
+)
 from .clib.kbw import get_simulator
 
 try:
@@ -160,7 +165,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             self.configuration = execution_target
             ptr = self.configuration.connect()
             assert isinstance(ptr, c_void_p)
-            super().__init__(ptr)
+            super().__init__(self, ptr)
         else:
             simulator = "sparse" if simulator is None else simulator
             num_qubits = (
@@ -169,13 +174,14 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 else num_qubits
             )
             super().__init__(
+                self,
                 get_simulator(
                     num_qubits=num_qubits,
                     simulator=simulator,
                     execution="live" if execution is None else execution,
                     gradient=gradient,
                     **kwargs,
-                )
+                ),
             )
 
         self._aux_pool = []
@@ -263,9 +269,6 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
         self._aux.difference_update(qubits)
         self._aux_pool.extend(qubits)
-
-    def _get_ket_process(self):
-        return self
 
     def get_instructions(self) -> list[dict]:
         """Retrieve quantum instructions from the process.
@@ -420,7 +423,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         return f"<Ket 'Process' id={hex(id(self))}>"
 
 
-class Quant:
+class Quant(HasProcess):
     """List of qubits.
 
     This class represents a list of qubit indices within a quantum process. Direct instantiation
@@ -474,23 +477,21 @@ class Quant:
     """
 
     def __init__(self, *, qubits: list[int], process: Process, undo=None, source=None):
+        super().__init__(ket_process=process)
+
         self.qubits = qubits
-        self.process = process
         if undo is not None:
             self._finalizer = weakref.finalize(self, undo)
         self.source = source
 
-    def _get_ket_process(self):
-        return self.process
-
     def __add__(self, other: Quant) -> Quant:
-        if self.process is not other.process:
+        if self.ket_process is not other.ket_process:
             raise ValueError("Cannot concatenate qubits from different processes")
         if any(qubit in other.qubits for qubit in self.qubits):
             raise ValueError("Cannot concatenate qubits with overlapping indices")
         return Quant(
             qubits=self.qubits + other.qubits,
-            process=self.process,
+            process=self.ket_process,
             source=[self, other],
         )
 
@@ -525,14 +526,14 @@ class Quant:
 
         return Quant(
             qubits=[self.qubits[i] for i in index],
-            process=self.process,
+            process=self.ket_process,
             source=self,
         )
 
     def __reversed__(self):
         return Quant(
             qubits=list(reversed(self.qubits)),
-            process=self.process,
+            process=self.ket_process,
             source=self,
         )
 
@@ -540,7 +541,7 @@ class Quant:
         qubits = self.qubits.__getitem__(key)
         return Quant(
             qubits=qubits if isinstance(qubits, list) else [qubits],
-            process=self.process,
+            process=self.ket_process,
             source=self,
         )
 
@@ -619,10 +620,10 @@ class Quant:
         return partial(dump_format, len(self))
 
     def __repr__(self):
-        return f"<Ket 'Quant' {self.qubits} pid={hex(id(self.process))}>"
+        return f"<Ket 'Quant' {self.qubits} pid={hex(id(self.ket_process))}>"
 
 
-class Measurement:
+class Measurement(HasProcess):
     """Quantum measurement result.
 
     This class holds a reference for a measurement result. The result may not be available right
@@ -651,22 +652,24 @@ class Measurement:
         qubits: Quant,
         postprocessing: Callable[[int], Any] | None = None,
     ):
-        self.process = qubits.process
+        super().__init__(ket_process=qubits.ket_process)
+
+        if any(self.ket_process._is_aux(q) for q in qubits.qubits):
+            raise ValueError("Auxiliary qubits cannot be measured")
+
         self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
+        self.size = len(qubits)
         self.indexes = [
-            self.process.measure((c_size_t * len(qubit))(*qubit), len(qubit)).value
+            self.ket_process.measure((c_size_t * len(qubit))(*qubit), len(qubit)).value
             for qubit in self.qubits
         ]
         self._value = None
         self.postprocessing = postprocessing
 
-    def _get_ket_process(self):
-        return self.process
-
     def _check(self):
         if self._value is None:
             available, values = zip(
-                *(self.process.get_measurement(index) for index in self.indexes)
+                *(self.ket_process.get_measurement(index) for index in self.indexes)
             )
             if all(map(lambda a: a.value, available)):
                 self._value = 0
@@ -675,14 +678,29 @@ class Measurement:
                     self._value |= value.value
 
     @property
-    def value(self) -> int | None:
+    def value(self) -> Any | None:
         """Retrieve the measurement value if available."""
         self._check()
         if self.postprocessing is not None:
             return self.postprocessing(self._value)
         return self._value
 
-    def get(self) -> int:
+    @property
+    def raw_value(self) -> int | None:
+        """Retrieve the measurement value if available (without postprocessing)."""
+        self._check()
+        return self._value
+
+    @property
+    def bitstring(self) -> str | None:
+        """Retrieve the measurement bitstring if available."""
+        self._check()
+        if self._value is not None:
+            return f"{self._value:0{self.size}b}"
+
+        return self._value
+
+    def get(self) -> Any:
         """Retrieve the measurement value.
 
         If the value is not available, the quantum process will execute to get the result.
@@ -690,17 +708,17 @@ class Measurement:
 
         self._check()
         if self._value is None:
-            self.process.execute()
+            self.ket_process.execute()
         return self.value
 
     def __repr__(self):
         return (
             f"<Ket 'Measurement' indexes={self.indexes}, "
-            f"value={self.value}, pid={hex(id(self.process))}>"
+            f"value={self.value}, pid={hex(id(self.ket_process))}>"
         )
 
 
-class Samples:
+class Samples(HasProcess):
     """Quantum state measurement samples.
 
     This class holds a reference for a measurement sample result. The result may not be available
@@ -738,9 +756,15 @@ class Samples:
         shots: int = 2048,
         postprocessing: Callable[[int], Any] | None = None,
     ):
+        super().__init__(ket_process=qubits.ket_process)
+
         self.qubits = qubits.qubits
-        self.process = qubits.process
-        self.index = self.process.sample(
+        self.size = len(qubits)
+
+        if any(self.ket_process._is_aux(q) for q in self.qubits):
+            raise ValueError("Auxiliary qubits cannot be measured")
+
+        self.index = self.ket_process.sample(
             (c_size_t * len(self.qubits))(*self.qubits),
             len(self.qubits),
             shots,
@@ -756,18 +780,34 @@ class Samples:
                 states,
                 count,
                 size,
-            ) = self.process.get_sample(self.index)
+            ) = self.ket_process.get_sample(self.index)
             if available.value:
                 self._value = dict(zip(states[: size.value], count[: size.value]))
 
     @property
-    def value(self) -> dict[int, int] | None:
+    def value(self) -> dict[Any, int] | None:
         """Retrieve the measurement samples if available."""
         self._check()
         if self.postprocessing is not None:
             return {
                 self.postprocessing(state): count
                 for state, count in self._value.items()
+            }
+        return self._value
+
+    @property
+    def raw_value(self) -> dict[int, int] | None:
+        """Retrieve the measurement samples if available (without postprocessing)."""
+        self._check()
+        return self._value
+
+    @property
+    def bitstring(self) -> dict[str, int] | None:
+        """Retrieve the bitstring samples if available."""
+        self._check()
+        if self.postprocessing is not None:
+            return {
+                f"{state:0{self.size}b}": count for state, count in self._value.items()
             }
         return self._value
 
@@ -779,7 +819,7 @@ class Samples:
 
         self._check()
         if self._value is None:
-            self.process.execute()
+            self.ket_process.execute()
         return self.value
 
     def most_frequent_state(self) -> int:
@@ -842,7 +882,7 @@ class Samples:
         return fig
 
     def __repr__(self) -> str:
-        return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.process))}>"
+        return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.ket_process))}>"
 
 
 def _check_visualize():
@@ -853,7 +893,7 @@ def _check_visualize():
         )
 
 
-class Parameter:
+class Parameter(HasProcess):
     """Parameter for gradient calculation.
 
     This class represents a parameter for gradient calculation in a quantum process. It should not
@@ -861,7 +901,7 @@ class Parameter:
     """
 
     def __init__(self, process, index, value, multiplier=1):
-        self._process = process
+        super().__init__(ket_process=process)
         self._index = index
         self._param = value
         self._multiplier = multiplier
@@ -870,7 +910,7 @@ class Parameter:
     def __mul__(self, other: float) -> Parameter:
         other = float(other)
         return Parameter(
-            self._process,
+            self.ket_process,
             self._index,
             self._param,
             self._multiplier * other,
@@ -881,7 +921,7 @@ class Parameter:
     def __truediv__(self, other: float) -> Parameter:
         other = float(other)
         return Parameter(
-            self._process,
+            self.ket_process,
             self._index,
             self._param,
             self._multiplier / other,
@@ -889,7 +929,7 @@ class Parameter:
 
     def __neg__(self) -> Parameter:
         return Parameter(
-            self._process,
+            self.ket_process,
             self._index,
             self._param,
             -self._multiplier,
@@ -898,7 +938,7 @@ class Parameter:
     def __repr__(self):
         return (
             f"<Ket 'Parameter' param={self._param}, value={self.value},"
-            + f" index={self._index}, pid={hex(id(self._process))}>"
+            + f" index={self._index}, pid={hex(id(self.ket_process))}>"
         )
 
     def __float__(self):
@@ -918,7 +958,7 @@ class Parameter:
     def grad(self) -> float | None:
         """Retrieve the gradient value if available."""
         if self._gradient is None:
-            available, value = self._process.get_gradient(self._index)
+            available, value = self.ket_process.get_gradient(self._index)
             if available.value:
                 self._gradient = value.value
         return self._gradient

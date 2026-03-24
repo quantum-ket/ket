@@ -234,10 +234,24 @@ def set_log(level: int):
     API["ket_set_log_level"](level)
 
 
-class Process:
+class HasProcess:  # pylint: disable=too-few-public-methods
+    """Object with an associated quantum process."""
+
+    def __init__(self, ket_process):
+        self._ket_process = ket_process
+
+    @property
+    def ket_process(self):
+        """Get Ket process."""
+        return self._ket_process
+
+
+class Process(HasProcess):
     """Libket process wrapper from C API"""
 
-    def __init__(self, configuration):
+    def __init__(self, ket_process, configuration):
+        super().__init__(ket_process=ket_process)
+
         self._as_parameter_ = API["ket_process_new"](configuration)
         self._finalizer = weakref.finalize(
             self, API["ket_process_delete"], self._as_parameter_

@@ -17,6 +17,8 @@ from collections import defaultdict
 from typing import Literal, Callable
 from ctypes import c_size_t
 
+from .clib.libket import HasProcess
+
 from .base import Quant, _check_visualize
 
 try:
@@ -42,7 +44,7 @@ except ImportError:
 __all__ = ["QuantumState"]
 
 
-class QuantumState:
+class QuantumState(HasProcess):
     """Snapshot of a quantum state.
 
     This class holds a reference for a snapshot of a quantum state obtained using a quantum
@@ -56,6 +58,8 @@ class QuantumState:
     """
 
     def __init__(self, *qubits: Quant):
+        super().__init__(ket_process=qubits[0].ket_process)
+
         self.qubits = []
         self.qubits_info: list[tuple[int, Callable[[int], str]]] = []
 
@@ -63,26 +67,20 @@ class QuantumState:
             self.qubits.extend(qubit.qubits)
             self.qubits_info.append((len(qubit), qubit.dump_format()))
 
-        self.process = qubits[0].process if qubits else None
-
-        if self.process:
-            self.index = self.process.dump(
-                (c_size_t * len(self.qubits))(*self.qubits), len(self.qubits)
-            ).value
+        self.index = self.ket_process.dump(
+            (c_size_t * len(self.qubits))(*self.qubits), len(self.qubits)
+        ).value
 
         self.size = len(self.qubits)
         self._states = None
 
-    def _get_ket_process(self):
-        return self.process
-
     def _check(self):
         if self._states is None:
-            available, size = self.process.get_dump_size(self.index)
+            available, size = self.ket_process.get_dump_size(self.index)
             if available.value:
                 states = defaultdict(complex)
                 for i in range(size.value):
-                    state, state_size, amp_real, amp_imag = self.process.get_dump(
+                    state, state_size, amp_real, amp_imag = self.ket_process.get_dump(
                         self.index, i
                     )
                     state = int(
@@ -121,7 +119,7 @@ class QuantumState:
         """
         self._check()
         if self._states is None:
-            self.process.execute()
+            self.ket_process.execute()
         return self.states
 
     @property
@@ -562,4 +560,6 @@ class QuantumState:
         return fig
 
     def __repr__(self):
-        return f"<Ket 'QuantumState' index={self.index}, pid={hex(id(self.process))}>"
+        return (
+            f"<Ket 'QuantumState' index={self.index}, pid={hex(id(self.ket_process))}>"
+        )

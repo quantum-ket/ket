@@ -21,7 +21,7 @@ from typing import Literal
 
 from .base import Parameter, Process, Quant
 
-from .clib.libket import API
+from .clib.libket import API, HasProcess
 
 __all__ = [
     "Pauli",
@@ -31,7 +31,7 @@ __all__ = [
 ]
 
 
-class Pauli:
+class Pauli(HasProcess):
     """Pauli operator for Hamiltonian creation.
 
     .. tip::
@@ -67,7 +67,7 @@ class Pauli:
             qubits = reduce(Quant.__add__, qubits)
 
         if pauli is not None and qubits is not None:
-            self.process = qubits.process
+            super().__init__(ket_process=qubits.ket_process)
             self.map = {q: pauli for q in qubits.qubits}
             self.coef = 1.0
         else:
@@ -75,8 +75,7 @@ class Pauli:
                 "If pauli and qubits are not provided, "
                 "process, map, and coef must be provided."
             )
-
-            self.process = _process
+            super().__init__(ket_process=_process)
             self.map = _map
             self.coef = _coef
 
@@ -89,7 +88,7 @@ class Pauli:
             return Pauli(
                 None,
                 None,
-                _process=self.process,
+                _process=self.ket_process,
                 _map=self.map,
                 _coef=self.coef * other,
             )
@@ -97,7 +96,7 @@ class Pauli:
         if isinstance(other, Hamiltonian):
             return other.__mul__(self)
 
-        if self.process is not other.process:
+        if self.ket_process is not other.ket_process:
             raise ValueError("different Ket processes")
 
         if not set(self.map.keys()).isdisjoint(other.map.keys()):
@@ -106,16 +105,16 @@ class Pauli:
         return Pauli(
             None,
             None,
-            _process=self.process,
+            _process=self.ket_process,
             _map={**self.map, **other.map},
             _coef=self.coef * other.coef,
         )
 
     def __matmul__(self, rhs: Pauli) -> Pauli:  # pylint:disable=too-many-branches
         if isinstance(rhs, Hamiltonian):
-            return Hamiltonian([self], self.process) @ rhs
+            return Hamiltonian([self], self.ket_process) @ rhs
 
-        if self.process is not rhs.process:
+        if self.ket_process is not rhs.ket_process:
             raise ValueError("different Ket processes")
 
         qubits = {*self.map.keys(), *rhs.map.keys()}
@@ -158,7 +157,7 @@ class Pauli:
         return Pauli(
             None,
             None,
-            _process=self.process,
+            _process=self.ket_process,
             _map=result_map,
             _coef=coef,
         )
@@ -170,15 +169,15 @@ class Pauli:
 
     def __add__(self, other) -> Hamiltonian:
         if isinstance(other, Number):
-            other = Pauli(None, None, _process=self.process, _map={}, _coef=other)
+            other = Pauli(None, None, _process=self.ket_process, _map={}, _coef=other)
 
-        if self.process is not other.process:
+        if self.ket_process is not other.ket_process:
             raise ValueError("different Ket processes")
 
         if isinstance(other, Hamiltonian):
-            result = Hamiltonian([self], process=self.process) + other
+            result = Hamiltonian([self], process=self.ket_process) + other
         else:
-            result = Hamiltonian([self, other], process=self.process)
+            result = Hamiltonian([self, other], process=self.ket_process)
 
         result._filter()
         return result
@@ -237,10 +236,10 @@ class Pauli:
         return f"{self.coef}" + ("*" + self._str_no_coef() if len(self.map) > 0 else "")
 
     def __repr__(self) -> str:
-        return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.process))}>"
+        return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.ket_process))}>"
 
 
-class Hamiltonian:
+class Hamiltonian(HasProcess):
     """Hamiltonian for expected value calculation.
 
     This class is not intended to be instantiated directly. Instead, it should be created
@@ -249,20 +248,22 @@ class Hamiltonian:
     """
 
     def __init__(self, pauli_products: list[Pauli], process: Process):
-        self.process = process
+        super().__init__(ket_process=process)
         self.pauli_products = pauli_products
         assert all(isinstance(p, Pauli) for p in pauli_products)
 
     def __add__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Number):
-            other = Pauli(None, None, _process=self.process, _map={}, _coef=other)
+            other = Pauli(None, None, _process=self.ket_process, _map={}, _coef=other)
         if isinstance(other, Pauli):
-            other = Hamiltonian([other], self.process)
+            other = Hamiltonian([other], self.ket_process)
 
-        if self.process is not other.process:
+        if self.ket_process is not other.ket_process:
             raise ValueError("different Ket processes")
 
-        result = Hamiltonian(self.pauli_products + other.pauli_products, self.process)
+        result = Hamiltonian(
+            self.pauli_products + other.pauli_products, self.ket_process
+        )
         result._filter()
 
         return result
@@ -289,11 +290,11 @@ class Hamiltonian:
 
     def __matmul__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Pauli):
-            other = Hamiltonian([other], self.process)
+            other = Hamiltonian([other], self.ket_process)
 
         result = Hamiltonian(
             [a @ b for a, b in product(self.pauli_products, other.pauli_products)],
-            self.process,
+            self.ket_process,
         )
 
         result._filter()
@@ -306,13 +307,13 @@ class Hamiltonian:
     def __mul__(self, other: float | Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, (Number, Pauli, Parameter)):
             return Hamiltonian(
-                [p * other for p in self.pauli_products], process=self.process
+                [p * other for p in self.pauli_products], process=self.ket_process
             )
 
         if isinstance(other, Hamiltonian):
             return Hamiltonian(
                 [p * q for p, q in product(self.pauli_products, other.pauli_products)],
-                process=self.process,
+                process=self.ket_process,
             )
 
         raise TypeError(
@@ -341,7 +342,7 @@ class Hamiltonian:
     def __repr__(self) -> str:
         return (
             f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.pauli_products)}, "
-            f"pid={hex(id(self.process))}>"
+            f"pid={hex(id(self.ket_process))}>"
         )
 
 
@@ -350,7 +351,7 @@ def commutator(a: Hamiltonian, b: Hamiltonian) -> Hamiltonian:
     return a @ b - b @ a
 
 
-class ExpValue:
+class ExpValue(HasProcess):
     """Expected value for a quantum state.
 
     This class holds a reference for a expected value result. The result may not be available right
@@ -379,10 +380,9 @@ class ExpValue:
     pauli_map = {"X": 1, "Y": 2, "Z": 3}
 
     def __init__(self, hamiltonian: Hamiltonian | Pauli):
+        super().__init__(ket_process=hamiltonian.ket_process)
         if isinstance(hamiltonian, Pauli):
-            hamiltonian = Hamiltonian([hamiltonian], process=hamiltonian.process)
-
-        self.process = hamiltonian.process
+            hamiltonian = Hamiltonian([hamiltonian], process=hamiltonian.ket_process)
 
         hamiltonian_ptr = API["ket_hamiltonian_new"]()
         products_count = 0
@@ -422,14 +422,14 @@ class ExpValue:
             products_count += 1
 
         if products_count > 0:
-            self.index = self.process.exp_value(hamiltonian_ptr).value
+            self.index = self.ket_process.exp_value(hamiltonian_ptr).value
             self._value = None
         else:
             self._value = self._i_coef
 
     def _check(self):
         if self._value is None:
-            available, value = self.process.get_exp_value(self.index)
+            available, value = self.ket_process.get_exp_value(self.index)
             if available.value:
                 self._value = value.value + self._i_coef
 
@@ -447,8 +447,8 @@ class ExpValue:
 
         self._check()
         if self._value is None:
-            self.process.execute()
+            self.ket_process.execute()
         return self.value
 
     def __repr__(self) -> str:
-        return f"<Ket 'ExpValue' value={self.value}, pid={hex(id(self.process))}>"
+        return f"<Ket 'ExpValue' value={self.value}, pid={hex(id(self.ket_process))}>"

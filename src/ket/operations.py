@@ -111,9 +111,11 @@ def _flip_to_control(
 
             state = [int(i) for i in f"{{:0{length}b}}".format(control_state)]
 
+        process = qubits.ket_process
+
         for i, qubit in zip(state, qubits):
             if i == 0:
-                qubit.process.apply_gate(PAULI_X, 0.0, False, 0, qubit.qubits[0])
+                process.apply_gate(PAULI_X, 0.0, False, 0, qubit.qubits[0])
         return qubits
 
     if qubits is None:
@@ -167,7 +169,7 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
 
     if not isinstance(control_qubits, Quant):
         control_qubits = reduce(add, control_qubits)
-    process = control_qubits.process
+    process = control_qubits.ket_process
 
     if state is not None:
         warnings.warn(
@@ -259,8 +261,8 @@ def C(gate: Callable) -> Callable:  # pylint: disable=invalid-name
 
 def _search_process(ket_process, args, kwargs):
     def inner(ket_process, arg):
-        if hasattr(arg, "_get_ket_process"):
-            arg_process = arg._get_ket_process()
+        if hasattr(arg, "ket_process"):
+            arg_process = arg.ket_process
             if ket_process is not None and ket_process is not arg_process:
                 raise ValueError("parameter with different Ket processes")
             ket_process = arg_process
@@ -452,7 +454,7 @@ def undo(
 
     token = _allow_permutation.set(True)
 
-    ket_process = qubits._get_ket_process()
+    ket_process = qubits.ket_process
     ket_process._blocked_push()
 
     ket_process.ctrl_stack()

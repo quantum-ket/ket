@@ -9,7 +9,7 @@
 from functools import partial
 from math import pi
 from .base import Quant
-from .gates import X, QFT, P
+from .gates import X, QFT, P, is_permutation
 from .operations import C, control, ctrl, around, adj, undo
 
 __all__ = ["Qreal", "Qint"]
@@ -18,6 +18,14 @@ __all__ = ["Qreal", "Qint"]
 def _to_bin(num, n_bits):
     """Converts an integer to its binary string representation with a fixed number of bits."""
     return f"{num & ((1 << n_bits) - 1):0{n_bits}b}"
+
+
+def _to_signed(value, n_bits):
+    value = value & ((1 << n_bits) - 1)
+    sing_bit = 1 << (n_bits - 1)
+    if value & sing_bit:
+        return value - (1 << n_bits)
+    return value
 
 
 def _set_int(qubits: Quant, state: int):
@@ -90,6 +98,7 @@ def _addi_qi(lhs: Quant, rhs: int | str, m=1):
         _addi_qi(lhs[1:], rhs, m)
 
 
+@is_permutation
 def _addi(lhs, rhs, m: int = 1):
     """General in-place addition using the QFT."""
     with around(QFT, reversed(lhs), False):
@@ -116,7 +125,9 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
     """
 
     def __init__(self, qubits: Quant, exp, number: float = 0.0):
-        super().__init__(qubits=qubits.qubits, process=qubits.process)
+        super().__init__(
+            qubits=qubits.qubits, process=qubits.ket_process, source=qubits
+        )
         self.exp = exp
         number = round(number * 2**exp)
         _set_int(qubits, number)
@@ -135,7 +146,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
     def copy(self):
         """Copies the quantum state into a new Qreal register."""
-        other = self._get_ket_process().alloc_aux(len(self))
+        other = self.ket_process.alloc_aux(len(self))
 
         def inner_copy(other):
             for s, o in zip(self, other):
@@ -179,14 +190,14 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
             ctrl(q, _addi)(result, other, m=2 ** (i + m))
 
     def __mul__(self, other):
-        result_quant = self._get_ket_process().alloc_aux(len(self))
+        result_quant = self.ket_process.alloc_aux(len(self))
         new_exp = self.exp + other.exp if isinstance(other, Qreal) else self.exp
 
         raw_result = undo(partial(self.mul, other), result_quant)
         return Qreal(raw_result, exp=new_exp)
 
     def __truediv__(self, other):
-        result_quant = self._get_ket_process().alloc_aux(len(self))
+        result_quant = self.ket_process.alloc_aux(len(self))
         new_exp = self.exp - other.exp if isinstance(other, Qreal) else self.exp
 
         raw_result = undo(partial(adj(self.mul), other), result_quant)
@@ -219,7 +230,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return undo(X, (self > other))
 
     def __eq__(self, other):
-        result = self._get_ket_process().alloc_aux()
+        result = self.ket_process.alloc_aux()
 
         def eq(result):
             with control(Quant.__eq__(self - other, 0)):
@@ -233,10 +244,12 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
     def postprocessing(self):
         """Returns a function to convert the internal integer state back to a float."""
 
-        def postprocessing(exp, value):
+        def postprocessing(exp, size, value):
+            value = _to_signed(value, size)
+
             return value / (2**exp)
 
-        return partial(postprocessing, int(self.exp))
+        return partial(postprocessing, int(self.exp), len(self))
 
     def dump_format(self):
         def dump_format(pp, state):
@@ -261,13 +274,7 @@ class Qint(Qreal):
     def postprocessing(self):
         """Returns a function to convert the internal integer state back to a int."""
 
-        def postprocessing(value):
-            return value
+        def postprocessing(size, value):
+            return _to_signed(value, size)
 
-        return postprocessing
-
-    def dump_format(self):
-        def dump_format(pp, state):
-            return str(pp(state))
-
-        return partial(dump_format, self.postprocessing())
+        return partial(postprocessing, len(self))

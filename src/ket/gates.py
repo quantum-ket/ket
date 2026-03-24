@@ -178,7 +178,7 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(Quant.__add__, qubits)
 
-    process = qubits._get_ket_process()
+    process = qubits.ket_process
 
     is_diag = _is_diagonal.get()
     allow_perm = _allow_permutation.get()
@@ -218,7 +218,7 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(Quant.__add__, qubits)
 
-    process = qubits._get_ket_process()
+    process = qubits.ket_process
 
     is_diag = _is_diagonal.get()
     allow_perm = _allow_permutation.get()
@@ -258,8 +258,10 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(Quant.__add__, qubits)
 
+    process = qubits.ket_process
+
     for qubit in qubits.qubits:
-        qubits.process.apply_gate(PAULI_Z, 0.0, False, 0, qubit)
+        process.apply_gate(PAULI_Z, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -277,7 +279,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
     if not isinstance(qubits, Quant):
         qubits = reduce(Quant.__add__, qubits)
 
-    process = qubits._get_ket_process()
+    process = qubits.ket_process
 
     is_diag = _is_diagonal.get()
     is_perm = _is_permutation.get()
@@ -297,7 +299,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         if is_aux and not is_diag:
             process._block_ctrl()
 
-        qubits.process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
+        process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
     return qubits
 
 
@@ -335,7 +337,7 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
-        process = qubits._get_ket_process()
+        process = qubits.ket_process
 
         is_diag = _is_diagonal.get() or theta_diagonal
         is_perm = _is_permutation.get() or theta_permutation
@@ -405,7 +407,7 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
-        process = qubits._get_ket_process()
+        process = qubits.ket_process
 
         is_diag = _is_diagonal.get() or theta_diagonal
         is_perm = _is_permutation.get() or theta_permutation
@@ -426,7 +428,7 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
                 process._block_ctrl()
 
             if isinstance(theta, Parameter):
-                qubits.process.apply_gate(
+                process.apply_gate(
                     ROTATION_Y,
                     theta._multiplier,
                     True,
@@ -434,7 +436,7 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
                     qubit,
                 )
             else:
-                qubits.process.apply_gate(
+                process.apply_gate(
                     ROTATION_Y,
                     theta,
                     False,
@@ -468,9 +470,11 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
+        process = qubits.ket_process
+
         for qubit in qubits.qubits:
             if isinstance(theta, Parameter):
-                qubits.process.apply_gate(
+                process.apply_gate(
                     ROTATION_Z,
                     theta._multiplier,
                     True,
@@ -478,7 +482,7 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
                     qubit,
                 )
             else:
-                qubits.process.apply_gate(
+                process.apply_gate(
                     ROTATION_Z,
                     theta,
                     False,
@@ -508,9 +512,11 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
+        process = qubits.ket_process
+
         for qubit in qubits.qubits:
             if isinstance(theta, Parameter):
-                qubits.process.apply_gate(
+                process.apply_gate(
                     PHASE_SHIFT,
                     theta._multiplier,
                     True,
@@ -518,7 +524,7 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
                     qubit,
                 )
             else:
-                qubits.process.apply_gate(
+                process.apply_gate(
                     PHASE_SHIFT,
                     theta,
                     False,
@@ -896,7 +902,7 @@ def evolve(hamiltonian: Hamiltonian):
         if gates[0] != gates[1]:
             raise ValueError("Only XX, YY, and ZZ interactions are supported")
 
-    process = hamiltonian.process
+    process = hamiltonian.ket_process
     for pauli in hamiltonian.pauli_products:
         if len(pauli) == 0:
             continue
