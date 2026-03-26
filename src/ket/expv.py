@@ -247,10 +247,10 @@ class Hamiltonian(HasProcess):
     objects.
     """
 
-    def __init__(self, pauli_products: list[Pauli], process: Process):
+    def __init__(self, terms: list[Pauli], process: Process):
         super().__init__(ket_process=process)
-        self.pauli_products = pauli_products
-        assert all(isinstance(p, Pauli) for p in pauli_products)
+        self.terms = terms
+        assert all(isinstance(p, Pauli) for p in terms)
 
     def __add__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Number):
@@ -261,9 +261,7 @@ class Hamiltonian(HasProcess):
         if self.ket_process is not other.ket_process:
             raise ValueError("different Ket processes")
 
-        result = Hamiltonian(
-            self.pauli_products + other.pauli_products, self.ket_process
-        )
+        result = Hamiltonian(self.terms + other.terms, self.ket_process)
         result._filter()
 
         return result
@@ -275,7 +273,7 @@ class Hamiltonian(HasProcess):
 
     def _filter(self):
         new_terms = {}
-        for term in self.pauli_products:
+        for term in self.terms:
             str_term = term._str_no_coef()
             if all(c not in str_term for c in "XYZ"):
                 str_term = ""
@@ -284,16 +282,14 @@ class Hamiltonian(HasProcess):
             else:
                 new_terms[str_term].coef += term.coef
 
-        self.pauli_products = [
-            term for term in new_terms.values() if abs(term.coef) > 1e-10
-        ]
+        self.terms = [term for term in new_terms.values() if abs(term.coef) > 1e-10]
 
     def __matmul__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Pauli):
             other = Hamiltonian([other], self.ket_process)
 
         result = Hamiltonian(
-            [a @ b for a, b in product(self.pauli_products, other.pauli_products)],
+            [a @ b for a, b in product(self.terms, other.terms)],
             self.ket_process,
         )
 
@@ -307,12 +303,12 @@ class Hamiltonian(HasProcess):
     def __mul__(self, other: float | Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, (Number, Pauli, Parameter)):
             return Hamiltonian(
-                [p * other for p in self.pauli_products], process=self.ket_process
+                [p * other for p in self.terms], process=self.ket_process
             )
 
         if isinstance(other, Hamiltonian):
             return Hamiltonian(
-                [p * q for p, q in product(self.pauli_products, other.pauli_products)],
+                [p * q for p, q in product(self.terms, other.terms)],
                 process=self.ket_process,
             )
 
@@ -337,11 +333,11 @@ class Hamiltonian(HasProcess):
         return -1.0 * self
 
     def __len__(self) -> int:
-        return len(self.pauli_products)
+        return len(self.terms)
 
     def __repr__(self) -> str:
         return (
-            f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.pauli_products)}, "
+            f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.terms)}, "
             f"pid={hex(id(self.ket_process))}>"
         )
 
@@ -387,7 +383,7 @@ class ExpValue(HasProcess):
         hamiltonian_ptr = API["ket_hamiltonian_new"]()
         products_count = 0
         self._i_coef = 0.0
-        for pauli_product in hamiltonian.pauli_products:
+        for pauli_product in hamiltonian.terms:
             if len(pauli_product.map) == 0:
                 self._i_coef += pauli_product.coef.real
                 continue

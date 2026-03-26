@@ -893,9 +893,9 @@ _EVOLVE_GATES = {
 
 def evolve(hamiltonian: Hamiltonian):
     """Evolve the quantum state according to the given Hamiltonian."""
-    if max(map(len, hamiltonian.pauli_products)) > 2:
+    if max(map(len, hamiltonian.terms)) > 2:
         raise ValueError("Only 1- and 2-qubit terms are supported in evolve.")
-    for pauli in hamiltonian.pauli_products:
+    for pauli in hamiltonian.terms:
         if len(pauli) <= 1:
             continue
         gates = list(pauli.map.values())
@@ -903,7 +903,7 @@ def evolve(hamiltonian: Hamiltonian):
             raise ValueError("Only XX, YY, and ZZ interactions are supported")
 
     process = hamiltonian.ket_process
-    for pauli in hamiltonian.pauli_products:
+    for pauli in hamiltonian.terms:
         if len(pauli) == 0:
             continue
         qubits = Quant(qubits=list(pauli.map.keys()), process=process)

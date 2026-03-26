@@ -57,6 +57,7 @@ __all__ = [
     "using_aux",
     "undo",
     "C",
+    "kernel",
 ]
 
 
@@ -664,3 +665,68 @@ def using_aux(unsafe: bool = False, **names):
         return call
 
     return inner
+
+
+def kernel(*p_args, **p_kwargs):
+    """Quantum kernel decorator.
+
+    Example:
+        .. code-block:: python
+
+            @kernel(num_qubits=2, execution="batch")(a=1, b=1)
+            def bell(a, b):
+                X(a + b)
+                CNOT(H(a), b)
+
+                with obs():
+                    a0 = Z(a)
+                    a1 = X(a)
+                    b0 = -(X(b) + Z(b)) / sqrt(2)
+                    b1 = (X(b) - Z(b)) / sqrt(2)
+                    h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
+
+                return exp_value(h).get()
+
+            print(bell())
+    """
+
+    def make_process(**names):
+        def make_kernel(func):
+            param = signature(func).parameters
+
+            @wraps(func)
+            def call(*args, **kwargs):
+                process = Process(*p_args, **p_kwargs)
+
+                kwargs_ex = {**kwargs, **dict(zip(param, args))}
+
+                for name, num_qubits in names.items():
+                    if name in kwargs_ex:
+                        continue
+
+                    if callable(num_qubits):
+                        try:
+                            nq_args = {
+                                p: kwargs_ex[p]
+                                for p in signature(num_qubits).parameters
+                            }
+                            num_qubits = num_qubits(**nq_args)
+                        except KeyError as e:
+                            raise ValueError(
+                                "Parameters used to calculate the number of auxiliary "
+                                "qubit must be passed as keyword arguments"
+                            ) from e
+
+                    if num_qubits <= 0:
+                        kwargs[name] = None
+                        continue
+
+                    kwargs[name] = process.alloc(num_qubits)
+
+                return func(*args, **kwargs)
+
+            return call
+
+        return make_kernel
+
+    return make_process

@@ -830,11 +830,15 @@ class Samples(HasProcess):
 
         return max(self.get().items(), key=lambda sc: sc[1])[0]
 
-    def histogram(self, mode: Literal["bin", "dec"] = "dec", **kwargs) -> go.Figure:
+    def histogram(
+        self,
+        mode: Literal["bin", "dec"] = "dec",
+        data: Literal["probability", "count"] = "count",
+        **kwargs,
+    ) -> go.Figure:
         """Generate a histogram representing the sample.
 
-        This method creates a histogram visualizing the probability distribution
-        of the sample.
+        This method creates a histogram visualizing the sample distribution.
 
         Note:
             This method requires additional dependencies from ``ket-lang[plot]``.
@@ -858,15 +862,21 @@ class Samples(HasProcess):
             else state
         )
 
-        data = {
-            "State": state,
-            "Count": list(self.get().values()),
-        }
+        if data == "probability":
+            plot_data = {
+                "State": state,
+                "Probability": list(map(lambda c: c / self.shots, self.get().values())),
+            }
+        else:
+            plot_data = {
+                "State": state,
+                "Count": list(self.get().values()),
+            }
 
         fig = px.bar(
-            data,
+            plot_data,
             x="State",
-            y="Count",
+            y=data.title(),
             **kwargs,
         )
 

@@ -411,7 +411,7 @@ def pauli_string(
     coef = []
     pauli_str = []
 
-    for term in h.pauli_products:
+    for term in h.terms:
         p = ["I"] * num_qubits
         for qubit, pauli in term.map.items():
             p[qubit] = pauli
