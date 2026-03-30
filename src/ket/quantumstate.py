@@ -19,7 +19,8 @@ from ctypes import c_size_t
 
 from .clib.libket import HasProcess
 
-from .base import Quant, _check_visualize
+from .base import Quant
+from .measurement import _check_visualize
 
 try:
     import numpy as np
@@ -123,7 +124,7 @@ class QuantumState(HasProcess):
         return self.states
 
     @property
-    def probabilities(self) -> dict[int, float] | None:
+    def probability(self) -> dict[int, float] | None:
         """Get the measurement probabilities.
 
         Returns a dictionary mapping base states to their corresponding measurement probabilities.
@@ -156,7 +157,7 @@ class QuantumState(HasProcess):
             return None
 
         rng = Random(seed)
-        shots = rng.choices(list(self.states), list(self.probabilities), k=shots)
+        shots = rng.choices(list(self.states), list(self.probability), k=shots)
         result = {}
         for state in shots:
             if state not in result:

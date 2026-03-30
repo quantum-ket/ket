@@ -27,12 +27,9 @@ import warnings
 from ket.clib.libket import PAULI_X
 
 
-from .base import (
-    Process,
-    Quant,
-    Measurement,
-    Samples,
-)
+from .base import Process, Quant
+
+from .measurement import Measurement, Samples
 from .quantumstate import QuantumState
 
 

@@ -883,32 +883,53 @@ def B(qubit):  # pylint: disable=invalid-name
         return prod((1 - Z(q)) / 2 for q in qubit)
 
 
-_EVOLVE_GATES = {
-    "X": (RX, RXX),
-    "Y": (RY, RYY),
-    "Z": (RZ, RZZ),
-    "I": (lambda *_: ..., lambda *_: ...),
+_ROT_MAP = {
+    "X": H,
+    "Y": RX(pi / 2),
+    "Z": I,
+}
+
+
+def _rot(string, qubits):
+    for p, q in zip(string, qubits):
+        _ROT_MAP[p](q)
+
+
+def _rzg(angle, qubits):
+    if len(qubits) == 1:
+        RZ(angle, qubits)
+    else:
+        with around(CNOT, qubits[0], qubits[1]):
+            _rzg(angle, qubits[1:])
+
+
+_RGATE = {
+    "X": RX,
+    "Y": RY,
+    "Z": RZ,
 }
 
 
 def evolve(hamiltonian: Hamiltonian):
     """Evolve the quantum state according to the given Hamiltonian."""
-    if max(map(len, hamiltonian.terms)) > 2:
-        raise ValueError("Only 1- and 2-qubit terms are supported in evolve.")
-    for pauli in hamiltonian.terms:
-        if len(pauli) <= 1:
-            continue
-        gates = list(pauli.map.values())
-        if gates[0] != gates[1]:
-            raise ValueError("Only XX, YY, and ZZ interactions are supported")
-
     process = hamiltonian.ket_process
-    for pauli in hamiltonian.terms:
-        if len(pauli) == 0:
+    for term in hamiltonian.terms:
+        gates_qubits = [
+            (gate, qubit) for qubit, gate in term.map.items() if gate != "I"
+        ]
+
+        if not gates_qubits:
             continue
-        qubits = Quant(qubits=list(pauli.map.keys()), process=process)
-        gates = list(pauli.map.values())[0]
-        _EVOLVE_GATES[gates][len(pauli) - 1](2 * pauli.coef, *qubits)
+
+        gates, qubits = zip(*gates_qubits)
+
+        qubits = Quant(qubits=list(qubits), process=process)
+
+        if len(gates) == 1:
+            _RGATE[gates[0]](2 * term.coef, qubits)
+        else:
+            with around(_rot, gates, qubits):
+                _rzg(2 * term.coef, qubits)
 
 
 _is_diagonal = contextvars.ContextVar("is_diagonal", default=False)

@@ -14,11 +14,11 @@ from functools import reduce
 from operator import add
 import os
 import random
-import sys
 from typing import Callable, Literal
 from math import sqrt, exp
 from collections.abc import Iterable
 from inspect import signature
+from itertools import starmap
 import multiprocessing as mp
 
 from ..clib.libket import BatchExecution
@@ -540,6 +540,7 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
     final_temp: float = 0.01,
     cooling_rate: float = 0.99,
     num_evaluations: int | None = None,
+    multiprocessing: bool = True,
 ) -> tuple[int, float]:
     """Find the ground state of a Hamiltonian.
 
@@ -608,8 +609,11 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
     ]
 
     if num_evaluations > 1:
-        with mp.Pool(processes=num_cores) as pool:
-            results = pool.starmap(_simulated_annealing, args)
+        if multiprocessing:
+            with mp.Pool(processes=num_cores) as pool:
+                results = pool.starmap(_simulated_annealing, args)
+        else:
+            results = starmap(_simulated_annealing, args)
 
         return min(results, key=lambda se: se[1])
 

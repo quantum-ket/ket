@@ -90,11 +90,22 @@ from .quantumstate import *
 from .quantumstate import __all__ as all_state
 from .qint import *
 from .qint import __all__ as all_qint
+from .measurement import *
+from .measurement import __all__ as all_measurement
 from . import qulib
 
-__version__ = "0.9.3b10"
+__version__ = "0.9.3b11"
 
-__all__ = all_base + all_func + all_gate + all_expv + all_state + all_qint + ["qulib"]
+__all__ = (
+    all_base
+    + all_func
+    + all_gate
+    + all_expv
+    + all_state
+    + all_qint
+    + all_measurement
+    + ["qulib"]
+)
 
 
 def ket_version() -> list[str]:

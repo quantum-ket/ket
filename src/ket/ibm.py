@@ -61,7 +61,6 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
 
         self.num_qubits = backend.configuration().n_qubits
 
-        self.client = None
         self.backend = backend
 
         self.pm = generate_preset_pass_manager(
@@ -79,8 +78,10 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     def clear(self):
         self.circuit = QuantumCircuit(self.num_qubits, self.num_qubits)
         self.parameters = None
+
         self.qubits_from_sample = None
         self.result = None
+        self.exp_value_result = []
 
     def submit_execution(self, circuit, parameters):
         self.parameters = parameters

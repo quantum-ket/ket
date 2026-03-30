@@ -166,6 +166,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         self.executed_operation_indices.clear()
         self.result = None
         self.parameters = None
+        self.exp_value_result = None
 
     def submit_execution(self, circuit, parameters):
         self.parameters = parameters
