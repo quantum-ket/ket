@@ -94,7 +94,7 @@ from .measurement import *
 from .measurement import __all__ as all_measurement
 from . import qulib
 
-__version__ = "0.9.3b11"
+__version__ = "0.9.3b12"
 
 __all__ = (
     all_base

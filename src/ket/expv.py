@@ -18,6 +18,7 @@ from numbers import Number
 from itertools import product
 from functools import reduce
 from typing import Literal
+from fractions import Fraction
 
 from .base import Parameter, Process, Quant
 
@@ -232,11 +233,58 @@ class Pauli(HasProcess):
     def _str_no_coef(self) -> str:
         return "".join(f"{pauli}{qubit}" for qubit, pauli in sorted(self.map.items()))
 
+    def _latex_no_coef(self) -> str:
+        return "".join(f"{pauli}_{qubit}" for qubit, pauli in sorted(self.map.items()))
+
     def __str__(self) -> str:
         return f"{self.coef}" + ("*" + self._str_no_coef() if len(self.map) > 0 else "")
 
     def __repr__(self) -> str:
         return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.ket_process))}>"
+
+    def _repr_latex_no_math_(self) -> str:
+        coef = self.coef
+
+        def format_part(x):
+            frac = Fraction(x).limit_denominator(100)
+            if abs(float(frac) - x) < 1e-6:
+                if frac.denominator == 1:
+                    return str(frac.numerator)
+                return f"\\frac{{{frac.numerator}}}{{{frac.denominator}}}"
+            return str(x)
+
+        real = coef.real
+        imag = coef.imag
+
+        parts = []
+
+        # Real part
+        if abs(real) > 1e-12:
+            parts.append(format_part(real))
+
+        # Imaginary part
+        if abs(imag) > 1e-12:
+            imag_str = format_part(abs(imag))
+
+            if imag_str == "1":
+                imag_str = "i"
+            else:
+                imag_str = f"{imag_str}i"
+
+            if imag < 0:
+                parts.append(f"- {imag_str}")
+            else:
+                if parts:
+                    parts.append(f"+ {imag_str}")
+                else:
+                    parts.append(imag_str)
+
+        coef_str = " ".join(parts) if parts else "0"
+
+        return f"{coef_str}{self._latex_no_coef()}"
+
+    def _repr_latex_(self) -> str:
+        return f"${self._repr_latex_no_math_()}$"
 
 
 class Hamiltonian(HasProcess):
@@ -340,6 +388,9 @@ class Hamiltonian(HasProcess):
             f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.terms)}, "
             f"pid={hex(id(self.ket_process))}>"
         )
+
+    def _repr_latex_(self) -> str:
+        return "$" + " + ".join(p._repr_latex_no_math_() for p in self.terms) + "$"
 
 
 def commutator(a: Hamiltonian, b: Hamiltonian) -> Hamiltonian:

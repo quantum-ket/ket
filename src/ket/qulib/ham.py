@@ -215,7 +215,7 @@ def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
     """FALQON B operator.
 
     .. math::
-        B = [ [H_d, H_p], H_d ]
+        B = 1/2 [ [H_d, H_p], H_d ]
 
 
     See https://arxiv.org/abs/2407.17810.
@@ -224,7 +224,7 @@ def falqon_b(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:
         hp: Problem Hamiltonian.
         hd: Driver Hamiltonian.
     """
-    return commutator(commutator(hd, hp), hd)
+    return 0.5 * commutator(commutator(hd, hp), hd)
 
 
 def falqon_c(hp: Hamiltonian, hd: Hamiltonian) -> Hamiltonian:

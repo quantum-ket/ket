@@ -10,6 +10,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from fractions import Fraction
 from math import pi
 from random import Random
 from cmath import sqrt, phase
@@ -354,6 +355,7 @@ class QuantumState(HasProcess):
     def show(
         self,
         mode: Literal["latex", "str"] | None = None,
+        polar: bool = False,
         round_tol: float = 1e-6,
     ) -> str:
         r"""Return the quantum state as a formatted string or LaTeX Math object.
@@ -362,6 +364,7 @@ class QuantumState(HasProcess):
             mode: If ``"str"``, returns a plain text string. If ``"latex"``, returns a LaTeX
                 Math representation. Defaults to ``"latex"`` in Jupyter Notebooks,
                 otherwise ``"str"``.
+            polar: If True, prints complex coefficients in polar form (r * e^{i * theta}).
             round_tol: Numerical tolerance used when rounding values.
 
         Returns:
@@ -373,8 +376,8 @@ class QuantumState(HasProcess):
             raise ValueError(f"Unknown mode: {mode}")
 
         if mode == "latex":
-            return self._show_latex(round_tol)
-        return self._show_str(round_tol)
+            return self._show_latex(round_tol, polar)
+        return self._show_str(round_tol, polar)
 
     def _get_ket_parts(self, state_bin: str, latex: bool = False) -> list[str]:
         """Helper to extract, slice and format the inner value of a ket state."""
@@ -393,7 +396,46 @@ class QuantumState(HasProcess):
             current += size
         return parts
 
-    def _show_str(self, round_tol: float = 1e-6) -> str:
+    def _format_phase(
+        self, theta: float, latex: bool = False, round_tol: float = 1e-6
+    ) -> str:
+        """Helper to format phase angle as a neat fraction of pi if possible."""
+        if abs(theta) < round_tol:
+            return ""
+
+        theta_pi = theta / pi
+        frac = Fraction(theta_pi).limit_denominator(100)
+
+        if abs(frac - theta_pi) < round_tol:
+            num, den = frac.numerator, frac.denominator
+            if num == 0:
+                return ""
+
+            if num == 1:
+                num_str = ""
+            elif num == -1:
+                num_str = "-"
+            else:
+                num_str = str(num)
+
+            pi_str = "\\pi" if latex else "π"
+
+            if den == 1:
+                return f"{num_str}{pi_str}"
+
+            if latex:
+                sign = "-" if num < 0 else ""
+                abs_num = abs(num)
+                top_str = f"{abs_num if abs_num != 1 else ''}{pi_str}"
+                return f"{sign}\\frac{{{top_str}}}{{{den}}}"
+
+            return f"{num_str}{pi_str}/{den}"
+
+        return f"{theta:.4f}"
+
+    def _show_str(  # pylint: disable=too-many-locals
+        self, round_tol: float = 1e-6, polar: bool = False
+    ) -> str:
 
         def state_amp_str(state, amp):
             if abs(amp) < round_tol:
@@ -406,16 +448,38 @@ class QuantumState(HasProcess):
 
             dump_str += f"\t({100*abs(amp)**2:.2f}%)\n"
 
+            amp_sq = abs(amp) ** 2
+            sqrt_dem_val = 1 / amp_sq if amp_sq > 0 else 0
+            use_sqrt = abs(round(sqrt_dem_val) - sqrt_dem_val) < round_tol
+
+            if polar:
+                r = abs(amp)
+                theta = phase(amp)
+                phase_str = self._format_phase(theta, latex=False, round_tol=round_tol)
+
+                r_str = f"{r:9.6f}"
+                sqrt_str = (
+                    f"\t≅ 1/√{round(sqrt_dem_val)}"
+                    if use_sqrt and round(sqrt_dem_val) != 1
+                    else ""
+                )
+
+                if phase_str:
+                    if phase_str.startswith("-"):
+                        dump_str += f"{r_str}·e^(-i{phase_str[1:]})" + sqrt_str
+                    else:
+                        dump_str += f"{r_str}·e^(i{phase_str})" + sqrt_str
+                else:
+                    dump_str += f"{r_str}         " + sqrt_str
+
+                return dump_str
+
             real = abs(amp.real) > round_tol
             real_l0 = amp.real < 0
 
             imag = abs(amp.imag) > round_tol
             imag_l0 = amp.imag < 0
 
-            amp_sq = abs(amp) ** 2
-            sqrt_dem_val = 1 / amp_sq
-
-            use_sqrt = abs(round(sqrt_dem_val) - sqrt_dem_val) < round_tol
             use_sqrt = use_sqrt and (
                 (abs(abs(amp.real) - abs(amp.imag)) < round_tol) or (real != imag)
             )
@@ -451,7 +515,9 @@ class QuantumState(HasProcess):
         ]
         return "\n".join(line for line in lines if line)
 
-    def _show_latex(self, round_tol: float = 1e-6) -> Math:
+    def _show_latex(  # pylint: disable=too-many-locals,too-many-statements
+        self, round_tol: float = 1e-6, polar: bool = False
+    ) -> Math:
 
         def float_to_math(num: float, is_complex: bool) -> str | None:
             if abs(num) < round_tol:
@@ -489,21 +555,40 @@ class QuantumState(HasProcess):
             if abs(amp) < round_tol:
                 continue
 
-            real_str = float_to_math(amp.real, False)
-            imag_str = float_to_math(amp.imag, True)
-
             state_bin = f"{state:0{len(self.qubits)}b}"
-
             state_parts = self._get_ket_parts(state_bin, latex=True)
             state_str_joined = "".join(state_parts)
 
-            if real_str is not None and imag_str is not None:
-                math_terms.append(f"({real_str}+{imag_str}){state_str_joined}")
-            else:
-                coeff = real_str if real_str is not None else imag_str
+            if polar:
+                r = abs(amp)
+                theta = phase(amp)
+
+                r_str = float_to_math(r, False)
+                if r_str is None:  # Safety check
+                    continue
+
+                phase_str = self._format_phase(theta, latex=True, round_tol=round_tol)
+
+                if phase_str:
+                    if phase_str.startswith("-"):
+                        coeff = f"{r_str}\\cdot \\exp({{-i{phase_str[1:]}}})"
+                    else:
+                        coeff = f"{r_str}\\cdot \\exp({{i{phase_str}}})"
+                else:
+                    coeff = r_str
+
                 math_terms.append(f"{coeff}{state_str_joined}")
 
-        # Clean up any "+-" instances created during formatting
+            else:
+                real_str = float_to_math(amp.real, False)
+                imag_str = float_to_math(amp.imag, True)
+
+                if real_str is not None and imag_str is not None:
+                    math_terms.append(f"({real_str}+{imag_str}){state_str_joined}")
+                else:
+                    coeff = real_str if real_str is not None else imag_str
+                    math_terms.append(f"{coeff}{state_str_joined}")
+
         return Math("+".join(math_terms).replace("+-", "-"))
 
     def histogram(self, mode: Literal["bin", "dec"] = "dec", **kwargs) -> go.Figure:
