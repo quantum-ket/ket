@@ -64,7 +64,9 @@ class Measurement(HasProcess):
     ):
         super().__init__(ket_process=qubits.ket_process)
 
-        from .operations import _unsafe_aux
+        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
+            _unsafe_aux,
+        )
 
         if not _unsafe_aux.get and any(
             self.ket_process._is_aux(q) for q in qubits.qubits
