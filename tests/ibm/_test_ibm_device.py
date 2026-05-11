@@ -20,7 +20,6 @@ import math
 import ket
 from ket.ibm import IBMDevice
 
-
 BACKEND = AerSimulator()
 NUM_QUBITS = 3
 

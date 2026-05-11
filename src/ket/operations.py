@@ -656,8 +656,10 @@ def using_aux(unsafe: bool = False, **names):
                 kwargs[name] = ket_process.alloc_aux(num_qubits)
 
             token = _unsafe_aux.set(unsafe)
-            func(*args, **kwargs)
+            ret = func(*args, **kwargs)
             _unsafe_aux.reset(token)
+
+            return ret
 
         return call
 

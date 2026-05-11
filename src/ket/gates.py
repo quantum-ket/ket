@@ -194,7 +194,7 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         ):
             raise RuntimeError("Gate application blocked for safe uncomputation")
 
-        if is_aux and not is_diag:
+        if not unsafe_aux and is_aux and not is_diag:
             process._block_ctrl()
 
         process.apply_gate(PAULI_X, 0.0, False, 0, qubit)
@@ -234,7 +234,7 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         ):
             raise RuntimeError("Gate application blocked for safe uncomputation")
 
-        if is_aux and not is_diag:
+        if not unsafe_aux and is_aux and not is_diag:
             process._block_ctrl()
 
         process.apply_gate(PAULI_Y, 0.0, False, 0, qubit)
@@ -296,7 +296,7 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         ):
             raise RuntimeError("Gate application blocked for safe uncomputation")
 
-        if is_aux and not is_diag:
+        if not unsafe_aux and is_aux and not is_diag:
             process._block_ctrl()
 
         process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
@@ -354,7 +354,7 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
             ):
                 raise RuntimeError("Gate application blocked for safe uncomputation")
 
-            if is_aux and not is_diag:
+            if not unsafe_aux and is_aux and not is_diag:
                 process._block_ctrl()
 
             if isinstance(theta, Parameter):
@@ -424,7 +424,7 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
             ):
                 raise RuntimeError("Gate application blocked for safe uncomputation")
 
-            if is_aux and not is_diag:
+            if not unsafe_aux and is_aux and not is_diag:
                 process._block_ctrl()
 
             if isinstance(theta, Parameter):
@@ -731,9 +731,9 @@ def RBS(  # pylint: disable=invalid-name missing-function-docstring
 ) -> tuple[Quant, Quant] | Callable[[Quant, Quant], tuple[Quant, Quant]]:
     def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
         for qubit_a, qubit_b in zip(qubits_a, qubits_b):
-            with around(cat(kron(H, H), CNOT), qubit_a, qubit_b):
+            with around(cat(kron(H, I), CNOT), qubit_a, qubit_b):
                 RY(theta / 2, qubit_a)
-                RY(-theta / 2, qubit_b)
+                RY(theta / 2, qubit_b)
         return qubits_a, qubits_b
 
     if qubits_a is None and qubits_b is None:

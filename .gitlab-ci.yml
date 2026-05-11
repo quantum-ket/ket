@@ -4,89 +4,112 @@
 # SPDX-License-Identifier: Apache-2.0
 
 stages:
-- lint
-- build
-- test
-- deploy
+  - lint
+  - build
+  - test
+  - deploy
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 Package Linux x86_64 Wheels:
-  image: python:3.10
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: build
+  variables:
+    KBW_PROJ_ID: "16627872"
+    LIBKET_PROJ_ID: "16638729"
+    KBW_PATH: "src/ket/clib/libs/kbw"
+    LIBKET_PATH: "src/ket/clib/libs/libket"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
+    - rm -rf /var/lib/apt/lists/*
+    - uv pip install --system build auditwheel patchelf
   script:
-  - pip install build auditwheel patchelf
-  - |
-    curl --location \
-    "https://gitlab.com/api/v4/projects/16627872/packages/generic/kbw/`git submodule status | grep kbw | awk '{print substr($1, 1, 8)}'`/libkbw.so" \
-    --output src/ket/clib/libs/libkbw.so
-  - |
-    curl --location \
-    "https://gitlab.com/api/v4/projects/16638729/packages/generic/libket/`git submodule status | grep libket | awk '{print substr($1, 1, 8)}'`/libket.so" \
-    --output src/ket/clib/libs/libket.so
-  - python -m build -w
-  - python -m auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
+    - KBW_HASH=$(git rev-parse --short=8 HEAD:${KBW_PATH})
+    - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
+    - |
+      curl --fail --location \
+      "https://gitlab.com/api/v4/projects/${KBW_PROJ_ID}/packages/generic/kbw/${KBW_HASH}/libkbw.so" \
+      --create-dirs --output src/ket/clib/libs/libkbw.so
+    - |
+      curl --fail --location \
+      "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/libket.so" \
+      --create-dirs --output src/ket/clib/libs/libket.so
+
+    - python -m build -w
+    - python -m auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
   artifacts:
     paths:
-    - wheelhouse/*.whl
+      - wheelhouse/*.whl
 
 Package Windows x86_64 Wheels:
-  image: python:3.10
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: build
+  variables:
+    KBW_PROJ_ID: "16627872"
+    LIBKET_PROJ_ID: "16638729"
+    KBW_PATH: "src/ket/clib/libs/kbw"
+    LIBKET_PATH: "src/ket/clib/libs/libket"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
+    - rm -rf /var/lib/apt/lists/*
+    - uv pip install --system build
   script:
-  - pip install build auditwheel patchelf
-  - |
-    curl --location \
-    "https://gitlab.com/api/v4/projects/16627872/packages/generic/kbw/`git submodule status | grep kbw | awk '{print substr($1, 1, 8)}'`/kbw.dll" \
-    --output src/ket/clib/libs/kbw.dll
-  - |
-    curl --location \
-    "https://gitlab.com/api/v4/projects/16638729/packages/generic/libket/`git submodule status | grep libket | awk '{print substr($1, 1, 8)}'`/ket.dll" \
-    --output src/ket/clib/libs/ket.dll
-  - python setup.py bdist_wheel -p win-amd64
+    - KBW_HASH=$(git rev-parse --short=8 HEAD:${KBW_PATH})
+    - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
+    - |
+      curl --fail --location \
+      "https://gitlab.com/api/v4/projects/${KBW_PROJ_ID}/packages/generic/kbw/${KBW_HASH}/kbw.dll" \
+      --create-dirs --output src/ket/clib/libs/libkbw.so
+    - |
+      curl --fail --location \
+      "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/ket.dll" \
+      --create-dirs --output src/ket/clib/libs/libket.so
+
+    - python setup.py bdist_wheel -p win-amd64
   artifacts:
     paths:
-    - dist/*.whl
+      - dist/*.whl
 
 Package Source Code:
-  image: python:3.10-slim
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: build
+  before_script:
+    - uv pip install --system build
   script:
-  - pip install build
-  - python -m build -s
+    - python -m build -s
   artifacts:
     paths:
-    - dist/ket_lang*.tar.gz
+      - dist/ket_lang*.tar.gz
 
 Lint:
-  image: python:3.10-slim
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: lint
   script:
-  - pip install pipx
-  - pipx run pylint src
-  - pipx run reuse lint
+    - uvx pylint src
+    - uvx reuse lint
 
 Test:
-  image: python:3.10-slim
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: test
   script:
-  - pip install `ls wheelhouse/ket_lang*manylinux_2_28_x86_64.whl`[ibm,amazon] pytest pytest-cov
-  - pytest
+    - uv pip install --system `ls wheelhouse/ket_lang*manylinux_2_28_x86_64.whl`[ibm,amazon] pytest pytest-cov
+    - pytest
   artifacts:
     paths:
-    - htmlcov
+      - htmlcov
 
 PyPI Upload:
-  image: python:3.10-alpine
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: deploy
+  before_script:
+    - uv pip install --system twine
   script:
-  - pip install twine
-  - python -m twine upload dist/* wheelhouse/*
+    - python -m twine upload dist/* wheelhouse/*
   only:
-  - master
+    - master
 
 sast:
   stage: test
 include:
-- template: Security/SAST.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml

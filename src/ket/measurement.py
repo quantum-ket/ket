@@ -64,7 +64,11 @@ class Measurement(HasProcess):
     ):
         super().__init__(ket_process=qubits.ket_process)
 
-        if any(self.ket_process._is_aux(q) for q in qubits.qubits):
+        from .operations import _unsafe_aux
+
+        if not _unsafe_aux.get and any(
+            self.ket_process._is_aux(q) for q in qubits.qubits
+        ):
             raise ValueError("Auxiliary qubits cannot be measured")
 
         self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
@@ -325,7 +329,8 @@ class Samples(HasProcess):
             )
 
             plot_data["Energy"] = [
-                energy(hamiltonian, state, num_qubits=self.size) for state in states
+                f"{energy(hamiltonian, state, num_qubits=self.size):+.4f}"
+                for state in states
             ]
 
         fig = px.bar(

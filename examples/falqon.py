@@ -5,7 +5,6 @@
 from ket import Process, H, Y, Z, ham, RZZ, RX, exp_value, sample
 from plotly import express as px
 
-
 edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
 n = 4
 

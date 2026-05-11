@@ -4,11 +4,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Bell state preparation."""
+
 from ket import *
 from ket.amazon import AmazonBraket
 from math import sqrt
 
-device = AmazonBraket()                                                                    # LocalSimulator
+device = AmazonBraket()  # LocalSimulator
 # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')            # TN1
 # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')            # DM1
 # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')                # IonQ Aria-1
@@ -18,7 +19,6 @@ device = AmazonBraket()                                                         
 # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')                # IQM Garnet
 # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/quera/Aquila')               # QuEra Aquila
 # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')            # Rigetti Ankaa-3
-
 
 
 process = Process(device)

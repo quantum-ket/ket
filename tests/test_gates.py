@@ -6,7 +6,6 @@ from math import pi, sqrt, cos, sin
 from cmath import isclose, exp
 import ket
 
-
 GATES = {
     "X": (ket.X, [[0, 1], [1, 0]]),
     "Y": (ket.Y, [[0, -1j], [1j, 0]]),
