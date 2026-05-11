@@ -7,6 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 
 # Changelog
 
+## [0.9.3](https://pypi.org/project/ket-lang/0.9.3)
+
+### Added
+
+- Axillary qubit management 
+
 ## [0.9.2](https://pypi.org/project/ket-lang/0.9.2)
 
 ### Added
