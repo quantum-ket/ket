@@ -262,12 +262,13 @@ class Samples(HasProcess):
 
         return max(self.get().items(), key=lambda sc: sc[1])[0]
 
-    def histogram(
+    def histogram(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
         mode: Literal["bin", "dec"] = "dec",
         data: Literal["probability", "count"] = "count",
         hamiltonian: Callable[[Quant], Hamiltonian] | None = None,
         plot_filter: Callable[[int, float | int], bool] | None = None,
+        categorical_x: bool | None = None,
         **kwargs,
     ) -> go.Figure:
         """Generate a histogram representing the sample.
@@ -287,6 +288,10 @@ class Samples(HasProcess):
             plot_filter: Optional function to filter the plotted data. Takes a state (int) and
                 its value (probability or count, depending on the ``data`` parameter) and returns
                 True to keep the state or False to exclude it.
+            categorical_x: If True, plots bars side-by-side ignoring numeric gaps.
+                If False, spaces bars out based on their integer value.
+                If None (default), automatically switches to categorical if the state spread is
+                too large.
             **kwargs: Additional keyword arguments passed to :func:`plotly.express.bar`.
 
         Returns:
@@ -331,25 +336,29 @@ class Samples(HasProcess):
             )
 
             plot_data["Energy"] = [
-                f"{energy(hamiltonian, state, num_qubits=self.size):+.4f}"
-                for state in states
+                energy(hamiltonian, state, num_qubits=self.size) for state in states
             ]
 
         fig = px.bar(
             plot_data,
             x="State",
             y=data.title(),
-            text="Energy" if hamiltonian is not None else None,
+            color="Energy" if hamiltonian is not None else None,
             **kwargs,
         )
 
+        if categorical_x is None:
+            categorical_x = (max(states) - min(states) > 64) if states else False
+
         fig.update_layout(
             xaxis={
+                "type": "category" if categorical_x else "linear",
                 "tickmode": "array",
                 "tickvals": states,
                 "ticktext": state_text,
+                "tickangle": (-90 if mode == "bin" else 0),
             },
-            bargap=0.75,
+            bargap=0.2 if categorical_x else 0.75,
         )
 
         return fig

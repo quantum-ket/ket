@@ -19,7 +19,14 @@ from math import sqrt, exp
 from collections.abc import Iterable
 from inspect import signature
 from itertools import starmap
-import multiprocessing as mp
+
+try:
+    import multiprocess as mp
+
+    _MULTIPROCESS_AVAILABLE = True
+except ImportError:
+    _MULTIPROCESS_AVAILABLE = False
+
 
 from ..clib.libket import BatchExecution
 from ..base import Process, Quant
@@ -548,6 +555,12 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
     using multiprocessing. It explores the solution space and returns the result
     from the run that achieved the lowest energy.
 
+    Note:
+        When multiprocessing is enabled (the default), this method requires the
+        ``multiprocess`` library.
+
+        Install with: ``pip install multiprocess``.
+
     Args:
         hamiltonian: A function that takes qubits and returns the Hamiltonian to be minimized.
         num_qubits: The number of qubits in the quantum system.
@@ -610,6 +623,13 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
 
     if num_evaluations > 1:
         if multiprocessing:
+            if not _MULTIPROCESS_AVAILABLE:
+                raise RuntimeError(
+                    "The `multiprocess` library is required when `multiprocessing=True` "
+                    "(the default behavior). Please install it using `pip install multiprocess`, "
+                    "or set `multiprocessing=False` to run sequentially."
+                )
+
             with mp.Pool(processes=num_cores) as pool:
                 results = pool.starmap(_simulated_annealing, args)
         else:
