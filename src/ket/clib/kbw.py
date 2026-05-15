@@ -8,8 +8,6 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 from ctypes import POINTER, c_void_p, c_size_t, c_bool, c_int32, c_uint32, c_uint8
-from functools import reduce
-from operator import iconcat
 import os
 from typing import Literal
 from os import environ
@@ -38,13 +36,7 @@ api_argtypes = {
 
 def kbw_path():
     """Get KBW path"""
-
-    if "KBW_PATH" in environ:
-        path = environ["KBW_PATH"]
-    else:
-        path = f'{dirname(__file__)}/libs/{os_lib_name("kbw")}'
-
-    return path
+    return environ.get("KBW_PATH", f'{dirname(__file__)}/libs/{os_lib_name("kbw")}')
 
 
 API = load_lib("KBW", kbw_path(), api_argtypes, "kbw_error_message")
@@ -52,7 +44,6 @@ API = load_lib("KBW", kbw_path(), api_argtypes, "kbw_error_message")
 
 def set_log(level: int):
     """Set KBW log level"""
-
     API["kbw_set_log_level"](level)
 
 
@@ -114,12 +105,11 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
 
     if coupling_graph:
         qubit_in_graph = [q for edge in coupling_graph for q in edge]
-        if any(q not in qubit_in_graph for q in range(num_qubits)) or any(
-            q not in list(range(num_qubits)) for q in qubit_in_graph
-        ):
+
+        if any(q not in range(num_qubits) for q in qubit_in_graph):
             raise ValueError("Unreachable qubit in the coupling graph.")
-        coupling_graph = reduce(iconcat, coupling_graph, [])
-        coupling_graph = (c_size_t * len(coupling_graph))(*coupling_graph)
+
+        coupling_graph = (c_size_t * len(qubit_in_graph))(*qubit_in_graph)
 
     if classical_shadows is not None:
         cs = {**_CLASSICAL_SHADOWS, **classical_shadows}

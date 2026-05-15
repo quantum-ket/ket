@@ -144,7 +144,7 @@ class Remote(
         parameters: list[float],
     ):
         url = f"{self._url}/run"
-        response = requests.get(
+        response = requests.post(
             url,
             verify=self._verify_ssl,
             json=(circuit, parameters, self._args),
@@ -178,7 +178,7 @@ class Remote(
             self._args["token"] = self._token
 
         url = f"{self._url}/get"
-        response = requests.get(
+        response = requests.post(
             url,
             verify=self._verify_ssl,
             json=self._args,

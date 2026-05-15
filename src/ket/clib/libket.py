@@ -216,13 +216,7 @@ api_argtypes = {
 
 def libket_path():
     """Get Libket shared library path"""
-
-    if "LIBKET_PATH" in environ:
-        path = environ["LIBKET_PATH"]
-    else:
-        path = f'{dirname(__file__)}/libs/{os_lib_name("ket")}'
-
-    return path
+    return environ.get("LIBKET_PATH", f'{dirname(__file__)}/libs/{os_lib_name("ket")}')
 
 
 API = load_lib("Libket", libket_path(), api_argtypes, "ket_error_message")
@@ -230,7 +224,6 @@ API = load_lib("Libket", libket_path(), api_argtypes, "ket_error_message")
 
 def set_log(level: int):
     """Set Libket log level"""
-
     API["ket_set_log_level"](level)
 
 
@@ -302,10 +295,14 @@ class BatchExecution(ABC):
         def clear():
             self.clear()
 
+        self._cb_submit_execution = submit_execution
+        self._cb_get_result = get_result
+        self._cb_clear = clear
+
         self.c_struct = BatchCExecution(
-            submit_execution,
-            get_result,
-            clear,
+            self._cb_submit_execution,
+            self._cb_get_result,
+            self._cb_clear,
         )
 
     @abstractmethod
@@ -496,20 +493,24 @@ class BatchExecution(ABC):
         raise NotImplementedError("Dump not implemented")
 
 
-class LiveExecution(ABC):
+class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
     """Base class for constructing live target executions."""
 
-    def __init__(self):
+    def __init__(self):  # pylint: disable=too-many-statements
         @CFUNCTYPE(
             None, POINTER(c_uint8), c_size_t, c_size_t, POINTER(c_size_t), c_size_t
         )
         def gate(gate_json, gate_json_size, target, control, control_size):
-            gate = json.loads(bytearray(gate_json[:gate_json_size]))
+            gate_dict = json.loads(bytearray(gate_json[:gate_json_size]))
             control = control[:control_size]
-            if isinstance(gate, dict):
-                gate, value = list(gate.items())[0]
-                value = value["Value"]
-            match gate:
+            value = None
+            if isinstance(gate_dict, dict):
+                gate_name, value_dict = list(gate_dict.items())[0]
+                value = value_dict["Value"]
+            else:
+                gate_name = gate_dict
+
+            match gate_name:
                 case "Hadamard":
                     self.hadamard(target, control)
                 case "PauliX":
@@ -576,30 +577,38 @@ class LiveExecution(ABC):
             result_ptr[0] = self._dump_json
             size[0] = self._dump_len
 
-        self._save_data = None
+        self._save_data_buf = None
         self._save_len = None
 
         @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
         def save(save_data, save_len):
-            self._save_data = self.save()
-            self._sample_len = len(self._save_data)
-            self._save_data = (c_uint8 * self._save_len)(*self._save_data)
-            save_data[0] = self._save_data
+            self._save_data_buf = self.save()
+            self._save_len = len(self._save_data_buf)
+            self._save_data_buf = (c_uint8 * self._save_len)(*self._save_data_buf)
+            save_data[0] = self._save_data_buf
             save_len[0] = self._save_len
 
         @CFUNCTYPE(None, POINTER(c_uint8), c_size_t)
         def load(data, size):
-            data = bytearray(data[:size])
-            self.load(data)
+            data_ba = bytearray(data[:size])
+            self.load(data_ba)
+
+        self._cb_gate = gate
+        self._cb_measure = measure
+        self._cb_exp_value = exp_value
+        self._cb_sample = sample
+        self._cb_dump = dump
+        self._cb_save = save
+        self._cb_load = load
 
         self.c_struct = LiveCExecution(
-            gate,
-            measure,
-            exp_value,
-            sample,
-            dump,
-            save,
-            load,
+            self._cb_gate,
+            self._cb_measure,
+            self._cb_exp_value,
+            self._cb_sample,
+            self._cb_dump,
+            self._cb_save,
+            self._cb_load,
         )
 
     def pauli_x(self, target, control):

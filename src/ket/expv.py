@@ -12,7 +12,6 @@ from __future__ import annotations
 
 # pylint: disable=duplicate-code,protected-access
 
-from copy import copy
 from ctypes import c_int32, c_size_t
 from numbers import Number
 from itertools import product
@@ -57,12 +56,12 @@ class Pauli(HasProcess):
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        pauli: Literal["X", "Y", "Z", "I"],
-        qubits: Quant,
+        pauli: Literal["X", "Y", "Z", "I"] | None,
+        qubits: Quant | None,
         *,
         _process: Process | None = None,
         _map: dict[int, str] | None = None,
-        _coef: float | None = None,
+        _coef: float | complex | None = None,
     ):
         if qubits is not None and not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
@@ -83,7 +82,9 @@ class Pauli(HasProcess):
     def __neg__(self) -> Pauli:
         return -1.0 * self
 
-    def __mul__(self, other: float | Pauli) -> Pauli:
+    def __mul__(
+        self, other: float | complex | Pauli | Parameter | Hamiltonian
+    ) -> Pauli:
 
         if isinstance(other, (Number, Parameter)):
             return Pauli(
@@ -111,7 +112,9 @@ class Pauli(HasProcess):
             _coef=self.coef * other.coef,
         )
 
-    def __matmul__(self, rhs: Pauli) -> Pauli:  # pylint:disable=too-many-branches
+    def __matmul__(  # pylint:disable=too-many-branches
+        self, rhs: Pauli | Hamiltonian
+    ) -> Pauli:
         if isinstance(rhs, Hamiltonian):
             return Hamiltonian([self], self.ket_process) @ rhs
 
@@ -168,7 +171,7 @@ class Pauli(HasProcess):
     def __len__(self) -> int:
         return len(self.map)
 
-    def __add__(self, other) -> Hamiltonian:
+    def __add__(self, other: Number | Pauli | Hamiltonian) -> Hamiltonian:
         if isinstance(other, Number):
             other = Pauli(None, None, _process=self.ket_process, _map={}, _coef=other)
 
@@ -185,10 +188,10 @@ class Pauli(HasProcess):
 
     __radd__ = __add__
 
-    def __sub__(self, other) -> Hamiltonian:
+    def __sub__(self, other: Number | Pauli | Hamiltonian) -> Hamiltonian:
         return self + -other
 
-    def __rsub__(self, other) -> Hamiltonian:
+    def __rsub__(self, other: Number | Pauli | Hamiltonian) -> Hamiltonian:
         return -self + other
 
     def __truediv__(self, other: float) -> Pauli:
@@ -242,7 +245,7 @@ class Pauli(HasProcess):
     def __repr__(self) -> str:
         return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.ket_process))}>"
 
-    def _repr_latex_no_math_(self) -> str:
+    def _repr_latex_no_math_(self) -> str:  # pylint: disable=too-many-branches
         coef = self.coef
 
         def format_part(x):
@@ -258,11 +261,9 @@ class Pauli(HasProcess):
 
         parts = []
 
-        # Real part
         if abs(real) > 1e-12:
             parts.append(format_part(real))
 
-        # Imaginary part
         if abs(imag) > 1e-12:
             imag_str = format_part(abs(imag))
 
@@ -279,9 +280,22 @@ class Pauli(HasProcess):
                 else:
                     parts.append(imag_str)
 
-        coef_str = " ".join(parts) if parts else "0"
+        if len(parts) > 1:
+            coef_str = f"({ ' '.join(parts) })"
+        elif parts:
+            coef_str = parts[0]
+        else:
+            coef_str = "0"
 
-        return f"{coef_str}{self._latex_no_coef()}"
+        pauli_str = self._latex_no_coef()
+
+        if pauli_str:
+            if coef_str == "1":
+                return pauli_str
+            if coef_str == "-1":
+                return f"-{pauli_str}"
+
+        return f"{coef_str}{pauli_str}"
 
     def _repr_latex_(self) -> str:
         return f"${self._repr_latex_no_math_()}$"
@@ -300,7 +314,7 @@ class Hamiltonian(HasProcess):
         self.terms = terms
         assert all(isinstance(p, Pauli) for p in terms)
 
-    def __add__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
+    def __add__(self, other: Hamiltonian | Pauli | Number) -> Hamiltonian:
         if isinstance(other, Number):
             other = Pauli(None, None, _process=self.ket_process, _map={}, _coef=other)
         if isinstance(other, Pauli):
@@ -314,7 +328,7 @@ class Hamiltonian(HasProcess):
 
         return result
 
-    def __sub__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
+    def __sub__(self, other: Hamiltonian | Pauli | Number) -> Hamiltonian:
         return self + -other
 
     __radd__ = __add__
@@ -345,10 +359,12 @@ class Hamiltonian(HasProcess):
 
         return result
 
-    def __rsub__(self, other) -> Hamiltonian:
+    def __rsub__(self, other: Hamiltonian | Pauli | Number) -> Hamiltonian:
         return -self + other
 
-    def __mul__(self, other: float | Hamiltonian | Pauli) -> Hamiltonian:
+    def __mul__(
+        self, other: float | complex | Hamiltonian | Pauli | Parameter
+    ) -> Hamiltonian:
         if isinstance(other, (Number, Pauli, Parameter)):
             return Hamiltonian(
                 [p * other for p in self.terms], process=self.ket_process
@@ -369,7 +385,13 @@ class Hamiltonian(HasProcess):
 
     def __pow__(self, exp: int) -> Hamiltonian:
         exp = int(exp)
-        result = copy(self)
+        if exp == 0:
+            return Hamiltonian(
+                [Pauli(None, None, _process=self.ket_process, _map={}, _coef=1.0)],
+                self.ket_process,
+            )
+
+        result = self
         for _ in range(exp - 1):
             result = result @ self
         return result
@@ -434,17 +456,12 @@ class ExpValue(HasProcess):
         hamiltonian_ptr = API["ket_hamiltonian_new"]()
         products_count = 0
         self._i_coef = 0.0
+
         for pauli_product in hamiltonian.terms:
-            if len(pauli_product.map) == 0:
+            if not pauli_product.map:
                 self._i_coef += pauli_product.coef.real
                 continue
 
-            qubits, pauli = zip(*pauli_product.map.items())
-            pauli_qubits = list(
-                zip(
-                    *[(self.pauli_map[p], q) for p, q in zip(pauli, qubits) if p != "I"]
-                )
-            )
             if (
                 isinstance(pauli_product.coef, complex)
                 and abs(pauli_product.coef.imag) > 1e-10
@@ -454,10 +471,16 @@ class ExpValue(HasProcess):
                     " expected value calculation."
                 )
 
+            pauli_qubits = [
+                (self.pauli_map[p], q) for q, p in pauli_product.map.items() if p != "I"
+            ]
+
             if not pauli_qubits:
                 self._i_coef += pauli_product.coef.real
                 continue
-            pauli, qubits = pauli_qubits
+
+            pauli, qubits = zip(*pauli_qubits)
+
             API["ket_hamiltonian_add"](
                 hamiltonian_ptr,
                 (c_int32 * len(pauli))(*pauli),

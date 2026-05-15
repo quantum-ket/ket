@@ -268,13 +268,13 @@ def falqon_get_beta_so(delta_t, hp: Hamiltonian, hd: Hamiltonian) -> float:
         hp: Problem Hamiltonian.
         hd: Driver Hamiltonian.
     """
-    a = exp_value(falqon_a(hp, hd))
-    b = exp_value(falqon_b(hp, hd))
-    c = exp_value(falqon_c(hp, hd))
+    a = exp_value(falqon_a(hp, hd)).get()
+    b = exp_value(falqon_b(hp, hd)).get()
 
-    a = a.get()
-    b = b.get()
-    c = c.get()
+    if abs(b) < 1e-12:
+        return 0.0
+
+    c = exp_value(falqon_c(hp, hd)).get()
 
     so = -(a + delta_t * c) / (2 * delta_t * b)
 

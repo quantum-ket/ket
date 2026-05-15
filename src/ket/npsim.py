@@ -37,7 +37,7 @@ class NPSim(LiveExecution):
 
         self.num_qubit = num_qubits
         self.state_vector = np.zeros((1 << num_qubits, 1), dtype=complex)
-        self.state_vector[0][0] = 1
+        self.state_vector[0, 0] = 1.0
 
     def connect(self):
         return self.configure(
@@ -50,7 +50,7 @@ class NPSim(LiveExecution):
         )
 
     def _apply_gate(self, gate, target):
-        gate = np.kron(
+        gate_kron = np.kron(
             np.kron(np.eye(1 << target, 1 << target, dtype=complex), gate),
             np.eye(
                 1 << (self.num_qubit - target - 1),
@@ -58,7 +58,7 @@ class NPSim(LiveExecution):
                 dtype=complex,
             ),
         )
-        self.state_vector = gate @ self.state_vector
+        self.state_vector = gate_kron @ self.state_vector
 
     def pauli_x(self, target, control):
         assert len(control) <= 1, "Multi-control qubits are not supported"
@@ -66,23 +66,25 @@ class NPSim(LiveExecution):
         if len(control) == 0:
             self._apply_gate(gate, target)
         else:
-            gate = np.zeros((1 << self.num_qubit, 1 << self.num_qubit), dtype=complex)
+            gate_mat = np.zeros(
+                (1 << self.num_qubit, 1 << self.num_qubit), dtype=complex
+            )
             for col in map(
                 lambda s: list(f"{s:0{self.num_qubit}b}"), range(1 << self.num_qubit)
             ):
                 lin = col[:]
                 if col[control[0]] == "1":
                     lin[target] = "0" if col[target] == "1" else "1"
-                gate[int("".join(lin), 2)][int("".join(col), 2)] = 1.0
-            self.state_vector = gate @ self.state_vector
+                gate_mat[int("".join(lin), 2), int("".join(col), 2)] = 1.0
+            self.state_vector = gate_mat @ self.state_vector
 
     def pauli_y(self, target, control):
-        assert len(control) != 0, "control qubits are not supported"
+        assert len(control) == 0, "control qubits are not supported"
         gate = np.array([[0, -1j], [1j, 0]], dtype=complex)
         self._apply_gate(gate, target)
 
     def pauli_z(self, target, control):
-        assert len(control) != 0, "control qubits are not supported"
+        assert len(control) == 0, "control qubits are not supported"
         gate = np.array([[1, 0], [0, -1]], dtype=complex)
         self._apply_gate(gate, target)
 
@@ -126,17 +128,22 @@ class NPSim(LiveExecution):
         self._apply_gate(gate, target)
 
     def _p1(self, qubit: int) -> float:
+        shift = self.num_qubit - qubit - 1
+        mask = 1 << shift
         return sum(
-            np.abs(amp) ** 2 if state & (1 << qubit) != 0 else 0.0
+            np.abs(amp[0]) ** 2 if (state & mask) != 0 else 0.0
             for state, amp in enumerate(self.state_vector)
         )
 
     def _colapse(self, qubit, m, p):
+        shift = self.num_qubit - qubit - 1
+        mask = 1 << shift
+        target_bit = m << shift
         for state, amp in enumerate(self.state_vector):
-            if state & (1 << qubit) == m:
-                amp /= np.sqrt(p)
+            if (state & mask) == target_bit:
+                self.state_vector[state, 0] = amp[0] / np.sqrt(p)
             else:
-                self.state_vector[state] = 0.0
+                self.state_vector[state, 0] = 0.0
 
     def measure(self, qubits: list[int]) -> int:
         result = []
@@ -153,14 +160,17 @@ class NPSim(LiveExecution):
         amplitudes_real = []
         amplitudes_imag = []
 
-        for state, amp in enumerate(self.state_vector):
-            if np.abs(amp) <= 1e-10:
+        for state_idx, amp in enumerate(self.state_vector):
+            scalar_amp = amp[0]
+            if np.abs(scalar_amp) <= 1e-10:
                 continue
-            state = f"{state:0{self.num_qubit}b}"
-            state = int("".join(state[q] for q in qubits), 2)
-            basis_states.append([state])
-            amplitudes_real.append(float(np.real(amp)))
-            amplitudes_imag.append(float(np.imag(amp)))
+
+            bin_str = f"{state_idx:0{self.num_qubit}b}"
+            extracted_state = int("".join(bin_str[q] for q in qubits), 2)
+
+            basis_states.append([extracted_state])
+            amplitudes_real.append(float(np.real(scalar_amp)))
+            amplitudes_imag.append(float(np.imag(scalar_amp)))
 
         return {
             "basis_states": basis_states,

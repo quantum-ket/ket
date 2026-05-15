@@ -68,7 +68,7 @@ class Measurement(HasProcess):
             _unsafe_aux,
         )
 
-        if not _unsafe_aux.get and any(
+        if not _unsafe_aux.get() and any(
             self.ket_process._is_aux(q) for q in qubits.qubits
         ):
             raise ValueError("Auxiliary qubits cannot be measured")
@@ -97,7 +97,7 @@ class Measurement(HasProcess):
     def value(self) -> Any | None:
         """Retrieve the measurement value if available."""
         self._check()
-        if self.postprocessing is not None:
+        if self.postprocessing is not None and self._value is not None:
             return self.postprocessing(self._value)
         return self._value
 
@@ -185,7 +185,13 @@ class Samples(HasProcess):
         self.qubits = qubits.qubits
         self.size = len(qubits)
 
-        if any(self.ket_process._is_aux(q) for q in self.qubits):
+        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
+            _unsafe_aux,
+        )
+
+        if not _unsafe_aux.get() and any(
+            self.ket_process._is_aux(q) for q in self.qubits
+        ):
             raise ValueError("Auxiliary qubits cannot be measured")
 
         self.index = self.ket_process.sample(
@@ -212,6 +218,8 @@ class Samples(HasProcess):
     def value(self) -> dict[Any, int] | None:
         """Retrieve the measurement samples if available."""
         self._check()
+        if self._value is None:
+            return None
         if self.postprocessing is not None:
             return {
                 self.postprocessing(state): count

@@ -89,11 +89,16 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
 
     def get_result(self):
         if self.result is not None:
-            self.result = {
+            parsed_counts = {
                 "".join(s[-q - 1] for q in self.qubits_from_sample): c
                 for s, c in self.result.items()
             }
-            result = [list(zip(*((int(s, 2), c) for s, c in self.result.items())))]
+            if parsed_counts:
+                result = [
+                    list(zip(*((int(s, 2), c) for s, c in parsed_counts.items())))
+                ]
+            else:
+                result = [[]]
         else:
             result = []
 

@@ -14,7 +14,7 @@ from fractions import Fraction
 from math import pi
 from random import Random
 from cmath import sqrt, phase
-from collections import defaultdict
+from collections import defaultdict, Counter
 from typing import Literal, Callable
 from ctypes import c_size_t
 
@@ -92,7 +92,7 @@ class QuantumState(HasProcess):
                     if abs(amplitude) ** 2 > 1e-10:
                         states[state] += amplitude
 
-                p = sum(map(lambda a: abs(a) ** 2, states.values()))
+                p = sum(abs(a) ** 2 for a in states.values())
                 if abs(p - 1.0) < 1e-10:
                     self._states = dict(states)
                 else:
@@ -137,7 +137,7 @@ class QuantumState(HasProcess):
         self._check()
         if self._states is None:
             return None
-        return dict(map(lambda a: (a[0], abs(a[1]) ** 2), self._states.items()))
+        return {state: abs(amp) ** 2 for state, amp in self._states.items()}
 
     def sample(self, shots=4096, seed=None) -> dict[int, int] | None:
         """Get the quantum execution shots.
@@ -158,14 +158,12 @@ class QuantumState(HasProcess):
             return None
 
         rng = Random(seed)
-        shots = rng.choices(list(self.states), list(self.probability), k=shots)
-        result = {}
-        for state in shots:
-            if state not in result:
-                result[state] = 1
-            else:
-                result[state] += 1
-        return result
+        states_list = list(self.states.keys())
+        weights_list = list(self.probability.values())
+
+        shots_result = rng.choices(states_list, weights=weights_list, k=shots)
+
+        return dict(Counter(shots_result))
 
     @staticmethod
     def _sphere():  # pylint: disable=too-many-locals
@@ -275,10 +273,11 @@ class QuantumState(HasProcess):
             raise ValueError("Bloch sphere plot is available only for 1 qubit")
         _check_visualize()
 
+        state_dict = self.get()
         ket = np.array(
             [
-                [self.get()[0] if 0 in self.get() else 0.0],
-                [self.get()[1] if 1 in self.get() else 0.0],
+                [state_dict.get(0, 0.0)],
+                [state_dict.get(1, 0.0)],
             ]
         )
 
@@ -613,16 +612,13 @@ class QuantumState(HasProcess):
         _check_visualize()
 
         state = list(self.get().keys())
-        state_text = (
-            list(map(lambda s: f"|{s:0{self.size}b}⟩", state))
-            if mode == "bin"
-            else state
-        )
+        state_text = [f"|{s:0{self.size}b}⟩" for s in state] if mode == "bin" else state
 
+        values = self.get().values()
         data = {
             "State": state,
-            "Probability": list(map(lambda a: abs(a) ** 2, self.get().values())),
-            "Phase": list(map(phase, self.get().values())),
+            "Probability": [abs(a) ** 2 for a in values],
+            "Phase": [phase(a) for a in values],
         }
 
         fig = px.bar(

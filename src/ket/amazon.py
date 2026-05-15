@@ -298,12 +298,15 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
                 )
             )
 
+        if not terms:
+            self.exp_value_result = sum(hamiltonian.get("coefficients", [0.0]))
+            return
+
         observables = terms[0][1] * terms[0][0]
         for p, c in terms[1:]:
             observables += c * p
 
         binding = CircuitBinding(self.circuit, [], observables=observables)
-
         program_set = ProgramSet(binding)
 
         self.exp_value_result = (

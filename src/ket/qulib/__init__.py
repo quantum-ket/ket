@@ -492,7 +492,7 @@ def energy(  # pylint: disable=too-many-branches
     )
     qubits = process.alloc(num_qubits)
 
-    X(qubits.at(int(i) for i, s in enumerate(state) if str(s) == "1"))
+    X(qubits.at([int(i) for i, s in enumerate(state) if str(s) == "1"]))
 
     h = hamiltonian(qubits)
 
@@ -546,7 +546,7 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
     initial_temp: float = 1_000.0,
     final_temp: float = 0.01,
     cooling_rate: float = 0.99,
-    num_evaluations: int | None = None,
+    num_evaluations: int = 16,
     multiprocessing: bool = True,
 ) -> tuple[int, float]:
     """Find the ground state of a Hamiltonian.
@@ -571,7 +571,15 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
         cooling_rate: The decay factor applied to the temperature
             at each step (0 < cooling_rate < 1). Defaults to 0.99.
         num_evaluations: The number of independent annealing runs
-            to execute. If None, it defaults to the total number of available CPU cores.
+            to execute. Defaults to 16.
+        multiprocessing: Whether to run the evaluations concurrently using the
+            `multiprocess` library. Defaults to True.
+
+    Raises:
+        ValueError: If any of the numerical parameters (num_qubits, initial_temp,
+            final_temp, cooling_rate, num_evaluations) are out of their valid ranges.
+        RuntimeError: If `multiprocessing=True` but the `multiprocess` library
+            is not installed.
 
     Returns:
         The result of the simulated annealing run that yielded the lowest energy.
@@ -599,15 +607,10 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
             f"cooling_rate must be strictly between 0 and 1, got {cooling_rate}."
         )
 
-    if num_evaluations is not None and (num_evaluations <= 0):
+    if num_evaluations <= 0:
         raise ValueError(
-            f"num_evaluations must be a positive integer or None, got {num_evaluations}."
+            f"num_evaluations must be a positive integer, got {num_evaluations}."
         )
-
-    num_cores = mp.cpu_count()
-
-    if num_evaluations is None:
-        num_evaluations = num_cores
 
     args = [
         (
@@ -630,10 +633,10 @@ def simulated_annealing(  # pylint: disable=too-many-arguments,too-many-position
                     "or set `multiprocessing=False` to run sequentially."
                 )
 
-            with mp.Pool(processes=num_cores) as pool:
+            with mp.Pool() as pool:
                 results = pool.starmap(_simulated_annealing, args)
         else:
-            results = starmap(_simulated_annealing, args)
+            results = list(starmap(_simulated_annealing, args))
 
         return min(results, key=lambda se: se[1])
 

@@ -16,11 +16,11 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
+from collections import Counter
 from ctypes import c_size_t, c_uint8, c_void_p
 from functools import partial
 from json import loads
-from typing import Literal, Optional, Any
+from typing import Literal, Optional, Any, Iterable
 import weakref
 
 from .clib.libket import (
@@ -173,7 +173,9 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
         self._aux_pool = []
         self._aux = set()
+
         self._blocked = []
+        self._blocked_counter = Counter()
 
         self._ctrl_buffer_size = 512
         self._ctrl_buffer = (c_size_t * self._ctrl_buffer_size)()
@@ -190,14 +192,31 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
     def _blocked_push(self):
         self._blocked.append(set())
 
-    def _blocked_pop(self):
-        self._blocked.pop()
+    def _blocked_pop(self) -> set[int]:
+        """Remove and return the last blocked set from the stack."""
+        return self._blocked.pop()
+
+    def _block_qubits(self, qubits: Iterable[int]):
+        """Increment the reference block counter for the given qubits."""
+        for q in qubits:
+            self._blocked_counter[q] += 1
+
+    def _unblock_qubits(self, qubits: Iterable[int]):
+        """Decrement the reference block counter for the given qubits."""
+        for q in qubits:
+            self._blocked_counter[q] -= 1
+            if self._blocked_counter[q] <= 0:
+                del self._blocked_counter[q]
 
     def _block_ctrl(self):
-        self._blocked[-1].update(self._ctrl_list())
+        if self._blocked:
+            self._blocked[-1].update(self._ctrl_list())
 
-    def _is_blocked(self, index):
-        return any(index in blocked for blocked in self._blocked)
+    def _is_blocked(self, index: int) -> bool:
+        """Check if a qubit is blocked either by scope stack or by reference counter."""
+        return (index in self._blocked_counter) or any(
+            index in blocked for blocked in self._blocked
+        )
 
     def _is_aux(self, index):
         return index in self._aux
@@ -281,11 +300,12 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         Returns:
             A list of dictionaries containing quantum instructions extracted from the process.
         """
-        write_size = self.instructions_json(self._buffer, self._buffer_size)
-        if write_size.value > self._buffer_size:
+        while True:
+            write_size = self.instructions_json(self._buffer, self._buffer_size)
+            if write_size.value <= self._buffer_size:
+                break
             self._buffer_size = write_size.value + 1
             self._buffer = (c_uint8 * self._buffer_size)()
-            return self.get_instructions()
 
         return loads(bytearray(self._buffer[: write_size.value]))
 
@@ -335,11 +355,12 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             if the process has been transpiled, otherwise None.
 
         """
-        write_size = self.isa_instructions_json(self._buffer, self._buffer_size)
-        if write_size.value > self._buffer_size:
+        while True:
+            write_size = self.isa_instructions_json(self._buffer, self._buffer_size)
+            if write_size.value <= self._buffer_size:
+                break
             self._buffer_size = write_size.value + 1
             self._buffer = (c_uint8 * self._buffer_size)()
-            return self.get_isa_instructions()
 
         return loads(bytearray(self._buffer[: write_size.value]))
 
@@ -369,23 +390,24 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             A dictionary containing metadata information extracted from the process.
 
         """
-
-        write_size = self.metadata_json(
-            self._metadata_buffer, self._metadata_buffer_size
-        )
-        if write_size.value > self._metadata_buffer_size:
+        while True:
+            write_size = self.metadata_json(
+                self._metadata_buffer, self._metadata_buffer_size
+            )
+            if write_size.value <= self._metadata_buffer_size:
+                break
             self._metadata_buffer_size = write_size.value + 1
             self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
-            return self.get_metadata()
 
         return loads(bytearray(self._metadata_buffer[: write_size.value]))
 
     def _ctrl_list(self) -> list[int]:
-        write_size = self.get_ctrl(self._ctrl_buffer, self._ctrl_buffer_size)
-        if write_size.value > self._ctrl_buffer_size:
+        while True:
+            write_size = self.get_ctrl(self._ctrl_buffer, self._ctrl_buffer_size)
+            if write_size.value <= self._ctrl_buffer_size:
+                break
             self._ctrl_buffer_size = write_size.value + 1
             self._ctrl_buffer = (c_uint8 * self._ctrl_buffer_size)()
-            return self._ctrl_list()
 
         return self._ctrl_buffer[: write_size.value]
 
@@ -467,11 +489,12 @@ class Quant(HasProcess):
         super().__init__(ket_process=process)
 
         self.qubits = qubits
-        if undo is not None:
-            self._finalizer = weakref.finalize(self, undo)
+        self._finalizer = weakref.finalize(self, undo) if undo is not None else None
         self.source = source
 
     def __add__(self, other: Quant) -> Quant:
+        if not isinstance(other, Quant):
+            return NotImplemented
         if self.ket_process is not other.ket_process:
             raise ValueError("Cannot concatenate qubits from different processes")
         if any(qubit in other.qubits for qubit in self.qubits):
@@ -532,34 +555,26 @@ class Quant(HasProcess):
             source=self,
         )
 
-    class _QuantIter:
-        def __init__(self, q: Quant):
-            self.q = q
-            self.idx = -1
-            self.size = len(q.qubits)
-
-        def __next__(self):
-            self.idx += 1
-            if self.idx < self.size:
-                return self.q[self.idx]
-            raise StopIteration
-
-        def __iter__(self):
-            return self
-
-    def __iter__(self):
-        return self._QuantIter(self)
-
     def __len__(self):
         return len(self.qubits)
 
-    def __eq__(self, other: int):
+    def __eq__(self, other: Any):
+        if not isinstance(other, int):
+            return NotImplemented
+
         from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
             undo,
             _flip_to_control,
         )
 
         return undo(_flip_to_control(other), self)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._finalizer is not None and self._finalizer.alive:
+            self._finalizer()
 
     def as_int(self, number: int = 0):
         """Interprets and initializes the quantum register as a quantum integer.

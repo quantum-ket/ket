@@ -393,7 +393,7 @@ RX.__doc__ = _gate_docstring(
 
 
 def RY(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits: Quant | None = None
+    theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
     if not isinstance(theta, Parameter):
@@ -463,7 +463,7 @@ RY.__doc__ = _gate_docstring(
 
 
 def RZ(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits: Quant | None = None
+    theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
     def inner(qubits: Quant) -> Quant:
@@ -505,7 +505,7 @@ RZ.__doc__ = _gate_docstring(
 
 
 def P(  # pylint: disable=invalid-name missing-function-docstring
-    theta: float, qubits: Quant | None = None
+    theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
     def inner(qubits: Quant) -> Quant:
@@ -604,10 +604,18 @@ CNOT.__doc__ = _gate_docstring(
 
 
 def CZ(  # pylint: disable=invalid-name missing-function-docstring
-    *qubits: list[Quant],
-) -> list[Quant, Quant]:
-    for q in zip(*qubits):
-        ctrl(q[:-1], Z)(q[-1])
+    *qubits: Quant,
+) -> tuple[Quant, ...]:
+    if not qubits:
+        return qubits
+
+    all_qubits = reduce(Quant.__add__, qubits)
+
+    if len(all_qubits) > 1:
+        ctrl(all_qubits[:-1], Z)(all_qubits[-1])
+    elif len(all_qubits) == 1:
+        Z(all_qubits)
+
     return qubits
 
 

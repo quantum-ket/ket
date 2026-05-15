@@ -219,7 +219,7 @@ def dicke(k: int, qubits: Quant) -> Quant:
     with control(head):
         dicke(k - 1, tail)
 
-    with control(head, 0):
+    with control(head == 0):
         dicke(k, tail)
 
     return qubits

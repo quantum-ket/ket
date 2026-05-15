@@ -453,26 +453,34 @@ def undo(
     token = _allow_permutation.set(True)
 
     ket_process = qubits.ket_process
+
     ket_process._blocked_push()
-
     ket_process.ctrl_stack()
-    gate(qubits)
-    ket_process.ctrl_unstack()
+    try:
+        gate(qubits)
+    finally:
+        ket_process.ctrl_unstack()
+        _allow_permutation.reset(token)
+        blocked_qubits = ket_process._blocked_pop()
 
-    _allow_permutation.reset(token)
+    ket_process._block_qubits(blocked_qubits)
 
     def undo_func():
-        ket_process._blocked_pop()
-        ket_process._blocked_push()
+        if ket_process.get_metadata()["terminated"]:
+            return
 
-        token = _allow_permutation.set(True)
+        ket_process._blocked_push()
+        token_undo = _allow_permutation.set(True)
 
         ket_process.ctrl_stack()
-        adj(gate)(qubits)
-        ket_process.ctrl_unstack()
+        try:
+            adj(gate)(qubits)
+        finally:
+            ket_process.ctrl_unstack()
+            _allow_permutation.reset(token_undo)
+            ket_process._blocked_pop()
 
-        _allow_permutation.reset(token)
-        ket_process._blocked_pop()
+        ket_process._unblock_qubits(blocked_qubits)
 
     return Quant(
         qubits=qubits.qubits,
@@ -520,26 +528,27 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
     ket_process._blocked_push()
 
     ket_process.ctrl_stack()
-    gate(*args, **kwargs)
-    ket_process.ctrl_unstack()
-
-    _allow_permutation.reset(token)
+    try:
+        gate(*args, **kwargs)
+    finally:
+        ket_process.ctrl_unstack()
+        _allow_permutation.reset(token)
 
     try:
         yield
     finally:
         ket_process._blocked_pop()
-        ket_process._blocked_push()
 
-        token = _allow_permutation.set(True)
+        ket_process._blocked_push()
+        token_adj = _allow_permutation.set(True)
 
         ket_process.ctrl_stack()
-        adj(gate)(*args, ket_process=ket_process, **kwargs)
-        ket_process.ctrl_unstack()
-
-        _allow_permutation.reset(token)
-
-        ket_process._blocked_pop()
+        try:
+            adj(gate)(*args, ket_process=ket_process, **kwargs)
+        finally:
+            ket_process.ctrl_unstack()
+            _allow_permutation.reset(token_adj)
+            ket_process._blocked_pop()
 
 
 def measure(qubits: Quant) -> Measurement:
@@ -656,8 +665,10 @@ def using_aux(unsafe: bool = False, **names):
                 kwargs[name] = ket_process.alloc_aux(num_qubits)
 
             token = _unsafe_aux.set(unsafe)
-            ret = func(*args, **kwargs)
-            _unsafe_aux.reset(token)
+            try:
+                ret = func(*args, **kwargs)
+            finally:
+                _unsafe_aux.reset(token)
 
             return ret
 

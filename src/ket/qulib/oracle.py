@@ -48,7 +48,7 @@ def xor_oracle(func):
     @wraps(func)
     def inner(x: Quant, y: Quant):
         for state in range(2 ** len(x)):
-            with control(x, state):
+            with control(x == state):
                 Qint(y, func(state))
 
     return inner
@@ -64,8 +64,13 @@ def phase_oracle(
 
     def inner(qubits: Quant) -> Quant:
         init, last = qubits[:-1], qubits[-1]
-        with around(lambda q: X(q) if state & 1 == 0 else None, last):
-            ctrl(init == state >> 1, Z)(last)
+
+        if state & 1 == 0:
+            with around(X, last):
+                ctrl(init == (state >> 1), Z)(last)
+        else:
+            ctrl(init == (state >> 1), Z)(last)
+
         return qubits
 
     if qubits is None:

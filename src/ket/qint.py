@@ -8,6 +8,7 @@
 
 from functools import partial
 from math import pi
+from typing import Any
 from .base import Quant
 from .gates import X, QFT, P, is_permutation
 from .operations import C, control, ctrl, around, adj, undo
@@ -102,12 +103,12 @@ def _addi_qi(lhs: Quant, rhs: int | str, m=1):
 def _addi(lhs, rhs, m: int = 1):
     """General in-place addition using the QFT."""
     with around(QFT, reversed(lhs), False):
-        if isinstance(rhs, Qreal):
+        if isinstance(rhs, Quant):
             _addi_qq(lhs, rhs, m=m)
         elif isinstance(rhs, int):
             _addi_qi(lhs, rhs, m=m)
         else:
-            raise TypeError("`other` must be a Qint, Qreal, or an integer.")
+            raise TypeError("`rhs` must be a Qint, Qreal, or an integer.")
 
 
 class Qreal(Quant):  # pylint: disable=too-few-public-methods
@@ -132,7 +133,10 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         number = round(number * 2**exp)
         _set_int(qubits, number)
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         if isinstance(other, Qreal):
             m = self.exp - other.exp
         else:
@@ -154,21 +158,27 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
         return Qreal(undo(inner_copy, other), exp=self.exp)
 
-    def __add__(self, other):
+    def __add__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         result = self.copy()
 
         def inner_add(result):
             result += other
 
-        return undo(inner_add, result)
+        return Qreal(undo(inner_add, result), exp=self.exp)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         result = self.copy()
 
         def inner_sub(result):
             result -= other
 
-        return undo(inner_sub, result)
+        return Qreal(undo(inner_sub, result), exp=self.exp)
 
     def mul(self, other, result):
         """Performs quantum multiplication.
@@ -189,14 +199,20 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         for i, q in enumerate(reversed(self)):
             ctrl(q, _addi)(result, other, m=2 ** (i + m))
 
-    def __mul__(self, other):
+    def __mul__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         result_quant = self.ket_process.alloc_aux(len(self))
         new_exp = self.exp + other.exp if isinstance(other, Qreal) else self.exp
 
         raw_result = undo(partial(self.mul, other), result_quant)
         return Qreal(raw_result, exp=new_exp)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         result_quant = self.ket_process.alloc_aux(len(self))
         new_exp = self.exp - other.exp if isinstance(other, Qreal) else self.exp
 
@@ -209,9 +225,12 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
             qint += 1
 
         result = self.copy()
-        return undo(neg, result)
+        return Qreal(undo(neg, result), exp=self.exp)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         result = self.copy()
 
         def lt(result):
@@ -219,27 +238,43 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
         return undo(lt, result)[0]
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         result = -self + other
         return result[0]
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         return undo(X, (self < other))
 
-    def __le__(self, other):
+    def __le__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
         return undo(X, (self > other))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
+        cond = Quant.__eq__(self - other, 0)
         result = self.ket_process.alloc_aux()
 
         def eq(result):
-            with control(Quant.__eq__(self - other, 0)):
+            with control(cond):
                 X(result)
 
         return undo(eq, result)
 
-    def __ne__(self, value):
-        return undo(X, self == value)
+    def __ne__(self, other: Any):
+        if not isinstance(other, (int, float, Quant)):
+            return NotImplemented
+
+        return undo(X, self == other)
 
     def postprocessing(self):
         """Returns a function to convert the internal integer state back to a float."""
