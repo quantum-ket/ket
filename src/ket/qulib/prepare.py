@@ -169,7 +169,21 @@ def state(
             state(amp.right, tail)
 
 
-def dicke(k: int, qubits: Quant) -> Quant:
+def _scs_angle(l: int, n: int) -> float:
+    return 2 * acos(sqrt(l / n))
+
+
+def _scs(k: int, q: Quant):
+    n = len(q)
+    with around(CNOT, q[-2], q[-1]):
+        ctrl(q[-1], RY(_scs_angle(1, n)))(q[-2])
+
+    for l in range(2, k + 1):
+        with around(CNOT, q[-(l + 1)], q[-1]):
+            ctrl(q[-1] + q[-l], RY(_scs_angle(l, n)))(q[-(l + 1)])
+
+
+def dicke(k: int, qubits: Quant, first: bool = True) -> Quant:
     r"""Prepares an :math:`n`-qubit Dicke state :math:`\ket{D_k^n}`.
 
     A Dicke state is the equal superposition of all computational basis
@@ -181,45 +195,24 @@ def dicke(k: int, qubits: Quant) -> Quant:
         \frac{1}{\sqrt{\binom{n}{k}}}
         \sum_{\substack{x \in \{0,1\}^n \\ |x| = k}} \ket{x}.
 
-    This implementation uses the standard recursive identity:
-
-    .. math::
-
-        \ket{D_k^n} =
-        \sqrt{\frac{k}{n}}\, \ket{1}\!\otimes\!\ket{D_{k-1}^{n-1}}
-        +
-        \sqrt{\frac{n-k}{n}}\, \ket{0}\!\otimes\!\ket{D_k^{n-1}}.
+    This implementation uses the deterministic, ancilla-free algorithm
+    proposed in `arXiv:1904.07358 <https://arxiv.org/abs/1904.07358>`_.
 
     Args:
-        k: Number of excitations. Must satisfy :math:`0 \le k \le n`.
+        k: Number of excitations. Must satisfy :math:`0 \le k \le \text{len(qubits)}`.
         qubits: A register of :math:`n` qubits.
+        first: Internal control flag for the recursion base step to handle
+               the initial :math:`\ket{1}` state population. Defaults to True.
 
     Returns:
         Quant: The same register, transformed in-place into
         :math:`\ket{D_k^n}`.
-
-    Raises:
-        ValueError: If ``k`` is negative.
     """
-    if k < 0:
-        raise ValueError("k must be non-negative")
-
-    n = len(qubits)
     if k == 0:
         return qubits
-    if n <= k:
-        X(qubits)
-        return qubits
 
-    head, *tail = qubits
+    if first:
+        X(qubits[-k:])
 
-    # Prepare sqrt(k/n) * |1> + sqrt((n-k)/n) * |0>
-    RY(2 * asin(sqrt(k / n)))(head)
-
-    with control(head):
-        dicke(k - 1, tail)
-
-    with control(head == 0):
-        dicke(k, tail)
-
-    return qubits
+    _scs(k, qubits)
+    return dicke(min(k, len(qubits) - 2), qubits[:-1], False)
