@@ -60,11 +60,11 @@ Package Windows x86_64 Wheels:
     - |
       curl --fail --location \
       "https://gitlab.com/api/v4/projects/${KBW_PROJ_ID}/packages/generic/kbw/${KBW_HASH}/kbw.dll" \
-      --create-dirs --output src/ket/clib/libs/libkbw.so
+      --create-dirs --output src/ket/clib/libs/kbw.dll
     - |
       curl --fail --location \
       "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/ket.dll" \
-      --create-dirs --output src/ket/clib/libs/libket.so
+      --create-dirs --output src/ket/clib/libs/ket.dll
 
     - python setup.py bdist_wheel -p win-amd64
   artifacts:
