@@ -70,6 +70,8 @@ Package Windows x86_64 Wheels:
   artifacts:
     paths:
       - dist/*.whl
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
 
 Package Source Code:
   image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
@@ -106,8 +108,8 @@ PyPI Upload:
     - uv pip install --system twine
   script:
     - python -m twine upload dist/* wheelhouse/*
-  only:
-    - master
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PROJECT_PATH == "quantum-ket/ket"'
 
 sast:
   stage: test
