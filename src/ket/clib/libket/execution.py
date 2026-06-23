@@ -10,7 +10,6 @@ from __future__ import annotations
 from ctypes import (
     CFUNCTYPE,
     Structure,
-    c_uint32,
     c_void_p,
     c_size_t,
     POINTER,
@@ -19,6 +18,7 @@ from ctypes import (
     c_int32,
     c_uint64,
     c_double,
+    c_char_p,
 )
 import json
 from typing import Any, Literal
@@ -27,34 +27,7 @@ from os import environ
 from os.path import dirname
 from abc import ABC, abstractmethod
 
-from .wrapper import load_lib, os_lib_name
-
-HADAMARD = 0
-PAULI_X = 1
-PAULI_Y = 2
-PAULI_Z = 3
-ROTATION_X = 10
-ROTATION_Y = 20
-ROTATION_Z = 30
-PHASE_SHIFT = 31
-
-SUCCESS = 0
-CONTROL_TWICE = 1
-DATA_NOT_AVAILABLE = 2
-DEALLOCATED_QUBIT = 3
-QUBIT_INDEX_OUT_OF_BOUNDS = 4
-NUMBER_OF_QUBITS_EXCEEDED = 5
-NO_ADJ = 6
-NO_CTRL = 7
-NON_GATE_INSTRUCTION_IN_ADJ = 8
-TARGET_IN_CONTROL = 9
-PROCESS_READY_TO_EXECUTE = 10
-UNEXPECTED_RESULT_DATA = 11
-DUMP_NOT_ALLOWED = 12
-EXP_VALUE_NOT_ALLOWED = 13
-SAMPLE_NOT_ALLOWED = 14
-MEASURE_NOT_ALLOWED = 15
-UNDEFINED_ERROR = 16
+from ..wrapper import load_lib, os_lib_name
 
 
 class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
@@ -62,17 +35,26 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
 
     _fields_ = [
         (
-            "submit_execution",
+            "sample",
             CFUNCTYPE(
-                None,
-                POINTER(c_uint8),
-                c_size_t,
-                POINTER(c_double),
-                c_size_t,
+                c_int32,
+                c_char_p,  # gates_json
+                POINTER(c_size_t),  # qubits_to_sample
+                c_size_t,  # qubits_to_sample_len
+                c_size_t,  # shots
+                POINTER(c_char_p),  # sample_json
             ),
         ),
-        ("get_results", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
-        ("clear", CFUNCTYPE(None)),
+        (
+            "exp_value",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # gates_json
+                c_char_p,  # hamiltonian_list_json
+                POINTER(c_double),  # result
+            ),
+        ),
+        ("exp_value_available", CFUNCTYPE(c_bool)),
     ]
 
 
@@ -81,136 +63,198 @@ class LiveCExecution(Structure):  # pylint: disable=too-few-public-methods
 
     _fields_ = [
         (
-            "gate",
+            "compute_gate",
             CFUNCTYPE(
-                None, POINTER(c_uint8), c_size_t, c_size_t, POINTER(c_size_t), c_size_t
+                c_int32,
+                c_char_p,  # json
             ),
         ),
-        ("measure", CFUNCTYPE(c_uint64, POINTER(c_size_t), c_size_t)),
-        ("exp_value", CFUNCTYPE(c_double, POINTER(c_uint8), c_size_t)),
         (
-            "sample",
+            "measure",
             CFUNCTYPE(
-                None,
-                POINTER(c_size_t),
-                c_size_t,
-                c_size_t,
-                POINTER(POINTER(c_uint8)),
-                POINTER(c_size_t),
+                c_int32,
+                POINTER(c_size_t),  # qubits
+                c_size_t,  # len
+                POINTER(c_uint64),  # result
             ),
         ),
         (
             "dump",
             CFUNCTYPE(
-                None,
-                POINTER(c_size_t),
-                c_size_t,
-                POINTER(POINTER(c_uint8)),
-                POINTER(c_size_t),
+                c_int32,
+                POINTER(c_size_t),  # qubits
+                c_size_t,  # len
+                POINTER(c_char_p),  # result_json
             ),
         ),
-        ("save", CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))),
-        ("load", CFUNCTYPE(None, POINTER(c_uint8), c_size_t)),
+        (
+            "sample",
+            CFUNCTYPE(
+                c_int32,
+                POINTER(c_size_t),  # qubits
+                c_size_t,  # len
+                c_size_t,  # shots
+                POINTER(c_char_p),  # result_json
+            ),
+        ),
+        (
+            "exp_value",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # hamiltonian_json
+                POINTER(c_double),  # result
+            ),
+        ),
+    ]
+
+
+class CNativeGateSet(Structure):
+    """C CNativeGateSet Structure"""
+
+    _fields_ = [
+        (
+            "translate",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # gate_json
+                c_size_t,  # target
+                c_size_t,  # control
+                c_bool,  # some_control
+                POINTER(c_char_p),  # native_gate_json
+            ),
+        ),
+        (
+            "swap",
+            CFUNCTYPE(
+                c_int32,
+                c_size_t,  # a
+                c_size_t,  # b
+                POINTER(c_char_p),  # native_gate_json
+            ),
+        ),
     ]
 
 
 api_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
-    "ket_set_log_level": ([c_uint32], []),
-    "ket_build_info": ([], [POINTER(c_uint8), c_size_t]),
-    "ket_process_new": ([c_void_p], [c_void_p]),
-    "ket_process_delete": ([c_void_p], []),
-    "ket_process_allocate_qubit": ([c_void_p], [c_size_t]),
-    "ket_process_apply_gate": (
+    "ket_string_delete": (
+        [c_char_p],  # ptr
+        [],
+    ),
+    "ket_block_new": (
+        [],
+        [c_void_p],  # block
+    ),
+    "ket_block_delete": (
+        [c_void_p],  # block
+        [],
+    ),
+    "ket_block_append_gate": (
+        [c_void_p, c_char_p, c_size_t],  # block, gate_json, target
+        [],
+    ),
+    "ket_block_inverse": (
+        [c_void_p],  # block
+        [c_void_p],  # inverted_block
+    ),
+    "ket_block_control": (
         [
-            c_void_p,  # process
-            c_int32,  # gate
-            c_double,  # angle
-            c_bool,  # use_param
-            c_size_t,  # param_index
-            c_size_t,  # target
-        ],
+            c_void_p,
+            POINTER(c_size_t),
+            c_size_t,
+        ],  # block, control_qubits, control_qubits_len
+        [c_void_p],  # controlled_block
+    ),
+    "ket_block_enable_approximated_decomposition": (
+        [c_void_p],  # block
         [],
     ),
-    "ket_process_set_parameter": ([c_void_p, c_double], [c_size_t]),
-    "ket_process_get_gradient": ([c_void_p, c_size_t], [c_bool, c_double]),
-    "ket_process_apply_global_phase": (
-        [c_void_p, c_double],
+    "ket_block_lock_control": (
+        [c_void_p],  # block
         [],
     ),
-    "ket_process_measure": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
-    "ket_hamiltonian_new": ([], [c_void_p]),
-    "ket_hamiltonian_add": (
-        [c_void_p, POINTER(c_int32), c_size_t, POINTER(c_size_t), c_size_t, c_double],
+    "ket_block_append_block": (
+        [c_void_p, c_void_p],  # block, other
         [],
     ),
-    "ket_process_exp_value": (
-        [c_void_p, c_void_p],
-        [c_size_t],
+    "ket_block_add_global_phase": (
+        [c_void_p, c_double],  # block, phase
+        [],
+    ),
+    "ket_block_proprieties_json": (
+        [c_void_p],  # block
+        [c_char_p],  # proprieties
+    ),
+    "ket_quantum_execution_live": (
+        [POINTER(LiveCExecution)],  # live
+        [c_void_p],  # quantum_execution
+    ),
+    "ket_quantum_execution_batch": (
+        [
+            POINTER(BatchCExecution),
+            POINTER(CNativeGateSet),
+            c_bool,
+            c_char_p,
+        ],  # batch, native_gate_set, gradient, coupling_graph_json
+        [c_void_p],  # quantum_execution
+    ),
+    "ket_process_new": (
+        [c_void_p],  # qpu_config
+        [c_void_p],  # process
+    ),
+    "ket_process_delete": (
+        [c_void_p],  # process
+        [],
+    ),
+    "ket_process_alloc": (
+        [c_void_p],  # process
+        [c_size_t],  # qubit
+    ),
+    "ket_process_append_block": (
+        [c_void_p, c_void_p],  # process, block
+        [],
+    ),
+    "ket_process_measure": (
+        [c_void_p, POINTER(c_size_t), c_size_t],  # process, qubits, qubits_len
+        [c_uint64],  # result
+    ),
+    "ket_process_dump": (
+        [c_void_p, POINTER(c_size_t), c_size_t],  # process, qubits, qubits_len
+        [c_char_p],  # dump_json
     ),
     "ket_process_sample": (
-        [c_void_p, POINTER(c_size_t), c_size_t, c_uint64],
-        [c_size_t],
-    ),
-    "ket_process_dump": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
-    "ket_process_get_ctrl": ([c_void_p, POINTER(c_size_t), c_size_t], [c_size_t]),
-    "ket_process_ctrl_push": ([c_void_p, POINTER(c_size_t), c_size_t], []),
-    "ket_process_ctrl_pop": ([c_void_p], []),
-    "ket_process_ctrl_stack": ([c_void_p], []),
-    "ket_process_ctrl_unstack": ([c_void_p], []),
-    "ket_process_adj_begin": ([c_void_p], []),
-    "ket_process_adj_end": ([c_void_p], []),
-    "ket_process_execute": ([c_void_p], []),
-    "ket_process_prepare_for_execution": ([c_void_p], []),
-    "ket_process_instructions_json": (
-        [c_void_p, POINTER(c_uint8), c_size_t],
-        [c_size_t],
-    ),
-    "ket_process_isa_instructions_json": (
-        [c_void_p, POINTER(c_uint8), c_size_t],
-        [c_size_t],
-    ),
-    "ket_process_metadata_json": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
-    "ket_process_get_measurement": ([c_void_p, c_size_t], [c_bool, c_uint64]),
-    "ket_process_get_exp_value": ([c_void_p, c_size_t], [c_bool, c_double]),
-    "ket_process_get_sample": (
-        [c_void_p, c_size_t],
-        [c_bool, POINTER(c_uint64), POINTER(c_uint64), c_size_t],
-    ),
-    "ket_process_get_dump_size": ([c_void_p, c_size_t], [c_bool, c_size_t]),
-    "ket_process_get_dump": (
-        [c_void_p, c_size_t, c_size_t],
-        [POINTER(c_uint64), c_size_t, c_double, c_double],
-    ),
-    "ket_make_configuration": (
         [
-            POINTER(c_uint8),  # json
-            c_size_t,  # json_size
-            POINTER(BatchCExecution),  # batch_execution
-            POINTER(LiveCExecution),  # live_execution
-        ],
-        [c_void_p],
+            c_void_p,
+            POINTER(c_size_t),
+            c_size_t,
+            c_size_t,
+        ],  # process, qubits, qubits_len, shots
+        [c_char_p],  # sample_json
     ),
-    "ket_process_save_sim_state": ([c_void_p, POINTER(c_uint8), c_size_t], [c_size_t]),
-    "ket_process_load_sim_state": ([c_void_p, POINTER(c_uint8), c_size_t], []),
-    "ket_process_is_diagonal_begin": ([c_void_p], []),
-    "ket_process_is_permutation_begin": ([c_void_p], []),
-    "ket_process_is_diagonal_end": ([c_void_p], []),
-    "ket_process_is_permutation_end": ([c_void_p], []),
-    "ket_process_around_begin": ([c_void_p], []),
-    "ket_process_around_mid": ([c_void_p], []),
-    "ket_process_around_undo": ([c_void_p], []),
-    "ket_process_around_end": ([c_void_p], []),
-    "ket_process_allocate_aux": (
-        [c_void_p, c_size_t, POINTER(c_size_t), c_size_t],
-        [c_size_t, c_size_t],
+    "ket_process_read_exp_value": (
+        [c_void_p],  # process
+        [c_char_p],  # result_json
     ),
-    "ket_process_free_aux": (
-        [c_void_p, c_size_t],
+    "ket_process_read_gradient": (
+        [c_void_p],  # process
+        [c_char_p],  # result_json
+    ),
+    "ket_process_param": (
+        [c_void_p, c_double],  # process, param
+        [c_size_t],  # param_index
+    ),
+    "ket_process_execute": (
+        [c_void_p],  # process
         [],
     ),
-    "ket_process_approximated_decomposition_begin": ([c_void_p], []),
-    "ket_process_approximated_decomposition_end": ([c_void_p], []),
+    "ket_process_read_sample": (
+        [c_void_p],  # process
+        [c_char_p],  # sample_json
+    ),
+    "ket_process_exp_value": (
+        [c_void_p, c_char_p],  # process, hamiltonian_json
+        [c_char_p],  # result_json
+    ),
 }
 
 
@@ -219,12 +263,9 @@ def libket_path():
     return environ.get("LIBKET_PATH", f'{dirname(__file__)}/libs/{os_lib_name("ket")}')
 
 
-API = load_lib("Libket", libket_path(), api_argtypes, "ket_error_message")
-
-
-def set_log(level: int):
-    """Set Libket log level"""
-    API["ket_set_log_level"](level)
+API = load_lib(
+    "Libket", libket_path(), api_argtypes, "ket_error_message", "ket_string_delete"
+)
 
 
 class HasProcess:  # pylint: disable=too-few-public-methods
@@ -242,8 +283,8 @@ class HasProcess:  # pylint: disable=too-few-public-methods
 class Process(HasProcess):
     """Libket process wrapper from C API"""
 
-    def __init__(self, ket_process, configuration):
-        super().__init__(ket_process=ket_process)
+    def __init__(self, configuration):
+        super().__init__(ket_process=self)
 
         self._as_parameter_ = API["ket_process_new"](configuration)
         self._finalizer = weakref.finalize(
@@ -254,7 +295,7 @@ class Process(HasProcess):
         return lambda *args: API["ket_process_" + name](self, *args)
 
     def __repr__(self) -> str:
-        return "<Libket 'process'>"
+        return f"<Libket 'process', pid={hex(id(self.ket_process))}=>"
 
 
 class BatchExecution(ABC):
