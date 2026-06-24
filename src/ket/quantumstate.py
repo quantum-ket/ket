@@ -11,14 +11,15 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 from fractions import Fraction
+import json
 from math import pi
 from random import Random
-from cmath import sqrt, phase
-from collections import defaultdict, Counter
+from cmath import phase
+from collections import Counter
 from typing import Literal, Callable
 from ctypes import c_size_t
 
-from .clib.libket import HasProcess
+from .clib.libket import HasProcess, API as libket
 
 from .base import Quant
 from .measurement import _check_visualize
@@ -69,38 +70,23 @@ class QuantumState(HasProcess):
             self.qubits.extend(qubit.qubits)
             self.qubits_info.append((len(qubit), qubit.dump_format()))
 
-        self.index = self.ket_process.dump(
-            (c_size_t * len(self.qubits))(*self.qubits), len(self.qubits)
-        ).value
+        dump_prt = self.ket_process.dump(
+            (c_size_t * len(self.qubits))(*self.qubits),
+            len(self.qubits),
+        )
+
+        dump = json.loads(dump_prt.value.decode("utf-8"))
+
+        self._states = {
+            int("".join(f"{s:064b}" for s in state), 2): real + 1j * imag
+            for state, real, imag in zip(
+                dump["basis_states"], dump["amplitudes_real"], dump["amplitudes_imag"]
+            )
+        }
+
+        libket["ket_string_delete"](dump_prt)
 
         self.size = len(self.qubits)
-        self._states = None
-
-    def _check(self):
-        if self._states is None:
-            available, size = self.ket_process.get_dump_size(self.index)
-            if available.value:
-                states = defaultdict(complex)
-                for i in range(size.value):
-                    state, state_size, amp_real, amp_imag = self.ket_process.get_dump(
-                        self.index, i
-                    )
-                    state = int(
-                        "".join(f"{state[j]:064b}" for j in range(state_size.value)), 2
-                    )
-                    amplitude = complex(amp_real.value, amp_imag.value)
-                    if abs(amplitude) ** 2 > 1e-10:
-                        states[state] += amplitude
-
-                p = sum(abs(a) ** 2 for a in states.values())
-                if abs(p - 1.0) < 1e-10:
-                    self._states = dict(states)
-                else:
-                    self._states = {
-                        state: amplitude / sqrt(p) if p != 0 else 0
-                        for state, amplitude in states.items()
-                        if abs(amplitude) ** 2 > 1e-10
-                    }
 
     @property
     def states(self) -> dict[int, complex] | None:
@@ -111,7 +97,6 @@ class QuantumState(HasProcess):
         Returns:
             The quantum state, or None if the quantum state information is not available.
         """
-        self._check()
         return self._states
 
     def get(self) -> dict[int, complex]:
@@ -119,9 +104,6 @@ class QuantumState(HasProcess):
 
         If the quantum state is not available, the quantum process will execute to get the result.
         """
-        self._check()
-        if self._states is None:
-            self.ket_process.execute()
         return self.states
 
     @property
@@ -134,9 +116,6 @@ class QuantumState(HasProcess):
             The measurement probabilities, or None if the quantum state information is not
             available.
         """
-        self._check()
-        if self._states is None:
-            return None
         return {state: abs(amp) ** 2 for state, amp in self._states.items()}
 
     def sample(self, shots=4096, seed=None) -> dict[int, int] | None:
@@ -153,9 +132,6 @@ class QuantumState(HasProcess):
             A dictionary mapping measurement outcomes to their frequencies in the generated sample,
             or None if the quantum state information is not available.
         """
-        self._check()
-        if self._states is None:
-            return None
 
         rng = Random(seed)
         states_list = list(self.states.keys())

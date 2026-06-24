@@ -13,6 +13,7 @@ from __future__ import annotations
 # pylint: disable=duplicate-code,protected-access
 
 from ctypes import c_int32, c_size_t
+import json
 from numbers import Number
 from itertools import product
 from functools import reduce
@@ -446,14 +447,18 @@ class ExpValue(HasProcess):
 
     """
 
-    pauli_map = {"X": 1, "Y": 2, "Z": 3}
+    pauli_map = {"X": "PauliX", "Y": "PauliY", "Z": "PauliZ"}
 
     def __init__(self, hamiltonian: Hamiltonian | Pauli):
         super().__init__(ket_process=hamiltonian.ket_process)
         if isinstance(hamiltonian, Pauli):
             hamiltonian = Hamiltonian([hamiltonian], process=hamiltonian.ket_process)
 
-        hamiltonian_ptr = API["ket_hamiltonian_new"]()
+        h_json = {
+            "pauli_strings": [],
+            "coefficients": [],
+        }
+
         products_count = 0
         self._i_coef = 0.0
 
@@ -479,29 +484,28 @@ class ExpValue(HasProcess):
                 self._i_coef += pauli_product.coef.real
                 continue
 
-            pauli, qubits = zip(*pauli_qubits)
+            term = [{"pauli": p, "qubit": q} for p, q in pauli_qubits]
 
-            API["ket_hamiltonian_add"](
-                hamiltonian_ptr,
-                (c_int32 * len(pauli))(*pauli),
-                len(pauli),
-                (c_size_t * len(qubits))(*qubits),
-                len(qubits),
-                pauli_product.coef.real,
-            )
+            h_json["pauli_strings"].append(term)
+            h_json["coefficients"].append(pauli_product.coef.real)
+
             products_count += 1
 
         if products_count > 0:
-            self.index = self.ket_process.exp_value(hamiltonian_ptr).value
-            self._value = None
+            self.index = self.ket_process._get_exp_value_index()
+            result, some_result = self.ket_process.exp_value(
+                json.dumps(h_json).encode("utf-8")
+            )
+            if some_result:
+                self._value = result.value
+            else:
+                self._value = None
         else:
             self._value = self._i_coef
 
-    def _check(self):
+    def _check(self, execute=False):
         if self._value is None:
-            available, value = self.ket_process.get_exp_value(self.index)
-            if available.value:
-                self._value = value.value + self._i_coef
+            self._value = self.ket_process._get_exp_value(self.index, execute)
 
     @property
     def value(self) -> float | None:
@@ -514,10 +518,7 @@ class ExpValue(HasProcess):
 
         If the value is not available, the quantum process will execute to get the result.
         """
-
-        self._check()
-        if self._value is None:
-            self.ket_process.execute()
+        self._check(execute=True)
         return self.value
 
     def __repr__(self) -> str:

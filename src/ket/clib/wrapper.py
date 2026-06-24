@@ -5,7 +5,7 @@
 
 """Unitary for handle shared library with C API"""
 
-from ctypes import POINTER, c_uint8, c_size_t, c_int32, cdll, c_char_p, byref
+from ctypes import POINTER, c_int32, cdll, c_char_p, byref
 import os
 
 

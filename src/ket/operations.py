@@ -17,14 +17,14 @@ from __future__ import annotations
 from collections.abc import Sized
 from contextlib import contextmanager
 import contextvars
-from ctypes import c_size_t
 from functools import reduce, wraps
+import json
 from operator import add
-from typing import Any, Callable, Sequence
+from typing import Any, Callable
 from inspect import signature
 import warnings
 
-from ket.clib.libket import PAULI_X
+from ket.clib.libket import search_process, API as libket
 
 
 from .base import Process, Quant
@@ -113,7 +113,8 @@ def _flip_to_control(
 
         for i, qubit in zip(state, qubits):
             if i == 0:
-                process.apply_gate(PAULI_X, 0.0, False, 0, qubit.qubits[0])
+                with process.block_builder() as block:
+                    block.append_gate("PauliX", qubit.qubits[0])
         return qubits
 
     if qubits is None:
@@ -178,23 +179,17 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
             stacklevel=2,
         )
         with around(_flip_to_control(state), control_qubits, ket_process=process):
-            process.ctrl_push(
-                (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
-                len(control_qubits.qubits),
-            )
+            with process.block_builder(control=control_qubits.qubits):
+                try:
+                    yield
+                finally:
+                    pass
+    else:
+        with process.block_builder(control=control_qubits.qubits):
             try:
                 yield
             finally:
-                process.ctrl_pop()
-    else:
-        process.ctrl_push(
-            (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
-            len(control_qubits.qubits),
-        )
-        try:
-            yield
-        finally:
-            process.ctrl_pop()
+                pass
 
 
 def ctrl(
@@ -257,34 +252,6 @@ def C(gate: Callable) -> Callable:  # pylint: disable=invalid-name
     return inner
 
 
-def _search_process(ket_process, args, kwargs):
-    def inner(ket_process, arg):
-        if hasattr(arg, "ket_process"):
-            arg_process = arg.ket_process
-            if ket_process is not None and ket_process is not arg_process:
-                raise ValueError("parameter with different Ket processes")
-            ket_process = arg_process
-        return ket_process
-
-    def search(ket_process, args):
-        for arg in args:
-            if isinstance(arg, Sequence) and not isinstance(arg, str):
-                for subarg in arg:
-                    ket_process = inner(ket_process, subarg)
-            else:
-                ket_process = inner(ket_process, arg)
-        return ket_process
-
-    if ket_process is None:
-        ket_process = search(ket_process, args)
-        ket_process = search(ket_process, kwargs.values())
-
-    if ket_process is None:
-        raise ValueError("Ket process not found in the parameters")
-
-    return ket_process
-
-
 def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """Return the inverse of a gate.
 
@@ -318,7 +285,7 @@ def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
 
     @wraps(gate)
     def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
-        ket_process = _search_process(ket_process, args, kwargs)
+        ket_process = search_process(ket_process, args, kwargs)
 
         with inverse(ket_process):
             return gate(*args, **kwargs)
@@ -343,11 +310,11 @@ def inverse(process: Process):
     Args:
         process: The process where the inverse operations will be applied.
     """
-    process.adj_begin()
-    try:
-        yield
-    finally:
-        process.adj_end()
+    with process.block_builder(inverse=True):
+        try:
+            yield
+        finally:
+            pass
 
 
 def cat(*gates) -> Callable[[Any], Any]:
@@ -428,9 +395,6 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
     return inner
 
 
-_allow_permutation = contextvars.ContextVar("allow_permutation", default=False)
-
-
 def undo(
     gate: Callable[[Quant], Any],
     qubits: Quant,
@@ -450,37 +414,45 @@ def undo(
         qubits: The quantum bits on which the gate will be applied.
     """
 
-    token = _allow_permutation.set(True)
-
     ket_process = qubits.ket_process
 
-    ket_process._blocked_push()
-    ket_process.ctrl_stack()
-    try:
+    with ket_process.block_builder(append=False) as compute:
         gate(qubits)
-    finally:
-        ket_process.ctrl_unstack()
-        _allow_permutation.reset(token)
-        blocked_qubits = ket_process._blocked_pop()
+        compute.lock_control()
 
+    proprieties_ptr = compute.proprieties_json()
+    proprieties = json.loads(proprieties_ptr.value)
+    libket["ket_string_delete"](proprieties_ptr)
+
+    blocked_qubits = []
+
+    if any(
+        ket_process._is_aux(write_qubit)
+        for write_qubit in proprieties["qubits_written"]
+    ):
+        match proprieties["propriety"]:
+            case "Identity" | "Diagonal":
+                pass
+            case "Permutation":
+                blocked_qubits = set(
+                    control_of_aux
+                    for write_qubit, read_qubit in proprieties["qubits_written"].items()
+                    for control_of_aux in read_qubit
+                    if ket_process._is_aux(write_qubit)
+                )
+            case "Unitary":
+                raise RuntimeError("Fail uncomputation")
+
+    uncompute = compute.inverse()
+    ket_process.append_block(compute)
     ket_process._block_qubits(blocked_qubits)
 
     def undo_func():
-        if ket_process.get_metadata()["terminated"]:
+        if ket_process.status().value.decode("utf-8") == "Terminated":
             return
 
-        ket_process._blocked_push()
-        token_undo = _allow_permutation.set(True)
-
-        ket_process.ctrl_stack()
-        try:
-            adj(gate)(qubits)
-        finally:
-            ket_process.ctrl_unstack()
-            _allow_permutation.reset(token_undo)
-            ket_process._blocked_pop()
-
         ket_process._unblock_qubits(blocked_qubits)
+        ket_process.append_block(uncompute)
 
     return Quant(
         qubits=qubits.qubits,
@@ -522,33 +494,54 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
 
     """
 
-    token = _allow_permutation.set(True)
+    ket_process = search_process(ket_process, args, kwargs)
 
-    ket_process = _search_process(ket_process, args, kwargs)
-    ket_process._blocked_push()
-
-    ket_process.ctrl_stack()
-    try:
+    with ket_process.block_builder(append=False) as compute:
         gate(*args, **kwargs)
-    finally:
-        ket_process.ctrl_unstack()
-        _allow_permutation.reset(token)
+        compute.lock_control()
+
+    proprieties_ptr = compute.proprieties_json()
+    proprieties = json.loads(proprieties_ptr.value)
+    libket["ket_string_delete"](proprieties_ptr)
+
+    blocked_qubits = []
+
+    if any(
+        ket_process._is_aux(write_qubit)
+        for write_qubit in proprieties["qubits_written"]
+    ):
+        match proprieties["propriety"]:
+            case "Identity" | "Diagonal":
+                pass
+            case "Permutation":
+                blocked_qubits = set(
+                    control_of_aux
+                    for write_qubit, read_qubit in proprieties["qubits_written"].items()
+                    for control_of_aux in read_qubit
+                    if ket_process._is_aux(write_qubit)
+                )
+            case "Unitary":
+                raise RuntimeError("Fail uncomputation")
 
     try:
-        yield
+        with ket_process.block_builder(append=False) as action:
+            yield
+
+        proprieties_ptr = action.proprieties_json()
+        proprieties = json.loads(proprieties_ptr.value)
+        libket["ket_string_delete"](proprieties_ptr)
+
+        if any(
+            ket_process._is_aux(write_qubit) or write_qubit in blocked_qubits
+            for write_qubit in proprieties["qubits_written"]
+        ):
+            raise RuntimeError("Fail uncomputation")
+
     finally:
-        ket_process._blocked_pop()
-
-        ket_process._blocked_push()
-        token_adj = _allow_permutation.set(True)
-
-        ket_process.ctrl_stack()
-        try:
-            adj(gate)(*args, ket_process=ket_process, **kwargs)
-        finally:
-            ket_process.ctrl_unstack()
-            _allow_permutation.reset(token_adj)
-            ket_process._blocked_pop()
+        uncompute = compute.inverse()
+        ket_process.append_block(compute)
+        ket_process.append_block(action)
+        ket_process.append_block(uncompute)
 
 
 def measure(qubits: Quant) -> Measurement:
@@ -638,7 +631,7 @@ def using_aux(unsafe: bool = False, **names):
 
         @wraps(func)
         def call(*args, ket_process: Process | None = None, **kwargs):
-            ket_process = _search_process(ket_process, args, kwargs)
+            ket_process = search_process(ket_process, args, kwargs)
 
             kwargs_ex = {**kwargs, **dict(zip(param, args))}
 

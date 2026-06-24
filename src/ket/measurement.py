@@ -12,11 +12,12 @@ from __future__ import annotations
 
 
 from ctypes import c_size_t
+import json
 from typing import Callable, Literal, Any
 
 from ket.expv import Hamiltonian
 
-from .clib.libket import HasProcess
+from .clib.libket import HasProcess, API as libket
 from .base import Quant
 
 try:
@@ -75,28 +76,21 @@ class Measurement(HasProcess):
 
         self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
         self.size = len(qubits)
-        self.indexes = [
+        result_values = [
             self.ket_process.measure((c_size_t * len(qubit))(*qubit), len(qubit)).value
             for qubit in self.qubits
         ]
-        self._value = None
-        self.postprocessing = postprocessing
 
-    def _check(self):
-        if self._value is None:
-            available, values = zip(
-                *(self.ket_process.get_measurement(index) for index in self.indexes)
-            )
-            if all(map(lambda a: a.value, available)):
-                self._value = 0
-                for value, qubit in zip(values, self.qubits):
-                    self._value <<= len(qubit)
-                    self._value |= value.value
+        self._value = 0
+        for value, qubit in zip(result_values, self.qubits):
+            self._value <<= len(qubit)
+            self._value |= value
+
+        self.postprocessing = postprocessing
 
     @property
     def value(self) -> Any | None:
         """Retrieve the measurement value if available."""
-        self._check()
         if self.postprocessing is not None and self._value is not None:
             return self.postprocessing(self._value)
         return self._value
@@ -104,13 +98,11 @@ class Measurement(HasProcess):
     @property
     def raw_value(self) -> int | None:
         """Retrieve the measurement value if available (without postprocessing)."""
-        self._check()
         return self._value
 
     @property
     def bitstring(self) -> str | None:
         """Retrieve the measurement bitstring if available."""
-        self._check()
         if self._value is not None:
             return f"{self._value:0{self.size}b}"
 
@@ -122,9 +114,6 @@ class Measurement(HasProcess):
         If the value is not available, the quantum process will execute to get the result.
         """
 
-        self._check()
-        if self._value is None:
-            self.ket_process.execute()
         return self.value
 
     def __repr__(self):
@@ -194,25 +183,46 @@ class Samples(HasProcess):
         ):
             raise ValueError("Auxiliary qubits cannot be measured")
 
-        self.index = self.ket_process.sample(
+        result_ptr = self.ket_process.sample(
             (c_size_t * len(self.qubits))(*self.qubits),
             len(self.qubits),
             shots,
-        ).value
-        self._value = None
+        )
+
+        sample = json.loads(result_ptr.value.decode("utf-8"))
+        if sample is not None:
+            states, counts = sample
+            self._value = {
+                int("".join(f"{s:064b}" for s in state), 2): count
+                for state, count in zip(states, counts)
+            }
+
+        else:
+            self._value = None
+
+        libket["ket_string_delete"](result_ptr)
+
         self.shots = shots
         self.postprocessing = postprocessing
 
     def _check(self):
         if self._value is None:
-            (
-                available,
-                states,
-                count,
-                size,
-            ) = self.ket_process.get_sample(self.index)
-            if available.value:
-                self._value = dict(zip(states[: size.value], count[: size.value]))
+            self.ket_process.execute()
+
+            result_ptr = self.ket_process.read_sample()
+
+            sample = json.loads(result_ptr.value.decode("utf-8"))
+            if sample is not None:
+                states, counts = sample
+                self._value = {
+                    int("".join(f"{s:064b}" for s in state), 2): count
+                    for state, count in zip(states, counts)
+                }
+
+            else:
+                self._value = None
+
+            libket["ket_string_delete"](result_ptr)
 
     @property
     def value(self) -> dict[Any, int] | None:

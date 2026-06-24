@@ -28,7 +28,7 @@ except ImportError:
     _MULTIPROCESS_AVAILABLE = False
 
 
-from ..clib.libket import BatchExecution
+from ..clib.libket.execution import BatchExecution
 from ..base import Process, Quant
 from ..operations import dump, exp_value
 from ..gates import H, CNOT, X

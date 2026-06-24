@@ -7,10 +7,10 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from contextlib import contextmanager
 from ctypes import (
     CFUNCTYPE,
     Structure,
+    c_uint8,
     c_void_p,
     c_size_t,
     POINTER,
@@ -21,6 +21,7 @@ from ctypes import (
     c_char_p,
 )
 import json
+from typing import Sequence
 import weakref
 from os import environ
 from os.path import dirname
@@ -135,6 +136,7 @@ class CNativeGateSet(Structure):
 
 api_argtypes = {
     # 'ket_type_method': ([input_list], [output_list]),
+    "ket_build_info": ([], [POINTER(c_uint8), c_size_t]),
     "ket_string_delete": (
         [c_char_p],  # ptr
         [],
@@ -251,7 +253,7 @@ api_argtypes = {
     ),
     "ket_process_exp_value": (
         [c_void_p, c_char_p],  # process, hamiltonian_json
-        [c_char_p],  # result_json
+        [c_double, c_bool],  # result, some_result
     ),
     "ket_config_new": (
         [c_size_t],  # num_qubits
@@ -261,6 +263,10 @@ api_argtypes = {
         [c_void_p],  # process
         [c_char_p],  # block
     ),
+    "ket_error_message": ([c_int32], [c_char_p]),
+    "ket_process_status": ([c_void_p], [c_char_p]),
+    "ket_block_set_as_diagonal": ([c_void_p], []),
+    "ket_block_set_as_permutation": ([c_void_p], []),
 }
 
 
@@ -286,6 +292,34 @@ class HasProcess:  # pylint: disable=too-few-public-methods
         return self._ket_process
 
 
+def search_process(ket_process, args, kwargs):
+    def inner(ket_process, arg):
+        if hasattr(arg, "ket_process"):
+            arg_process = arg.ket_process
+            if ket_process is not None and ket_process is not arg_process:
+                raise ValueError("parameter with different Ket processes")
+            ket_process = arg_process
+        return ket_process
+
+    def search(ket_process, args):
+        for arg in args:
+            if isinstance(arg, Sequence) and not isinstance(arg, str):
+                for subarg in arg:
+                    ket_process = inner(ket_process, subarg)
+            else:
+                ket_process = inner(ket_process, arg)
+        return ket_process
+
+    if ket_process is None:
+        ket_process = search(ket_process, args)
+        ket_process = search(ket_process, kwargs.values())
+
+    if ket_process is None:
+        raise ValueError("Ket process not found in the parameters")
+
+    return ket_process
+
+
 class Process(HasProcess):
     """Libket process wrapper from C API"""
 
@@ -296,40 +330,6 @@ class Process(HasProcess):
         self._finalizer = weakref.finalize(
             self, API["ket_process_delete"], self._as_parameter_
         )
-
-        self._block = []
-
-    def gates(self):
-        block_str = self.gates_json()
-        block = json.loads(block_str.value)
-        API["ket_string_delete"](block_str)
-        return block
-
-    def append_block(self, block):
-        if self._block:
-            self._block[-1].append_block(block.take())
-        else:
-            self.__getattr__("append_block")(block.take())
-
-    @contextmanager
-    def block_builder(
-        self,
-        inverse=False,
-        control: list[int] | None = None,
-        append: bool = True,
-    ):
-        block = Block(self)
-        self._block.append(block)
-        try:
-            yield block
-        finally:
-            if inverse:
-                block.set(block.inverse())
-            if control is not None:
-                block.set(block.control(control))
-            self._block.pop()
-            if append:
-                self.append_block(block)
 
     def __getattr__(self, name: str):
         return lambda *args: API["ket_process_" + name](self, *args)

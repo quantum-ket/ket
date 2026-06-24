@@ -40,14 +40,7 @@ class NPSim(LiveExecution):
         self.state_vector[0, 0] = 1.0
 
     def connect(self):
-        return self.configure(
-            num_qubits=self.num_qubit,
-            execution_managed_by_target={
-                "measure": "Advanced",
-                "dump": "Advanced",
-            },
-            qpu={"u4_gate": "CX"},
-        )
+        return self.configure()
 
     def _apply_gate(self, gate, target):
         gate_kron = np.kron(

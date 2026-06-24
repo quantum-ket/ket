@@ -14,7 +14,6 @@ def test_measurement_basic():
     X(q[1])  # Prepare state |010> (which is 2 in decimal)
 
     res = measure(q)
-    p.execute()
 
     assert res.value == 2
     assert res.raw_value == 2
@@ -29,7 +28,6 @@ def test_sample_basic():
     X(q[0])  # Prepare state |10> (which is 2 in decimal)
 
     res = sample(q, shots=100)
-    p.execute()
 
     samples = res.value
     assert samples is not None
@@ -65,6 +63,5 @@ def test_measurement_unsafe_aux():
     q = p.alloc(1)
 
     res = unsafe_measurement(q)
-    p.execute()
 
     assert res.value == 1

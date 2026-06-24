@@ -9,293 +9,18 @@ from __future__ import annotations
 
 from ctypes import (
     CFUNCTYPE,
-    Structure,
-    c_void_p,
+    c_bool,
+    c_char_p,
+    c_int32,
     c_size_t,
     POINTER,
-    c_bool,
-    c_uint8,
-    c_int32,
     c_uint64,
     c_double,
-    c_char_p,
 )
 import json
-from typing import Any, Literal
-import weakref
-from os import environ
-from os.path import dirname
 from abc import ABC, abstractmethod
 
-from ..wrapper import load_lib, os_lib_name
-
-
-class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
-    """C BatchCExecution Structure"""
-
-    _fields_ = [
-        (
-            "sample",
-            CFUNCTYPE(
-                c_int32,
-                c_char_p,  # gates_json
-                POINTER(c_size_t),  # qubits_to_sample
-                c_size_t,  # qubits_to_sample_len
-                c_size_t,  # shots
-                POINTER(c_char_p),  # sample_json
-            ),
-        ),
-        (
-            "exp_value",
-            CFUNCTYPE(
-                c_int32,
-                c_char_p,  # gates_json
-                c_char_p,  # hamiltonian_list_json
-                POINTER(c_double),  # result
-            ),
-        ),
-        ("exp_value_available", CFUNCTYPE(c_bool)),
-    ]
-
-
-class LiveCExecution(Structure):  # pylint: disable=too-few-public-methods
-    """C LiveCExecution Structure"""
-
-    _fields_ = [
-        (
-            "compute_gate",
-            CFUNCTYPE(
-                c_int32,
-                c_char_p,  # json
-            ),
-        ),
-        (
-            "measure",
-            CFUNCTYPE(
-                c_int32,
-                POINTER(c_size_t),  # qubits
-                c_size_t,  # len
-                POINTER(c_uint64),  # result
-            ),
-        ),
-        (
-            "dump",
-            CFUNCTYPE(
-                c_int32,
-                POINTER(c_size_t),  # qubits
-                c_size_t,  # len
-                POINTER(c_char_p),  # result_json
-            ),
-        ),
-        (
-            "sample",
-            CFUNCTYPE(
-                c_int32,
-                POINTER(c_size_t),  # qubits
-                c_size_t,  # len
-                c_size_t,  # shots
-                POINTER(c_char_p),  # result_json
-            ),
-        ),
-        (
-            "exp_value",
-            CFUNCTYPE(
-                c_int32,
-                c_char_p,  # hamiltonian_json
-                POINTER(c_double),  # result
-            ),
-        ),
-    ]
-
-
-class CNativeGateSet(Structure):
-    """C CNativeGateSet Structure"""
-
-    _fields_ = [
-        (
-            "translate",
-            CFUNCTYPE(
-                c_int32,
-                c_char_p,  # gate_json
-                c_size_t,  # target
-                c_size_t,  # control
-                c_bool,  # some_control
-                POINTER(c_char_p),  # native_gate_json
-            ),
-        ),
-        (
-            "swap",
-            CFUNCTYPE(
-                c_int32,
-                c_size_t,  # a
-                c_size_t,  # b
-                POINTER(c_char_p),  # native_gate_json
-            ),
-        ),
-    ]
-
-
-api_argtypes = {
-    # 'ket_type_method': ([input_list], [output_list]),
-    "ket_string_delete": (
-        [c_char_p],  # ptr
-        [],
-    ),
-    "ket_block_new": (
-        [],
-        [c_void_p],  # block
-    ),
-    "ket_block_delete": (
-        [c_void_p],  # block
-        [],
-    ),
-    "ket_block_append_gate": (
-        [c_void_p, c_char_p, c_size_t],  # block, gate_json, target
-        [],
-    ),
-    "ket_block_inverse": (
-        [c_void_p],  # block
-        [c_void_p],  # inverted_block
-    ),
-    "ket_block_control": (
-        [
-            c_void_p,
-            POINTER(c_size_t),
-            c_size_t,
-        ],  # block, control_qubits, control_qubits_len
-        [c_void_p],  # controlled_block
-    ),
-    "ket_block_enable_approximated_decomposition": (
-        [c_void_p],  # block
-        [],
-    ),
-    "ket_block_lock_control": (
-        [c_void_p],  # block
-        [],
-    ),
-    "ket_block_append_block": (
-        [c_void_p, c_void_p],  # block, other
-        [],
-    ),
-    "ket_block_add_global_phase": (
-        [c_void_p, c_double],  # block, phase
-        [],
-    ),
-    "ket_block_proprieties_json": (
-        [c_void_p],  # block
-        [c_char_p],  # proprieties
-    ),
-    "ket_quantum_execution_live": (
-        [POINTER(LiveCExecution)],  # live
-        [c_void_p],  # quantum_execution
-    ),
-    "ket_quantum_execution_batch": (
-        [
-            POINTER(BatchCExecution),
-            POINTER(CNativeGateSet),
-            c_bool,
-            c_char_p,
-        ],  # batch, native_gate_set, gradient, coupling_graph_json
-        [c_void_p],  # quantum_execution
-    ),
-    "ket_process_new": (
-        [c_void_p],  # qpu_config
-        [c_void_p],  # process
-    ),
-    "ket_process_delete": (
-        [c_void_p],  # process
-        [],
-    ),
-    "ket_process_alloc": (
-        [c_void_p],  # process
-        [c_size_t],  # qubit
-    ),
-    "ket_process_append_block": (
-        [c_void_p, c_void_p],  # process, block
-        [],
-    ),
-    "ket_process_measure": (
-        [c_void_p, POINTER(c_size_t), c_size_t],  # process, qubits, qubits_len
-        [c_uint64],  # result
-    ),
-    "ket_process_dump": (
-        [c_void_p, POINTER(c_size_t), c_size_t],  # process, qubits, qubits_len
-        [c_char_p],  # dump_json
-    ),
-    "ket_process_sample": (
-        [
-            c_void_p,
-            POINTER(c_size_t),
-            c_size_t,
-            c_size_t,
-        ],  # process, qubits, qubits_len, shots
-        [c_char_p],  # sample_json
-    ),
-    "ket_process_read_exp_value": (
-        [c_void_p],  # process
-        [c_char_p],  # result_json
-    ),
-    "ket_process_read_gradient": (
-        [c_void_p],  # process
-        [c_char_p],  # result_json
-    ),
-    "ket_process_param": (
-        [c_void_p, c_double],  # process, param
-        [c_size_t],  # param_index
-    ),
-    "ket_process_execute": (
-        [c_void_p],  # process
-        [],
-    ),
-    "ket_process_read_sample": (
-        [c_void_p],  # process
-        [c_char_p],  # sample_json
-    ),
-    "ket_process_exp_value": (
-        [c_void_p, c_char_p],  # process, hamiltonian_json
-        [c_char_p],  # result_json
-    ),
-}
-
-
-def libket_path():
-    """Get Libket shared library path"""
-    return environ.get("LIBKET_PATH", f'{dirname(__file__)}/libs/{os_lib_name("ket")}')
-
-
-API = load_lib(
-    "Libket", libket_path(), api_argtypes, "ket_error_message", "ket_string_delete"
-)
-
-
-class HasProcess:  # pylint: disable=too-few-public-methods
-    """Object with an associated quantum process."""
-
-    def __init__(self, ket_process):
-        self._ket_process = ket_process
-
-    @property
-    def ket_process(self):
-        """Get Ket process."""
-        return self._ket_process
-
-
-class Process(HasProcess):
-    """Libket process wrapper from C API"""
-
-    def __init__(self, configuration):
-        super().__init__(ket_process=self)
-
-        self._as_parameter_ = API["ket_process_new"](configuration)
-        self._finalizer = weakref.finalize(
-            self, API["ket_process_delete"], self._as_parameter_
-        )
-
-    def __getattr__(self, name: str):
-        return lambda *args: API["ket_process_" + name](self, *args)
-
-    def __repr__(self) -> str:
-        return f"<Libket 'process', pid={hex(id(self.ket_process))}=>"
+from . import BatchCExecution, LiveCExecution, CNativeGateSet, API
 
 
 class BatchExecution(ABC):
@@ -303,91 +28,74 @@ class BatchExecution(ABC):
 
     def __init__(self):
         @CFUNCTYPE(
-            None,
-            POINTER(c_uint8),
-            c_size_t,
-            POINTER(c_double),
-            c_size_t,
+            c_int32,
+            c_char_p,  # gates_json
+            POINTER(c_size_t),  # qubits_to_sample
+            c_size_t,  # qubits_to_sample_len
+            c_size_t,  # shots
+            POINTER(c_char_p),  # sample_json
         )
-        def submit_execution(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-            circuit,
-            circuit_size,
-            parameters,
-            parameters_size,
+        def sample(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+            gates_json,
+            qubits_to_sample,
+            qubits_to_sample_len,
+            shots,
+            sample_json,
         ):
-            circuit = json.loads(bytearray(circuit[:circuit_size]))
+            gates = json.loads(gates_json)
+            qubits_to_sample = qubits_to_sample[:qubits_to_sample_len]
+            result = self.sample(gates, qubits_to_sample, shots)
+            self._sample_result = json.dumps(result).encode("utf-8")
+            sample_json[0] = self._sample_result
+            return 0
 
-            parameters = parameters[:parameters_size]
-            self.submit_execution(circuit, parameters)
+        self._sample_result = None
 
-        self._result_json = None
-        self._result_len = None
+        @CFUNCTYPE(
+            c_int32,
+            c_char_p,  # gates_json
+            c_char_p,  # hamiltonian_list_json
+            POINTER(c_double),  # result
+        )
+        def exp_value(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+            gates_json,
+            hamiltonian_list_json,
+            result,
+        ):
+            gates = json.loads(gates_json)
+            hamiltonian_list = json.loads(hamiltonian_list_json)
+            values = self.exp_value(gates, hamiltonian_list)
+            for i, v in enumerate(values):
+                result[i] = v
+            return 0
 
-        @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
-        def get_result(result_ptr, size):
-            result = self.get_result()
-            self._result_json = json.dumps(result).encode("utf-8")
-            self._result_len = len(self._result_json)
-            self._result_json = (c_uint8 * self._result_len)(*self._result_json)
-            result_ptr[0] = self._result_json
-            size[0] = self._result_len
+        @CFUNCTYPE(c_bool)
+        def exp_value_available():
+            return True
 
-        @CFUNCTYPE(None)
-        def clear():
-            self.clear()
-
-        self._cb_submit_execution = submit_execution
-        self._cb_get_result = get_result
-        self._cb_clear = clear
+        self._cb_sample = sample
+        self._cb_exp_value = exp_value
+        self._exp_value_available = exp_value_available
 
         self.c_struct = BatchCExecution(
-            self._cb_submit_execution,
-            self._cb_get_result,
-            self._cb_clear,
+            self._cb_sample,
+            self._cb_exp_value,
+            self._exp_value_available,
         )
 
-    @abstractmethod
-    def submit_execution(
+    def configure(
         self,
-        circuit: dict,
-        parameters: list[float],
+        gradient: bool = False,
+        coupling_graph: list[tuple[int, int]] | None = None,
+        native_gate_set: CNativeGateSet | None = None,
     ):
-        """Get the quantum circuit to execute.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-
-    @abstractmethod
-    def get_result(self) -> dict:
-        """Get the result of the quantum circuit execution.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-
-    @abstractmethod
-    def clear(self):
-        """Clear the data to start a new execution.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-
-    @abstractmethod
-    def connect(self):
-        """Call :meth:`ket.clib.libket.BatchExecution.configure` with the
-        appropriated arguments to generate the quantum execution target.
-
-        .. warning::
-            This method is called automatically by :class:`~ket.base.Process`.
-            It is not necessary to call it manually.
-
-        """
-
-    def configure(self, **kwargs):
-        """Configure the batch execution."""
-        return make_configuration(execution=self, **kwargs)
+        """Configure the batch execution and return a QuantumExecution pointer."""
+        return make_batch_configuration(
+            execution=self,
+            gradient=gradient,
+            coupling_graph=coupling_graph,
+            native_gate_set=native_gate_set,
+        )
 
     @staticmethod
     def get_gate_and_angle(gate):
@@ -396,142 +104,21 @@ class BatchExecution(ABC):
             return gate, {}
         return list(gate.items())[0]
 
-    def process_instructions(
-        self, instructions: dict
-    ):  # pylint: disable=too-many-branches
-        """Parse the instructions to execute."""
-        for instruction in instructions:
-            match instruction:
-                case {"Gate": {"control": control, "gate": gate, "target": target}}:
-                    gate, param = self.get_gate_and_angle(gate)
-                    match gate:
-                        case "Hadamard":
-                            self.hadamard(target, control, **param)
-                        case "PauliX":
-                            self.pauli_x(target, control, **param)
-                        case "PauliY":
-                            self.pauli_y(target, control, **param)
-                        case "PauliZ":
-                            self.pauli_z(target, control, **param)
-                        case "RotationX":
-                            self.rotation_x(target, control, **param)
-                        case "RotationY":
-                            self.rotation_y(target, control, **param)
-                        case "RotationZ":
-                            self.rotation_z(target, control, **param)
-                        case "Phase":
-                            self.phase(target, control, **param)
-                        case _:
-                            raise RuntimeError(f"Undefined gate '{gate}'")
-                case {"ExpValue": {"index": index, "hamiltonian": hamiltonian}}:
-                    self.exp_value(index, hamiltonian)
-                case {"Measure": {"index": index, "qubits": qubits}}:
-                    self.measure(index, qubits)
-                case {"Sample": {"index": index, "qubits": qubits, "shots": shots}}:
-                    self.sample(index, qubits, shots)
-                case {"Dump": {"index": index, "qubits": qubits}}:
-                    self.dump(index, qubits)
-                case "Identity":
-                    continue
-                case _:
-                    raise ValueError(f"Invalid instruction: {instruction}")
-
-    def pauli_x(self, target, control):
-        """Apply a Pauli-X gate to the target qubit.
-
-        .. warning::
-            This method is called by Libket and  should not be called directly.
-
-        """
-        raise NotImplementedError("Pauli-X gate not implemented")
-
-    def pauli_y(self, target, control):
-        """Apply a Pauli-Y gate to the target qubit.
+    def sample(self, gates, qubits_to_sample, shots):
+        """Execute the circuit and sample the given qubits.
 
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("Pauli-Y gate not implemented")
+        raise NotImplementedError("`sample` method not implemented")
 
-    def pauli_z(self, target, control):
-        """Apply a Pauli-Z gate to the target qubit.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Pauli-Z gate not implemented")
-
-    def hadamard(self, target, control):
-        """Apply a Hadamard gate to the target qubit.
+    def exp_value(self, gates, hamiltonian_list):
+        """Execute the circuit and compute expectation values.
 
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("Hadamard gate not implemented")
-
-    def rotation_x(self, target, control, **kwargs):
-        """Apply a X-Rotation gate to the target qubit.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("X-Rotation gate not implemented")
-
-    def rotation_y(self, target, control, **kwargs):
-        """Apply a Y-Rotation gate to the target qubit.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Y-Rotation gate not implemented")
-
-    def rotation_z(self, target, control, **kwargs):
-        """Apply a Z-Rotation gate to the target qubit.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Z-Rotation gate not implemented")
-
-    def phase(self, target, control, **kwargs):
-        """Apply a Phase gate to the target qubit.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Phase gate not implemented")
-
-    def exp_value(self, index, hamiltonian):
-        """Compute the expectation value.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Expectation value not implemented")
-
-    def measure(self, index, qubits) -> int:
-        """Measure the qubits.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Measurement not implemented")
-
-    def sample(self, index, qubits, shots):
-        """Sample the qubits.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Sampling not implemented")
-
-    def dump(self, index, qubits):
-        """Dump the qubits.
-
-        .. warning::
-            This method is called by Libket and should not be called directly.
-        """
-        raise NotImplementedError("Dump not implemented")
+        raise NotImplementedError("`exp_value` method not implemented")
 
 
 class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
@@ -539,117 +126,97 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
 
     def __init__(self):  # pylint: disable=too-many-statements
         @CFUNCTYPE(
-            None, POINTER(c_uint8), c_size_t, c_size_t, POINTER(c_size_t), c_size_t
+            c_int32,
+            c_char_p,  # gate_instruction_json
         )
-        def gate(gate_json, gate_json_size, target, control, control_size):
-            gate_dict = json.loads(bytearray(gate_json[:gate_json_size]))
-            control = control[:control_size]
+        def compute_gate(gate_json):
+            gate_dict = json.loads(gate_json)
+            gate_name = gate_dict["gate"]
+            target = gate_dict["target"]
+            control = sorted(gate_dict.get("control", []))
             value = None
-            if isinstance(gate_dict, dict):
-                gate_name, value_dict = list(gate_dict.items())[0]
-                value = value_dict["Value"]
-            else:
-                gate_name = gate_dict
 
-            match gate_name:
-                case "Hadamard":
-                    self.hadamard(target, control)
-                case "PauliX":
-                    self.pauli_x(target, control)
-                case "PauliY":
-                    self.pauli_y(target, control)
-                case "PauliZ":
-                    self.pauli_z(target, control)
-                case "RotationX":
-                    self.rotation_x(target, control, value)
-                case "RotationY":
-                    self.rotation_y(target, control, value)
-                case "RotationZ":
-                    self.rotation_z(target, control, value)
-                case "Phase":
-                    self.phase(target, control, value)
+            if isinstance(gate_name, dict):
+                gate_name, value_dict = list(gate_name.items())[0]
+                value = value_dict.get("Value")
 
-        @CFUNCTYPE(c_uint64, POINTER(c_size_t), c_size_t)
-        def measure(qubits, qubits_size):
+            try:
+                match gate_name:
+                    case "Hadamard":
+                        self.hadamard(target, control)
+                    case "PauliX":
+                        self.pauli_x(target, control)
+                    case "PauliY":
+                        self.pauli_y(target, control)
+                    case "PauliZ":
+                        self.pauli_z(target, control)
+                    case "RotationX":
+                        self.rotation_x(target, control, value)
+                    case "RotationY":
+                        self.rotation_y(target, control, value)
+                    case "RotationZ":
+                        self.rotation_z(target, control, value)
+                    case "Phase":
+                        self.phase(target, control, value)
+            except:
+                return 13
+            return 0
+
+        @CFUNCTYPE(c_int32, POINTER(c_size_t), c_size_t, POINTER(c_uint64))
+        def measure(qubits, qubits_size, result):
             qubits = qubits[:qubits_size]
-            return self.measure(qubits)
-
-        @CFUNCTYPE(c_double, POINTER(c_uint8), c_size_t)
-        def exp_value(h_json, h_size):
-            h = json.loads(bytearray(h_json[:h_size]))
-            return self.exp_value(h)
-
-        self._sample_json = None
-        self._sample_len = None
-
-        @CFUNCTYPE(
-            None,
-            POINTER(c_size_t),
-            c_size_t,
-            c_size_t,
-            POINTER(POINTER(c_uint8)),
-            POINTER(c_size_t),
-        )
-        def sample(qubits, qubits_size, shots, result_ptr, size):
-            qubits = qubits[:qubits_size]
-            result = self.sample(qubits, shots)
-            self._sample_json = json.dumps(result).encode("utf-8")
-            self._sample_len = len(self._sample_json)
-            self._sample_json = (c_uint8 * self._sample_len)(*self._sample_json)
-            result_ptr[0] = self._sample_json
-            size[0] = self._sample_len
+            result[0] = self.measure(qubits)
+            return 0
 
         self._dump_json = None
-        self._dump_len = None
 
         @CFUNCTYPE(
-            None,
+            c_int32,
             POINTER(c_size_t),
             c_size_t,
-            POINTER(POINTER(c_uint8)),
-            POINTER(c_size_t),
+            POINTER(c_char_p),
         )
-        def dump(qubits, qubits_size, result_ptr, size):
+        def dump(qubits, qubits_size, result_json):
             qubits = qubits[:qubits_size]
             result = self.dump(qubits)
             self._dump_json = json.dumps(result).encode("utf-8")
-            self._dump_len = len(self._dump_json)
-            self._dump_json = (c_uint8 * self._dump_len)(*self._dump_json)
-            result_ptr[0] = self._dump_json
-            size[0] = self._dump_len
+            result_json[0] = self._dump_json
+            return 0
 
-        self._save_data_buf = None
-        self._save_len = None
+        self._sample_json = None
 
-        @CFUNCTYPE(None, POINTER(POINTER(c_uint8)), POINTER(c_size_t))
-        def save(save_data, save_len):
-            self._save_data_buf = self.save()
-            self._save_len = len(self._save_data_buf)
-            self._save_data_buf = (c_uint8 * self._save_len)(*self._save_data_buf)
-            save_data[0] = self._save_data_buf
-            save_len[0] = self._save_len
+        @CFUNCTYPE(
+            c_int32,
+            POINTER(c_size_t),
+            c_size_t,
+            c_size_t,
+            POINTER(c_char_p),
+        )
+        def sample(qubits, qubits_size, shots, result_json):
+            qubits = qubits[:qubits_size]
+            result = self.sample(qubits, shots)
+            self._sample_json = json.dumps(result).encode("utf-8")
+            result_json[0] = self._sample_json
+            return 0
 
-        @CFUNCTYPE(None, POINTER(c_uint8), c_size_t)
-        def load(data, size):
-            data_ba = bytearray(data[:size])
-            self.load(data_ba)
+        @CFUNCTYPE(c_int32, c_char_p, POINTER(c_double))
+        def exp_value(h_json, result):
+            h = json.loads(h_json)
+            result[0] = self.exp_value(h)
+            return 0
 
-        self._cb_gate = gate
+        self._cb_compute_gate = compute_gate
         self._cb_measure = measure
-        self._cb_exp_value = exp_value
-        self._cb_sample = sample
         self._cb_dump = dump
-        self._cb_save = save
-        self._cb_load = load
+        self._cb_sample = sample
+        self._cb_exp_value = exp_value
 
         self.c_struct = LiveCExecution(
-            self._cb_gate,
+            self._cb_compute_gate,
             self._cb_measure,
-            self._cb_exp_value,
-            self._cb_sample,
             self._cb_dump,
-            self._cb_save,
-            self._cb_load,
+            self._cb_sample,
+            self._cb_exp_value,
         )
 
     def pauli_x(self, target, control):
@@ -700,134 +267,34 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
         """Dump the state of the qubits."""
         raise NotImplementedError("`dump` method not implemented")
 
-    def save(self) -> bytearray:
-        """Save the current state of the execution."""
-        raise NotImplementedError("`save` method not implemented")
-
-    def load(self, data: bytearray):
-        """Load the state of the execution from the given data."""
-        raise NotImplementedError("`load` method not implemented")
-
     @abstractmethod
     def connect(self):
         """Call configure with the appropriated arguments to generate the object."""
 
-    def configure(self, **kwargs):
-        """Configure the batch execution."""
-        return make_configuration(execution=self, **kwargs)
+    def configure(self):
+        """Configure the live execution and return a QuantumExecution pointer."""
+        return make_live_configuration(execution=self)
 
 
-_BASE_QPU = {
-    "coupling_graph": None,
-    "u2_gates": "All",  # All, ZYZ, RzSx
-    "u4_gate": "CX",  # CX, CZ
-}
-
-# Unsupported, Basic, Advanced
-_MANAGED_BY_TARGET = {
-    "measure": "Unsupported",
-    "sample": "Unsupported",
-    "exp_value": "Unsupported",
-    "dump": "Unsupported",
-}
-
-_CLASSICAL_SHADOWS = {"bias": (1, 1, 1), "samples": 1_000, "shots": 2048}
+def make_live_configuration(execution: LiveExecution):
+    """Create a live QuantumExecution from a LiveExecution instance."""
+    return API["ket_quantum_execution_live"](execution.c_struct)
 
 
-def _dfs(node, visited, adj):
-    visited.add(node)
-    for neighbor in adj.get(node, []):
-        if neighbor not in visited:
-            _dfs(neighbor, visited, adj)
+def make_batch_configuration(
+    execution: BatchExecution,
+    gradient: bool = False,
+    coupling_graph: list[tuple[int, int]] | None = None,
+    native_gate_set: CNativeGateSet | None = None,
+):
+    """Create a batch QuantumExecution from a BatchExecution instance."""
+    coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
 
+    native_gate_set_ptr = native_gate_set if native_gate_set is not None else None
 
-def _find_unreachable_qubits(num_qubits, edges):
-    adj = {}
-    for u, v in edges:
-        adj.setdefault(u, []).append(v)
-        adj.setdefault(v, []).append(u)
-
-    all_nodes = set(range(num_qubits))
-    visited = set()
-    _dfs(0, visited, adj)
-
-    return list(all_nodes - visited)
-
-
-def make_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-    num_qubits: int,
-    execution,
-    execution_managed_by_target: dict[str, str] | None = None,
-    direct_sample_exp_value: int | None = None,
-    classical_shadows_exp_value: dict[str, Any] | None = None,
-    qpu: dict[str, str] | None = None,
-    gradient: Literal["ParameterShift", "NativeSupport"] | None = None,
-) -> Process:
-    """Make a Libket configuration"""
-
-    if qpu is not None:
-        qpu = {**_BASE_QPU, **qpu}
-        if qpu["coupling_graph"]:
-            unreachable_qubits = _find_unreachable_qubits(
-                num_qubits, qpu["coupling_graph"]
-            )
-            if len(unreachable_qubits) > 0:
-                raise ValueError(
-                    f"Unreachable qubit {unreachable_qubits} in the coupling graph."
-                )
-
-    # Ensure only one of the three is defined and at least one is provided
-    defined_options = [
-        execution_managed_by_target is not None,
-        direct_sample_exp_value is not None,
-        classical_shadows_exp_value is not None,
-    ]
-    if sum(defined_options) != 1:
-        raise ValueError(
-            "Exactly one of 'execution_managed_by_target', 'direct_sample_exp_value', "
-            "or 'classical_shadows_exp_value' must be defined."
-        )
-
-    if execution_managed_by_target is not None:
-        execution_protocol = {
-            "ManagedByTarget": {**_MANAGED_BY_TARGET, **execution_managed_by_target}
-        }
-    elif direct_sample_exp_value is not None:
-        execution_protocol = {"SampleBased": {"DirectSample": direct_sample_exp_value}}
-    else:
-        execution_protocol = {
-            "SampleBased": {
-                "ClassicalShadows": {
-                    **_CLASSICAL_SHADOWS,
-                    **classical_shadows_exp_value,
-                }
-            }
-        }
-
-    execution_target = {
-        "num_qubits": num_qubits,
-        "qpu": qpu,
-        "execution_protocol": execution_protocol,
-        "gradient": gradient,
-    }
-
-    execution_target_json = json.dumps(execution_target).encode("utf-8")
-    execution_target_len = len(execution_target_json)
-    execution_target_json = (c_uint8 * execution_target_len)(*execution_target_json)
-
-    if isinstance(execution, BatchExecution):
-        batch_execution = execution.c_struct
-        live_execution = None
-    elif isinstance(execution, LiveExecution):
-        batch_execution = None
-        live_execution = execution.c_struct
-    else:
-        batch_execution = None
-        live_execution = None
-
-    return API["ket_make_configuration"](
-        execution_target_json,
-        execution_target_len,
-        batch_execution,
-        live_execution,
+    return API["ket_quantum_execution_batch"](
+        execution.c_struct,
+        native_gate_set_ptr,
+        gradient,
+        coupling_graph_json,
     )

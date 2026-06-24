@@ -16,19 +16,23 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from collections import Counter
-from ctypes import c_size_t, c_uint8, c_void_p
+from collections import defaultdict
+from contextlib import contextmanager
+from ctypes import c_void_p
 from functools import partial
-from json import loads
-from typing import Literal, Optional, Any, Iterable
+import json
+from typing import Literal, Optional, Any
 import weakref
 
 from .clib.libket import (
+    Block,
     HasProcess,
-    LiveExecution,
     Process as LibketProcess,
-    BatchExecution,
+    API as libket,
 )
+
+from .clib.libket.execution import LiveExecution, BatchExecution
+
 from .clib.kbw import get_simulator
 
 __all__ = ["Process", "Quant"]
@@ -161,7 +165,6 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 else num_qubits
             )
             super().__init__(
-                self,
                 get_simulator(
                     num_qubits=num_qubits,
                     simulator=simulator,
@@ -171,52 +174,46 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 ),
             )
 
-        self._aux_pool = []
+        self._exp_value_count = 0
+        self._exp_values = None
+
+        self._qubit_pool = []
         self._aux = set()
+        self._blocked_qubits = defaultdict(int)
 
-        self._blocked = []
-        self._blocked_counter = Counter()
+        self._blocks = []
 
-        self._ctrl_buffer_size = 512
-        self._ctrl_buffer = (c_size_t * self._ctrl_buffer_size)()
-        self._metadata_buffer_size = 512
-        self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
-        self._buffer_size = 2048
-        self._buffer = (c_uint8 * self._buffer_size)()
+    def _block_qubits(self, qubits):
+        for q in qubits:
+            self._block_qubits[q] += 1
+
+    def _unblock_qubits(self, qubits):
+        for q in qubits:
+            self._block_qubits[q] -= 1
+            if self._block_qubits[q] == 0:
+                del self._block_qubits[q]
+
+    def _get_exp_value_index(self) -> int:
+        index = self._exp_value_count
+        self._exp_value_count += 1
+        return index
+
+    def _get_exp_value(self, index, execute=False):
+        if execute:
+            self.execute()
+            result_ptr = self.read_exp_value()
+            self._exp_values = json.loads(result_ptr.value.decode("utf-8"))
+            libket["ket_string_delete"](result_ptr)
+
+        if self._exp_values is None:
+            return None
+
+        return self._exp_values[index]
 
     def _alloc(self) -> int:
-        if self._aux_pool:
-            return self._aux_pool.pop(0)
-        return self.allocate_qubit().value
-
-    def _blocked_push(self):
-        self._blocked.append(set())
-
-    def _blocked_pop(self) -> set[int]:
-        """Remove and return the last blocked set from the stack."""
-        return self._blocked.pop()
-
-    def _block_qubits(self, qubits: Iterable[int]):
-        """Increment the reference block counter for the given qubits."""
-        for q in qubits:
-            self._blocked_counter[q] += 1
-
-    def _unblock_qubits(self, qubits: Iterable[int]):
-        """Decrement the reference block counter for the given qubits."""
-        for q in qubits:
-            self._blocked_counter[q] -= 1
-            if self._blocked_counter[q] <= 0:
-                del self._blocked_counter[q]
-
-    def _block_ctrl(self):
-        if self._blocked:
-            self._blocked[-1].update(self._ctrl_list())
-
-    def _is_blocked(self, index: int) -> bool:
-        """Check if a qubit is blocked either by scope stack or by reference counter."""
-        return (index in self._blocked_counter) or any(
-            index in blocked for blocked in self._blocked
-        )
+        if self._qubit_pool:
+            return self._qubit_pool.pop(0)
+        return super().__getattr__("alloc")().value
 
     def _is_aux(self, index):
         return index in self._aux
@@ -254,13 +251,8 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         if num_qubits < 1:
             raise ValueError("Cannot allocate less than 1 qubit")
 
-        while len(self._aux_pool) < num_qubits:
-            self._aux_pool.append(self.allocate_qubit().value)
+        aux_index = [self._alloc() for _ in range(num_qubits)]
 
-        aux_index, self._aux_pool = (
-            self._aux_pool[:num_qubits],
-            self._aux_pool[num_qubits:],
-        )
         self._aux.update(aux_index)
 
         return Quant(
@@ -274,142 +266,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             raise RuntimeError("Cannot free an non-auxiliary qubit")
 
         self._aux.difference_update(qubits)
-        self._aux_pool.extend(qubits)
-
-    def get_instructions(self) -> list[dict]:
-        """Retrieve quantum instructions from the process.
-
-        The format of the instructions is defined in the runtime library Libket.
-
-        Example:
-            >>> from ket import *
-            >>> p = Process()
-            >>> a, b = p.alloc(2)
-            >>> CNOT(H(a), b)
-            >>> # Get quantum instructions
-            >>> instructions = p.get_instructions()
-            >>> pprint(instructions)
-            [{'Gate': {'control': [],
-                       'gate': 'Hadamard',
-                       'target': {'Main': {'index': 0}}}},
-             {'Gate': {'control': [{'Main': {'index': 0}}],
-                       'gate': 'PauliX',
-                       'target': {'Main': {'index': 1}}}}]
-
-
-        Returns:
-            A list of dictionaries containing quantum instructions extracted from the process.
-        """
-        while True:
-            write_size = self.instructions_json(self._buffer, self._buffer_size)
-            if write_size.value <= self._buffer_size:
-                break
-            self._buffer_size = write_size.value + 1
-            self._buffer = (c_uint8 * self._buffer_size)()
-
-        return loads(bytearray(self._buffer[: write_size.value]))
-
-    def get_mapped_instructions(self) -> list[dict] | None:
-        """Retrieve quantum instructions after the circuit mapping.
-
-        The format of the instructions is defined in the runtime library Libket.
-
-        The instructions are extracted after the circuit mapping step, which is
-        performed during the compilation process. A qubit coupling graph must be passed to the
-        process for the quantum circuit mapping to happen. Note that at this point, the single
-        qubit gates have not been translated to the native gate set of the quantum hardware yet.
-
-        Example:
-
-            >>> n = 4
-            >>> coupling_graph = [(0, 1), (1, 2), (2, 3), (3, 0)]
-            >>> p = Process(num_qubits=n, coupling_graph=coupling_graph)
-            >>> q = p.alloc(n)
-            >>> ctrl(H(q[0]), X)(q[1:])
-            >>> m = measure(q)
-            >>> p.prepare_for_execution()
-            >>> pprint(p.get_mapped_instructions())
-            [{'Gate': {'control': [], 'gate': 'Hadamard', 'target': {'index': 0}}},
-             {'Gate': {'control': [{'index': 0}],
-                       'gate': 'PauliX',
-                       'target': {'index': 1}}},
-             'Identity',
-             {'Gate': {'control': [{'index': 3}],
-                       'gate': 'PauliX',
-                       'target': {'index': 0}}},
-             {'Gate': {'control': [{'index': 0}],
-                       'gate': 'PauliX',
-                       'target': {'index': 3}}},
-             {'Gate': {'control': [{'index': 3}],
-                       'gate': 'PauliX',
-                       'target': {'index': 2}}},
-             {'Measure': {'index': 0,
-                          'qubits': [{'index': 3},
-                                     {'index': 1},
-                                     {'index': 0},
-                                     {'index': 2}]}}]
-
-
-        Returns:
-            A list of dictionaries containing quantum instructions extracted from the process
-            if the process has been transpiled, otherwise None.
-
-        """
-        while True:
-            write_size = self.isa_instructions_json(self._buffer, self._buffer_size)
-            if write_size.value <= self._buffer_size:
-                break
-            self._buffer_size = write_size.value + 1
-            self._buffer = (c_uint8 * self._buffer_size)()
-
-        return loads(bytearray(self._buffer[: write_size.value]))
-
-    def get_metadata(self) -> dict[str, Any]:
-        """Retrieve metadata from the quantum process.
-
-        Example:
-
-            >>> n = 4
-            >>> coupling_graph = [(0, 1), (1, 2), (2, 3), (3, 0)]
-            >>> p = Process(num_qubits=n, coupling_graph=coupling_graph)
-            >>> q = p.alloc(n)
-            >>> ctrl(H(q[0]), X)(q[1:])
-            >>> m = measure(q)
-            >>> p.prepare_for_execution()
-            >>> pprint(p.get_mapped_instructions())
-            {'allocated_qubits': 4,
-             'decomposition': {'NoAuxCX': 3},
-             'logical_circuit_depth': 3,
-             'logical_gate_count': {'1': 1, '2': 3},
-             'physical_circuit_depth': 5,
-             'physical_gate_count': {'1': 1, '2': 4},
-             'terminated': True}
-
-
-        Returns:
-            A dictionary containing metadata information extracted from the process.
-
-        """
-        while True:
-            write_size = self.metadata_json(
-                self._metadata_buffer, self._metadata_buffer_size
-            )
-            if write_size.value <= self._metadata_buffer_size:
-                break
-            self._metadata_buffer_size = write_size.value + 1
-            self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
-
-        return loads(bytearray(self._metadata_buffer[: write_size.value]))
-
-    def _ctrl_list(self) -> list[int]:
-        while True:
-            write_size = self.get_ctrl(self._ctrl_buffer, self._ctrl_buffer_size)
-            if write_size.value <= self._ctrl_buffer_size:
-                break
-            self._ctrl_buffer_size = write_size.value + 1
-            self._ctrl_buffer = (c_uint8 * self._ctrl_buffer_size)()
-
-        return self._ctrl_buffer[: write_size.value]
+        self._qubit_pool.extend(qubits)
 
     def param(self, *param) -> list[Parameter] | Parameter:
         """Register a parameter for gradient calculation.
@@ -430,6 +287,49 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
     def __repr__(self) -> str:
         return f"<Ket 'Process' id={hex(id(self))}>"
+
+    def gates(self):
+        block_str = self.gates_json()
+        block = json.loads(block_str.value)
+        libket["ket_string_delete"](block_str)
+        return block
+
+    def append_block(self, block, check_qubits=True):
+        if check_qubits:
+            proprieties_json_ptr = block.proprieties_json()
+            proprieties = json.loads(proprieties_json_ptr.value)
+            libket["ket_string_delete"](proprieties_json_ptr)
+
+            if any(
+                (qubit in self._aux) or (qubit in self._block_qubits)
+                for qubit in proprieties["qubits_written"]
+            ):
+                raise RuntimeError("Fail uncomputation on axillary qubit.")
+
+        if self._blocks:
+            self._blocks[-1].append_block(block.take())
+        else:
+            self.__getattr__("append_block")(block.take())
+
+    @contextmanager
+    def block_builder(
+        self,
+        inverse=False,
+        control: list[int] | None = None,
+        append: bool = True,
+    ):
+        block = Block(self)
+        self._blocks.append(block)
+        try:
+            yield block
+        finally:
+            if inverse:
+                block.set(block.inverse())
+            if control is not None:
+                block.set(block.control(control))
+            self._blocks.pop()
+            if append:
+                self.append_block(block)
 
 
 class Quant(HasProcess):

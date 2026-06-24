@@ -52,27 +52,15 @@ from typing import Any, Callable
 import functools
 import contextvars
 
-from .clib.libket import (
-    HADAMARD,
-    PAULI_X,
-    PAULI_Y,
-    PAULI_Z,
-    ROTATION_X,
-    ROTATION_Y,
-    ROTATION_Z,
-    PHASE_SHIFT,
-)
+from ket.clib.libket import search_process
 
 from .base import Process, Quant, Parameter
 from .operations import (
-    _search_process,
     control,
     ctrl,
     cat,
     kron,
     around,
-    _allow_permutation,
-    _unsafe_aux,
 )
 
 from .expv import Pauli, Hamiltonian
@@ -120,8 +108,6 @@ def _gate_docstring(name, matrix, effect=None) -> str:
 
 
 _build_obs = contextvars.ContextVar("build_obs", default=False)
-_is_diagonal = contextvars.ContextVar("is_diagonal", default=False)
-_is_permutation = contextvars.ContextVar("is_permutation", default=False)
 
 
 @contextmanager
@@ -149,23 +135,6 @@ def obs():
         yield
     finally:
         _build_obs.reset(token)
-
-
-def _validate_qubit(process: Process, qubit: int, is_diag: bool):
-    """Centralized validation for safe uncomputation on a target qubit."""
-    unsafe = _unsafe_aux.get()
-    if unsafe:
-        return
-
-    is_aux = process._is_aux(qubit)
-    is_blocked = process._is_blocked(qubit)
-    aux_allowed = is_diag or _allow_permutation.get()
-
-    if is_blocked or (is_aux and not aux_allowed):
-        raise RuntimeError("Gate application blocked for safe uncomputation")
-
-    if not (_is_diagonal.get() or _is_permutation.get()) and (is_aux and not is_diag):
-        process._block_ctrl()
 
 
 def I(  # pylint: disable=invalid-name missing-function-docstring
@@ -198,11 +167,10 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = _is_diagonal.get() and not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(PAULI_X, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("PauliX", qubit)
     return qubits
 
 
@@ -224,11 +192,10 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = _is_diagonal.get() and not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(PAULI_Y, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("PauliY", qubit)
     return qubits
 
 
@@ -250,11 +217,11 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(PAULI_Z, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("PauliZ", qubit)
+
     return qubits
 
 
@@ -273,11 +240,11 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = _is_diagonal.get() and not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("Hadamard", qubit)
+
     return qubits
 
 
@@ -304,41 +271,28 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
     theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
-    if not isinstance(theta, Parameter):
-        theta_diagonal = _isclose_mod(theta, 2 * pi)
-        theta_permutation = _isclose_mod(theta, pi)
-    else:
-        theta_diagonal = False
-        theta_permutation = False
-
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = (_is_diagonal.get() or theta_diagonal) and not (
-            _is_permutation.get() or theta_permutation
-        )
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "RotationX": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"RotationX": {"Value": theta}}
+            block.append_gate(gate, qubit)
 
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    ROTATION_X,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    ROTATION_X,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
         return qubits
 
     if qubits is None:
@@ -362,42 +316,27 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
     theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
-    if not isinstance(theta, Parameter):
-        theta_diagonal = _isclose_mod(theta, 2 * pi)
-        theta_permutation = _isclose_mod(theta, pi)
-    else:
-        theta_diagonal = False
-        theta_permutation = False
-
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = (_is_diagonal.get() or theta_diagonal) and not (
-            _is_permutation.get() or theta_permutation
-        )
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
-
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    ROTATION_Y,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    ROTATION_Y,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
-        return qubits
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "RotationY": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"RotationY": {"Value": theta}}
+            block.append_gate(gate, qubit)
 
     if qubits is None:
         return inner
@@ -425,28 +364,22 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = not _is_permutation.get()
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
-
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    ROTATION_Z,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    ROTATION_Z,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
-        return qubits
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "RotationZ": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"RotationZ": {"Value": theta}}
+            block.append_gate(gate, qubit)
 
     if qubits is None:
         return inner
@@ -470,28 +403,22 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = not _is_permutation.get()
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
-
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    PHASE_SHIFT,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    PHASE_SHIFT,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
-        return qubits
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "Phase": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"Phase": {"Value": theta}}
+            block.append_gate(gate, qubit)
 
     if qubits is None:
         return inner
@@ -782,7 +709,7 @@ def global_phase(
     def _global_phase(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
         @functools.wraps(gate)
         def inner(*args, ket_process: Process | None = None, **kwargs):
-            ket_process = _search_process(ket_process, args, kwargs)
+            ket_process = search_process(ket_process, args, kwargs)
 
             ket_process.apply_global_phase(theta)
 
@@ -909,11 +836,11 @@ def is_diagonal(gate: Callable) -> Callable:
 
     @wraps(gate)
     def inner(*args, **kwargs) -> Any:
-        token = _is_diagonal.set(True)
-        try:
-            return gate(*args, **kwargs)
-        finally:
-            _is_diagonal.reset(token)
+        process = search_process(None, args, kwargs)
+        with process.block_builder() as block:
+            ret = gate(*args, **kwargs)
+            block.set_as_diagonal()
+        return ret
 
     return inner
 
@@ -927,10 +854,10 @@ def is_permutation(gate: Callable) -> Callable:
 
     @wraps(gate)
     def inner(*args, **kwargs) -> Any:
-        token = _is_permutation.set(True)
-        try:
-            return gate(*args, **kwargs)
-        finally:
-            _is_permutation.reset(token)
+        process = search_process(None, args, kwargs)
+        with process.block_builder() as block:
+            ret = gate(*args, **kwargs)
+            block.set_as_permutation()
+        return ret
 
     return inner

@@ -67,7 +67,7 @@ def test_aux_allocation_and_free():
     # ensures it won't run again when the object is deleted.
     aux._finalizer()
 
-    assert aux_qubits[0] in p._aux_pool
+    assert aux_qubits[0] in p._qubit_pool
     assert p._is_aux(aux_qubits[0]) is False
 
     # Expected failure: trying to free a non-auxiliary qubit
@@ -123,26 +123,3 @@ def test_quant_slicing_and_indexing():
     subset = q.at([0, 3])
     assert len(subset) == 2
     assert subset.qubits == [q.qubits[0], q.qubits[3]]
-
-
-def test_garbage_collector_blocking():
-    """Validate that the Process reference counter works independently of deallocation order."""
-    p = Process()
-
-    # Simulate manual blocks to test Counter resilience
-    p._block_qubits([1, 2])
-    p._block_qubits([2, 3])
-
-    assert p._is_blocked(1) is True
-    assert p._is_blocked(2) is True
-    assert p._is_blocked(3) is True
-
-    # Release the first block
-    p._unblock_qubits([1, 2])
-    assert p._is_blocked(1) is False
-    assert p._is_blocked(2) is True
-
-    # Release the second block
-    p._unblock_qubits([2, 3])
-    assert p._is_blocked(2) is False
-    assert p._is_blocked(3) is False
