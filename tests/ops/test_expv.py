@@ -82,8 +82,6 @@ def test_exp_value_execution():
 
     ev = exp_value(pz)
 
-    p.execute()
-
     assert cmath.isclose(ev.value, -1.0, abs_tol=1e-5)
 
 

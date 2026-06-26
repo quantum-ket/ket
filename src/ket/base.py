@@ -182,16 +182,18 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         self._blocked_qubits = defaultdict(int)
 
         self._blocks = []
+        self._is_diagonal = 0
+        self._is_permutation = 0
 
     def _block_qubits(self, qubits):
         for q in qubits:
-            self._block_qubits[q] += 1
+            self._blocked_qubits[q] += 1
 
     def _unblock_qubits(self, qubits):
         for q in qubits:
-            self._block_qubits[q] -= 1
-            if self._block_qubits[q] == 0:
-                del self._block_qubits[q]
+            self._blocked_qubits[q] -= 1
+            if self._blocked_qubits[q] == 0:
+                del self._blocked_qubits[q]
 
     def _get_exp_value_index(self) -> int:
         index = self._exp_value_count
@@ -295,20 +297,21 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         return block
 
     def append_block(self, block, check_qubits=True):
-        if check_qubits:
-            proprieties_json_ptr = block.proprieties_json()
-            proprieties = json.loads(proprieties_json_ptr.value)
-            libket["ket_string_delete"](proprieties_json_ptr)
-
-            if any(
-                (qubit in self._aux) or (qubit in self._block_qubits)
-                for qubit in proprieties["qubits_written"]
-            ):
-                raise RuntimeError("Fail uncomputation on axillary qubit.")
-
         if self._blocks:
             self._blocks[-1].append_block(block.take())
         else:
+            if check_qubits:
+                proprieties_json_ptr = block.proprieties_json()
+                proprieties = json.loads(proprieties_json_ptr.value)
+                libket["ket_string_delete"](proprieties_json_ptr)
+
+                for target, op in proprieties.items():
+                    target = int(target)
+                    if (op["propriety"] in ["Permutation", "Unitary"]) and (
+                        (target in self._blocked_qubits) or self._is_aux(target)
+                    ):
+                        raise RuntimeError("Operation violates uncomputation.")
+
             self.__getattr__("append_block")(block.take())
 
     @contextmanager
@@ -317,9 +320,16 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         inverse=False,
         control: list[int] | None = None,
         append: bool = True,
+        diagonal=False,
+        permutation=False,
     ):
         block = Block(self)
         self._blocks.append(block)
+        if diagonal:
+            self._is_diagonal += 1
+        elif permutation:
+            self._is_permutation += 1
+
         try:
             yield block
         finally:
@@ -327,6 +337,17 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 block.set(block.inverse())
             if control is not None:
                 block.set(block.control(control))
+
+            if self._is_diagonal > 0:
+                block.set_as_diagonal()
+            elif self._is_permutation > 0:
+                block.set_as_permutation()
+
+            if diagonal:
+                self._is_diagonal -= 1
+            elif permutation:
+                self._is_permutation -= 1
+
             self._blocks.pop()
             if append:
                 self.append_block(block)

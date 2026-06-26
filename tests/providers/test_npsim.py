@@ -7,6 +7,7 @@ import math
 import ket
 from ket.npsim import NPSim
 
+
 def test_npsim_bell_state_measurement():
     """Test Bell state preparation and measurement on NPSim."""
     sim = NPSim(num_qubits=2)
@@ -16,7 +17,6 @@ def test_npsim_bell_state_measurement():
     ket.CNOT(ket.H(q[0]), q[1])
 
     res = ket.measure(q)
-    p.execute()
 
     # Bell state must collapse to either |00> (0) or |11> (3)
     assert res.value in [0, 3]
@@ -31,7 +31,6 @@ def test_npsim_dump():
     ket.X(q)  # State |1>
 
     state = ket.dump(q)
-    p.execute()
 
     probs = state.probability
     assert 1 in probs
@@ -47,7 +46,6 @@ def test_npsim_rotations():
     ket.RX(math.pi, q)  # Equivalent to -iX
 
     state = ket.dump(q)
-    p.execute()
 
     amplitudes = state.get()
     assert 1 in amplitudes

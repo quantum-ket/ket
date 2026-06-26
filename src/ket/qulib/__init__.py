@@ -100,7 +100,7 @@ def dump_matrix(
     if process is None:
         process = Process(
             num_qubits=2 * num_qubits,
-            execution="batch",
+            execution="live",
             simulator="sparse",
         )
 

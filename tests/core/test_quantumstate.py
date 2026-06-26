@@ -16,7 +16,6 @@ def test_quantumstate_dump_basic():
     CNOT(H(a), b)
 
     state = dump(a + b)
-    p.execute()
 
     states = state.get()
 
@@ -38,7 +37,6 @@ def test_quantumstate_probabilities():
 
     H(q)  # Superposition |0> and |1>
     state = dump(q)
-    p.execute()
 
     probs = state.probability
     assert probs is not None
@@ -53,7 +51,6 @@ def test_quantumstate_sample():
 
     H(q)
     state = dump(q)
-    p.execute()
 
     # Sample 10000 shots
     shots = 10000
@@ -76,7 +73,6 @@ def test_quantumstate_show_modes():
     X(q)  # State |1>
 
     state = dump(q)
-    p.execute()
 
     str_out = state.show(mode="str")
     assert "|1⟩" in str_out

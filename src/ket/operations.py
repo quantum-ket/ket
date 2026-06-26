@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from collections.abc import Sized
 from contextlib import contextmanager
-import contextvars
 from functools import reduce, wraps
 import json
 from operator import add
@@ -424,27 +423,17 @@ def undo(
     proprieties = json.loads(proprieties_ptr.value)
     libket["ket_string_delete"](proprieties_ptr)
 
-    blocked_qubits = []
+    blocked_qubits = set()
 
-    if any(
-        ket_process._is_aux(write_qubit)
-        for write_qubit in proprieties["qubits_written"]
-    ):
-        match proprieties["propriety"]:
-            case "Identity" | "Diagonal":
-                pass
-            case "Permutation":
-                blocked_qubits = set(
-                    control_of_aux
-                    for write_qubit, read_qubit in proprieties["qubits_written"].items()
-                    for control_of_aux in read_qubit
-                    if ket_process._is_aux(write_qubit)
-                )
-            case "Unitary":
-                raise RuntimeError("Fail uncomputation")
+    for target, op in proprieties.items():
+        target = int(target)
+        if (op["propriety"] == "Permutation") and ket_process._is_aux(target):
+            blocked_qubits.update(op["read_qubits"])
+        elif (op["propriety"] == "Permutation") and ket_process._is_aux(target):
+            raise RuntimeError("Operation not allowed on axillary qubit.")
 
     uncompute = compute.inverse()
-    ket_process.append_block(compute)
+    ket_process.append_block(compute, check_qubits=False)
     ket_process._block_qubits(blocked_qubits)
 
     def undo_func():
@@ -452,7 +441,7 @@ def undo(
             return
 
         ket_process._unblock_qubits(blocked_qubits)
-        ket_process.append_block(uncompute)
+        ket_process.append_block(uncompute, check_qubits=False)
 
     return Quant(
         qubits=qubits.qubits,
@@ -504,24 +493,24 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
     proprieties = json.loads(proprieties_ptr.value)
     libket["ket_string_delete"](proprieties_ptr)
 
-    blocked_qubits = []
+    blocked_qubits = set()
+    written_qubits = set()
 
-    if any(
-        ket_process._is_aux(write_qubit)
-        for write_qubit in proprieties["qubits_written"]
-    ):
-        match proprieties["propriety"]:
+    for target, op in proprieties.items():
+        target = int(target)
+        match op["propriety"]:
             case "Identity" | "Diagonal":
                 pass
             case "Permutation":
-                blocked_qubits = set(
-                    control_of_aux
-                    for write_qubit, read_qubit in proprieties["qubits_written"].items()
-                    for control_of_aux in read_qubit
-                    if ket_process._is_aux(write_qubit)
-                )
+                if ket_process._is_aux(target):
+                    blocked_qubits.update(op["read_qubits"])
+                written_qubits.add(target)
             case "Unitary":
-                raise RuntimeError("Fail uncomputation")
+                if ket_process._is_aux(target):
+                    raise RuntimeError("Operation not allowed on axillary qubit.")
+                written_qubits.add(target)
+
+    allow_approximated_decomposition = True
 
     try:
         with ket_process.block_builder(append=False) as action:
@@ -531,17 +520,23 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
         proprieties = json.loads(proprieties_ptr.value)
         libket["ket_string_delete"](proprieties_ptr)
 
-        if any(
-            ket_process._is_aux(write_qubit) or write_qubit in blocked_qubits
-            for write_qubit in proprieties["qubits_written"]
-        ):
-            raise RuntimeError("Fail uncomputation")
+        for target, op in proprieties.items():
+            target = int(target)
+            if op["propriety"] in ["Permutation", "Unitary"]:
+                if target in blocked_qubits:
+                    raise RuntimeError("Operation violates uncomputation.")
+                if target in written_qubits:
+                    allow_approximated_decomposition = False
 
     finally:
+
+        if allow_approximated_decomposition:
+            compute.enable_approximated_decomposition()
+
         uncompute = compute.inverse()
-        ket_process.append_block(compute)
-        ket_process.append_block(action)
-        ket_process.append_block(uncompute)
+        ket_process.append_block(compute, check_qubits=False)
+        ket_process.append_block(action, check_qubits=False)
+        ket_process.append_block(uncompute, check_qubits=False)
 
 
 def measure(qubits: Quant) -> Measurement:
@@ -608,9 +603,6 @@ def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
     return ExpValue(hamiltonian)
 
 
-_unsafe_aux = contextvars.ContextVar("unsafe_aux", default=False)
-
-
 def using_aux(unsafe: bool = False, **names):
     """Add axillary qubits to a quantum gate.
 
@@ -657,13 +649,10 @@ def using_aux(unsafe: bool = False, **names):
 
                 kwargs[name] = ket_process.alloc_aux(num_qubits)
 
-            token = _unsafe_aux.set(unsafe)
-            try:
-                ret = func(*args, **kwargs)
-            finally:
-                _unsafe_aux.reset(token)
-
-            return ret
+            if unsafe:
+                with ket_process.block_builder(diagonal=True):
+                    return func(*args, **kwargs)
+            return func(*args, **kwargs)
 
         return call
 

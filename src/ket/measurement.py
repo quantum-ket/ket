@@ -65,13 +65,7 @@ class Measurement(HasProcess):
     ):
         super().__init__(ket_process=qubits.ket_process)
 
-        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            _unsafe_aux,
-        )
-
-        if not _unsafe_aux.get() and any(
-            self.ket_process._is_aux(q) for q in qubits.qubits
-        ):
+        if any(self.ket_process._is_aux(q) for q in qubits.qubits):
             raise ValueError("Auxiliary qubits cannot be measured")
 
         self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
@@ -174,13 +168,7 @@ class Samples(HasProcess):
         self.qubits = qubits.qubits
         self.size = len(qubits)
 
-        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            _unsafe_aux,
-        )
-
-        if not _unsafe_aux.get() and any(
-            self.ket_process._is_aux(q) for q in self.qubits
-        ):
+        if any(self.ket_process._is_aux(q) for q in self.qubits):
             raise ValueError("Auxiliary qubits cannot be measured")
 
         result_ptr = self.ket_process.sample(

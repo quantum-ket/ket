@@ -41,7 +41,6 @@ def run_grover(size: int, oracle_func: callable, outcomes: int = 1) -> int:
 
     # Using dump to ensure probability is peaked at the correct state instead of flaky measures
     state = dump(s)
-    p.execute()
 
     # Return the most probable state
     return max(state.probability.items(), key=lambda item: item[1])[0]
@@ -61,7 +60,7 @@ def run_phase_estimator(oracle_gate: callable, precision: int) -> float:
 
     # Measuring for estimation
     res = measure(reversed(ctr))
-    p.execute()
+
     return res.value / (2**precision)
 
 

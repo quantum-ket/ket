@@ -710,10 +710,10 @@ def global_phase(
         @functools.wraps(gate)
         def inner(*args, ket_process: Process | None = None, **kwargs):
             ket_process = search_process(ket_process, args, kwargs)
-
-            ket_process.apply_global_phase(theta)
-
-            return gate(*args, **kwargs)
+            with ket_process.block_builder() as block:
+                ret = gate(*args, **kwargs)
+                block.add_global_phase(theta)
+            return ret
 
         return inner
 
@@ -837,10 +837,8 @@ def is_diagonal(gate: Callable) -> Callable:
     @wraps(gate)
     def inner(*args, **kwargs) -> Any:
         process = search_process(None, args, kwargs)
-        with process.block_builder() as block:
-            ret = gate(*args, **kwargs)
-            block.set_as_diagonal()
-        return ret
+        with process.block_builder(diagonal=True):
+            return gate(*args, **kwargs)
 
     return inner
 
@@ -855,9 +853,7 @@ def is_permutation(gate: Callable) -> Callable:
     @wraps(gate)
     def inner(*args, **kwargs) -> Any:
         process = search_process(None, args, kwargs)
-        with process.block_builder() as block:
-            ret = gate(*args, **kwargs)
-            block.set_as_permutation()
-        return ret
+        with process.block_builder(permutation=True):
+            return gate(*args, **kwargs)
 
     return inner

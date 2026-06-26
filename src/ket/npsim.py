@@ -10,7 +10,7 @@ high-performance simulator. For better performance, use the KBW simulator.
 # SPDX-License-Identifier: Apache-2.0
 
 from random import choices
-from .clib.libket import LiveExecution
+from .clib.libket.execution import LiveExecution
 
 try:
     import numpy as np
