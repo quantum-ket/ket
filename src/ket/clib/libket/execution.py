@@ -276,9 +276,9 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
         return make_live_configuration(execution=self)
 
 
-def make_live_configuration(execution: LiveExecution):
+def make_live_configuration(execution: LiveExecution, decompose: bool = False):
     """Create a live QuantumExecution from a LiveExecution instance."""
-    return API["ket_quantum_execution_live"](execution.c_struct)
+    return API["ket_quantum_execution_live"](execution.c_struct, decompose)
 
 
 def make_batch_configuration(

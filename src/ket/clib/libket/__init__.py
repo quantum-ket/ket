@@ -186,7 +186,7 @@ api_argtypes = {
         [c_char_p],  # proprieties
     ),
     "ket_quantum_execution_live": (
-        [POINTER(LiveCExecution)],  # live
+        [POINTER(LiveCExecution), c_bool],  # live, decompose
         [c_void_p],  # quantum_execution
     ),
     "ket_quantum_execution_batch": (
