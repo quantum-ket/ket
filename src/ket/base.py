@@ -156,7 +156,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             self.configuration = execution_target
             ptr = self.configuration.connect()
             assert isinstance(ptr, c_void_p)
-            super().__init__(self, ptr)
+            super().__init__(ptr)
         else:
             simulator = "sparse" if simulator is None else simulator
             num_qubits = (
