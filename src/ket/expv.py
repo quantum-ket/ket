@@ -11,8 +11,6 @@ from __future__ import annotations
 # SPDX-License-Identifier: Apache-2.0
 
 # pylint: disable=duplicate-code,protected-access
-
-from ctypes import c_int32, c_size_t
 import json
 from numbers import Number
 from itertools import product
@@ -21,8 +19,7 @@ from typing import Literal
 from fractions import Fraction
 
 from .base import Parameter, Process, Quant
-
-from .clib.libket import API, HasProcess
+from .clib.libket import HasProcess
 
 __all__ = [
     "Pauli",

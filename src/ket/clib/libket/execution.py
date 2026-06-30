@@ -163,7 +163,7 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
                         self.rotation_z(target, control, value)
                     case "Phase":
                         self.phase(target, control, value)
-            except:
+            except Exception:  # pylint: disable=broad-exception-caught
                 return 13
             return 0
 

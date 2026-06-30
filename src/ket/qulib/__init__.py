@@ -270,10 +270,10 @@ class _IBMDeviceForDraw(LiveExecution):
         return ([[0]], [0])
 
     def dump(self, qubits: list[int]) -> dict:
-        dump = Gate(name="dump", num_qubits=len(qubits), params=[])
+        dump_gate = Gate(name="dump", num_qubits=len(qubits), params=[])
         if self.keep_order and self.last_gate != "M":
             self.circuit.barrier()
-        self.circuit.append(dump, qubits)
+        self.circuit.append(dump_gate, qubits)
         self.last_gate = "M"
         return {
             "basis_states": [[0]],

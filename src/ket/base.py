@@ -291,12 +291,14 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         return f"<Ket 'Process' id={hex(id(self))}>"
 
     def gates(self):
+        """Return the gates of the process as a JSON string."""
         block_str = self.gates_json()
         block = json.loads(block_str.value)
         libket["ket_string_delete"](block_str)
         return block
 
     def append_block(self, block, check_qubits=True):
+        """Append a block to the process."""
         if self._blocks:
             self._blocks[-1].append_block(block.take())
         else:
@@ -311,8 +313,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                         (target in self._blocked_qubits) or self._is_aux(target)
                     ):
                         raise RuntimeError("Operation violates uncomputation.")
-
-            self.__getattr__("append_block")(block.take())
+            super().__getattr__("append_block")(block.take())
 
     @contextmanager
     def block_builder(
@@ -323,6 +324,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         diagonal=False,
         permutation=False,
     ):
+        """Context manager for creating a block."""
         block = Block(self)
         self._blocks.append(block)
         if diagonal:

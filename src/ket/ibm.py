@@ -160,4 +160,5 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         return [float(result.data.evs) for result in job.result()]
 
     def connect(self):
+        """Connect to the device and return the configuration."""
         return self.configure(gradient=self.gradient)

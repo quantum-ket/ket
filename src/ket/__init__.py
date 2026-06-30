@@ -111,14 +111,14 @@ __all__ = (
 
 def ket_version() -> list[str]:
     """Return the version of the Ket platform components."""
-    from .clib.libket import API as libket  # pylint: disable=import-outside-toplevel
-    from .clib.kbw import API as kbw  # pylint: disable=import-outside-toplevel
+    from .clib.libket import API as libket_api  # pylint: disable=import-outside-toplevel
+    from .clib.kbw import API as kbw_api  # pylint: disable=import-outside-toplevel
 
-    libket_v, size = libket["ket_build_info"]()
+    libket_v, size = libket_api["ket_build_info"]()
     libket_v = bytearray(libket_v[: size.value])
     libket_v = libket_v.decode("utf-8")
 
-    kbw_v, size = kbw["kbw_build_info"]()
+    kbw_v, size = kbw_api["kbw_build_info"]()
     kbw_v = bytearray(kbw_v[: size.value])
     kbw_v = kbw_v.decode("utf-8")
 

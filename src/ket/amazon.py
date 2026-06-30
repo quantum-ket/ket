@@ -245,4 +245,5 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         ]
 
     def connect(self):
+        """Connect to the device and return the configuration."""
         return self.configure(gradient=self.gradient)

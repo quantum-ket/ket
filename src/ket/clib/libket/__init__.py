@@ -107,7 +107,7 @@ class LiveCExecution(Structure):  # pylint: disable=too-few-public-methods
     ]
 
 
-class CNativeGateSet(Structure):
+class CNativeGateSet(Structure):  # pylint: disable=too-few-public-methods
     """C CNativeGateSet Structure"""
 
     _fields_ = [
@@ -301,6 +301,8 @@ class HasProcess:  # pylint: disable=too-few-public-methods
 
 
 def search_process(ket_process, args, kwargs):
+    """Search for a ket_process in the arguments."""
+
     def inner(ket_process, arg):
         if hasattr(arg, "ket_process"):
             arg_process = arg.ket_process
@@ -347,6 +349,8 @@ class Process(HasProcess):
 
 
 class Block(HasProcess):
+    """Libket block wrapper from C API."""
+
     def __init__(self, ket_process, ptr=None):
         super().__init__(ket_process=ket_process)
 
@@ -356,24 +360,35 @@ class Block(HasProcess):
         )
 
     def append_gate(self, gate, target):
+        """Append a gate to the block."""
         gate = json.dumps(gate).encode("utf-8")
-        self.__getattr__("append_gate")(gate, target)
+        self.__getattr__("append_gate")(  # pylint: disable=unnecessary-dunder-call
+            gate, target
+        )
 
     def __getattr__(self, name: str):
         return lambda *args: API["ket_block_" + name](self, *args)
 
     def inverse(self):
-        return Block(self.ket_process, self.__getattr__("inverse")())
+        """Return the inverted block."""
+        return Block(
+            self.ket_process,
+            self.__getattr__("inverse")(),  # pylint: disable=unnecessary-dunder-call
+        )
 
     def control(self, qubits: list[int]):
+        """Return the controlled block."""
         qubits_len = len(qubits)
         qubits = (qubits_len * c_size_t)(*qubits)
         return Block(
             self.ket_process,
-            self.__getattr__("control")(qubits, qubits_len),
+            self.__getattr__("control")(  # pylint: disable=unnecessary-dunder-call
+                qubits, qubits_len
+            ),
         )
 
     def take(self):
+        """Take the C pointer of the block."""
         ptr = self._as_parameter_
         self._finalizer.detach()
 
@@ -382,6 +397,7 @@ class Block(HasProcess):
         return ptr
 
     def set(self, other: Block):
+        """Set the block to another block."""
         API["ket_block_delete"](self._as_parameter_)
         self._as_parameter_ = other.take()
 

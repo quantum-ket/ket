@@ -112,7 +112,7 @@ class Measurement(HasProcess):
 
     def __repr__(self):
         return (
-            f"<Ket 'Measurement' indexes={self.indexes}, "
+            f"<Ket 'Measurement' "
             f"value={self.value}, pid={hex(id(self.ket_process))}>"
         )
 
@@ -370,4 +370,4 @@ class Samples(HasProcess):
         return fig
 
     def __repr__(self) -> str:
-        return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.ket_process))}>"
+        return f"<Ket 'Samples' qubits={self.qubits}, pid={hex(id(self.ket_process))}>"

@@ -618,6 +618,4 @@ class QuantumState(HasProcess):
         return fig
 
     def __repr__(self):
-        return (
-            f"<Ket 'QuantumState' index={self.index}, pid={hex(id(self.ket_process))}>"
-        )
+        return f"<Ket 'QuantumState' qubits={self.qubits}, pid={hex(id(self.ket_process))}>"
