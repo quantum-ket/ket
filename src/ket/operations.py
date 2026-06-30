@@ -383,7 +383,7 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
         if len(gates) != len(args):
             raise ValueError(
                 f"Number of gates ({len(gates)}) is different from"
-                " number of arguments ({len(args)})"
+                f" number of arguments ({len(args)})"
             )
 
         return tuple(
@@ -429,7 +429,7 @@ def undo(
         target = int(target)
         if (op["propriety"] == "Permutation") and ket_process._is_aux(target):
             blocked_qubits.update(op["read_qubits"])
-        elif (op["propriety"] == "Permutation") and ket_process._is_aux(target):
+        elif (op["propriety"] == "Unitary") and ket_process._is_aux(target):
             raise RuntimeError("Operation not allowed on axillary qubit.")
 
     uncompute = compute.inverse()

@@ -117,8 +117,15 @@ class CNativeGateSet(Structure):
                 c_int32,
                 c_char_p,  # gate_json
                 c_size_t,  # target
+                POINTER(c_char_p),  # native_gate_json
+            ),
+        ),
+        (
+            "cnot",
+            CFUNCTYPE(
+                c_int32,
                 c_size_t,  # control
-                c_bool,  # some_control
+                c_size_t,  # target
                 POINTER(c_char_p),  # native_gate_json
             ),
         ),
@@ -194,6 +201,7 @@ api_argtypes = {
             POINTER(BatchCExecution),
             POINTER(CNativeGateSet),
             c_bool,
+            c_char_p,
             c_char_p,
         ],  # batch, native_gate_set, gradient, coupling_graph_json
         [c_void_p],  # quantum_execution

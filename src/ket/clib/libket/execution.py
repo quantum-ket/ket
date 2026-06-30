@@ -20,7 +20,12 @@ from ctypes import (
 import json
 from abc import ABC, abstractmethod
 
-from . import BatchCExecution, LiveCExecution, CNativeGateSet, API
+from . import (
+    BatchCExecution,
+    LiveCExecution,
+    CNativeGateSet,
+    API,
+)
 
 
 class BatchExecution(ABC):
@@ -87,7 +92,7 @@ class BatchExecution(ABC):
         self,
         gradient: bool = False,
         coupling_graph: list[tuple[int, int]] | None = None,
-        native_gate_set: CNativeGateSet | None = None,
+        native_gate_set: NativeGateSet | None = None,
     ):
         """Configure the batch execution and return a QuantumExecution pointer."""
         return make_batch_configuration(
@@ -271,9 +276,142 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
     def connect(self):
         """Call configure with the appropriated arguments to generate the object."""
 
-    def configure(self):
+    def configure(self, decompose: bool = False):
         """Configure the live execution and return a QuantumExecution pointer."""
-        return make_live_configuration(execution=self)
+        return make_live_configuration(execution=self, decompose=decompose)
+
+
+class NativeGateSet(ABC):
+    """Base class for constructing a Python-friendly native gate set.
+
+    Subclass this to define how abstract gates are translated into the
+    instruction set of a specific backend (hardware or simulator).  The
+    three methods — :meth:`translate`, :meth:`cnot`, and :meth:`swap` —
+    work at the Python level; all JSON marshalling with the C layer is
+    handled internally.
+
+    A :class:`NativeGateSet` instance can be passed directly to
+    :meth:`BatchExecution.configure`.
+
+    Example::
+
+        class MyGateSet(NativeGateSet):
+            def translate(self, matrix, target):
+                # matrix is [[u00, u01], [u10, u11]] (complex values)
+                # Return a list of native gate dicts
+                return [{"U": {"matrix": str(matrix), "target": target}}]
+
+            def cnot(self, control, target):
+                return [{"CNOT": {"control": control, "target": target}}]
+
+            def swap(self, a, b):
+                return [{"SWAP": {"a": a, "b": b}}]
+
+        gate_set = MyGateSet()
+        ptr = batch_exec.configure(native_gate_set=gate_set)
+    """
+
+    def __init__(self):
+        @CFUNCTYPE(
+            c_int32,
+            c_char_p,  # gate_json
+            c_size_t,  # target
+            POINTER(c_char_p),  # native_gate_json
+        )
+        def translate(gate_json, target, native_gate_json):
+            flat = json.loads(gate_json)
+            matrix = [
+                [complex(row[i], row[i + 1]) for i in range(0, len(row), 2)]
+                for row in flat
+            ]
+            result = self.translate(matrix, target)
+            self._translate_result = json.dumps(result).encode("utf-8")
+            native_gate_json[0] = self._translate_result
+            return 0
+
+        self._translate_result = None
+
+        @CFUNCTYPE(
+            c_int32,
+            c_size_t,  # control
+            c_size_t,  # target
+            POINTER(c_char_p),  # native_gate_json  (out)
+        )
+        def cnot(control, target, native_gate_json):
+            result = self.cnot(control, target)
+            self._cnot_result = json.dumps(result).encode("utf-8")
+            native_gate_json[0] = self._cnot_result
+            return 0
+
+        self._cnot_result = None
+
+        @CFUNCTYPE(
+            c_int32,
+            c_size_t,  # a
+            c_size_t,  # b
+            POINTER(c_char_p),  # native_gate_json  (out)
+        )
+        def swap(a, b, native_gate_json):
+            result = self.swap(a, b)
+            self._swap_result = json.dumps(result).encode("utf-8")
+            native_gate_json[0] = self._swap_result
+            return 0
+
+        self._swap_result = None
+
+        # Keep references alive for the duration of the object's lifetime.
+        self._cb_translate = translate
+        self._cb_cnot = cnot
+        self._cb_swap = swap
+
+        self.c_struct = CNativeGateSet(
+            self._cb_translate,
+            self._cb_cnot,
+            self._cb_swap,
+        )
+
+    @abstractmethod
+    def translate(self, matrix: list[list[complex]], target: int) -> list:
+        """Translate a single-qubit gate into native gate instructions.
+
+        The gate is described by its 2x2 unitary matrix as a list of two
+        rows of complex amplitudes::
+
+            [[u00, u01],
+             [u10, u11]]
+
+        Args:
+            matrix: The 2x2 unitary matrix as complex values.
+            target: Index of the target qubit.
+
+        Returns:
+            A list of native gate objects (serialisable to JSON) that
+            implement the given unitary on ``target``.
+        """
+
+    @abstractmethod
+    def cnot(self, control: int, target: int) -> list:
+        """Produce native instructions implementing a CNOT gate.
+
+        Args:
+            control: Index of the control qubit.
+            target: Index of the target qubit.
+
+        Returns:
+            A list of native gate objects that implement CNOT.
+        """
+
+    @abstractmethod
+    def swap(self, a: int, b: int) -> list:
+        """Produce native instructions implementing a SWAP gate.
+
+        Args:
+            a: Index of the first qubit.
+            b: Index of the second qubit.
+
+        Returns:
+            A list of native gate objects that implement SWAP.
+        """
 
 
 def make_live_configuration(execution: LiveExecution, decompose: bool = False):
@@ -285,16 +423,25 @@ def make_batch_configuration(
     execution: BatchExecution,
     gradient: bool = False,
     coupling_graph: list[tuple[int, int]] | None = None,
-    native_gate_set: CNativeGateSet | None = None,
+    exp_value_strategy=None,
+    native_gate_set: NativeGateSet | None = None,
 ):
     """Create a batch QuantumExecution from a BatchExecution instance."""
+    if exp_value_strategy is None:
+        exp_value_strategy = "Native"
+
+    exp_value_strategy_json = json.dumps(exp_value_strategy).encode("utf-8")
     coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
 
-    native_gate_set_ptr = native_gate_set if native_gate_set is not None else None
+    if native_gate_set is not None:
+        native_gate_set_ptr = native_gate_set.c_struct
+    else:
+        native_gate_set_ptr = None
 
     return API["ket_quantum_execution_batch"](
         execution.c_struct,
         native_gate_set_ptr,
         gradient,
         coupling_graph_json,
+        exp_value_strategy_json,
     )

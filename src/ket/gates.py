@@ -291,7 +291,7 @@ def RX(  # pylint: disable=invalid-name missing-function-docstring
                     }
                 else:
                     gate = {"RotationX": {"Value": theta}}
-            block.append_gate(gate, qubit)
+                block.append_gate(gate, qubit)
 
         return qubits
 
@@ -336,7 +336,9 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
                     }
                 else:
                     gate = {"RotationY": {"Value": theta}}
-            block.append_gate(gate, qubit)
+                block.append_gate(gate, qubit)
+
+        return qubits
 
     if qubits is None:
         return inner
@@ -379,7 +381,9 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
                     }
                 else:
                     gate = {"RotationZ": {"Value": theta}}
-            block.append_gate(gate, qubit)
+                block.append_gate(gate, qubit)
+
+        return qubits
 
     if qubits is None:
         return inner
@@ -418,7 +422,9 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
                     }
                 else:
                     gate = {"Phase": {"Value": theta}}
-            block.append_gate(gate, qubit)
+                block.append_gate(gate, qubit)
+
+        return qubits
 
     if qubits is None:
         return inner
