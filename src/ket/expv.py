@@ -494,7 +494,7 @@ class ExpValue(HasProcess):
                 json.dumps(h_json).encode("utf-8")
             )
             if some_result:
-                self._value = result.value
+                self._value = result.value + self._i_coef
             else:
                 self._value = None
         else:
@@ -502,7 +502,9 @@ class ExpValue(HasProcess):
 
     def _check(self, execute=False):
         if self._value is None:
-            self._value = self.ket_process._get_exp_value(self.index, execute)
+            self._value = (
+                self.ket_process._get_exp_value(self.index, execute) + self._i_coef
+            )
 
     @property
     def value(self) -> float | None:

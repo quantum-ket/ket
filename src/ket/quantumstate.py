@@ -588,7 +588,11 @@ class QuantumState(HasProcess):
         _check_visualize()
 
         state = list(self.get().keys())
-        state_text = [f"|{s:0{self.size}b}⟩" for s in state] if mode == "bin" else state
+        state_text = (
+            [f"|{s:0{self.size}b}⟩" for s in state]
+            if mode == "bin"
+            else [f"|{s}⟩" for s in state]
+        )
 
         values = self.get().values()
         data = {
