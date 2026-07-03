@@ -1,6 +1,28 @@
 """Expected value calculation utilities.
 
-This module provides base classes creating a Hamiltonian fro expected value calculation.
+This module provides :class:`~ket.expv.Pauli`, :class:`~ket.expv.Hamiltonian`,
+:class:`~ket.expv.ExpValue`, and the :func:`~ket.expv.commutator` helper for
+constructing quantum observables and computing their expectation values.
+
+The preferred workflow is to use the :func:`~ket.gates.obs` context manager
+together with gate functions (:func:`~ket.gates.X`, :func:`~ket.gates.Y`,
+:func:`~ket.gates.Z`) to build Hamiltonians in a symbolic, Dirac-like notation.
+The :func:`~ket.operations.exp_value` function then wraps the resulting
+:class:`~ket.expv.Hamiltonian` into an :class:`~ket.expv.ExpValue` handle.
+
+Example:
+
+    .. code-block:: python
+
+        from ket import *
+        p = Process()
+        q = p.alloc(2)
+        CNOT(H(q[0]), q[1])     # prepare Bell state
+        with obs():
+            # Heisenberg XX + YY + ZZ Hamiltonian
+            h = X(q[0])*X(q[1]) + Y(q[0])*Y(q[1]) + Z(q[0])*Z(q[1])
+        ev = exp_value(h)
+        print(ev.get())          # -3.0 for the singlet Bell state
 """
 
 from __future__ import annotations
@@ -300,11 +322,47 @@ class Pauli(HasProcess):
 
 
 class Hamiltonian(HasProcess):
-    """Hamiltonian for expected value calculation.
+    """A sum of weighted Pauli operator products representing a quantum observable.
 
-    This class is not intended to be instantiated directly. Instead, it should be created
-    by adding :class:`~ket.expv.Pauli` operators or other :class:`~ket.expv.Hamiltonian`
-    objects.
+    A :class:`~ket.expv.Hamiltonian` is a linear combination of
+    :class:`~ket.expv.Pauli` terms:
+
+    .. math::
+
+        H = \\sum_k c_k \\, P_k
+
+    where each :math:`P_k` is a tensor product of single-qubit Pauli
+    operators (:math:`X`, :math:`Y`, :math:`Z`, or :math:`I`) and
+    :math:`c_k` is a real or complex scalar coefficient.
+
+    .. note::
+        Do not instantiate this class directly. Create Hamiltonians by
+        adding :class:`~ket.expv.Pauli` objects together, or by using the
+        :func:`~ket.gates.obs` context manager:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            q = p.alloc(3)
+            with obs():
+                # TFIM Hamiltonian: -J \u03a3 Z_i Z_{i+1} - h \u03a3 X_i
+                J, h = 1.0, 0.5
+                zz = sum(-J * Z(q[i]) * Z(q[i+1]) for i in range(2))
+                xx = sum(-h * X(q[i]) for i in range(3))
+                H = zz + xx
+
+    Supported arithmetic operators:
+
+    - **Addition** (``+``): Combine two Hamiltonians or add a scalar constant.
+    - **Subtraction** (``-``): Subtract a Hamiltonian or scalar.
+    - **Multiplication** (``*``): Scale by a scalar, or form the operator
+      product with another Hamiltonian/Pauli.
+    - **Matrix multiplication** (``@``): Full Pauli-algebra operator product.
+    - **Power** (``**``): Repeated operator product (:math:`H^n`).
+    - **Division** (``/``): Scale by the reciprocal of a scalar.
+    - **Negation** (``-H``): Negate all coefficients.
+
     """
 
     def __init__(self, terms: list[Pauli], process: Process):
@@ -414,33 +472,64 @@ class Hamiltonian(HasProcess):
 
 
 def commutator(a: Hamiltonian, b: Hamiltonian) -> Hamiltonian:
-    """Calculate the commutator of two Hamiltonians."""
-    return a @ b - b @ a
+    r"""Calculate the commutator of two Hamiltonians.
 
+    Computes :math:`[A, B] = AB - BA` using the :class:`~ket.expv.Hamiltonian`
+    matrix-multiplication operator (``@``).
 
-class ExpValue(HasProcess):
-    """Expected value for a quantum state.
-
-    This class holds a reference for a expected value result. The result may not be available right
-    after the measurement call, especially in batch execution.
-
-    To read the value, access the attribute :attr:`~ket.base.ExpValue.value`. If the value is not
-    available, the measurement will return ``None``; otherwise, it will return a float.
-
-    You can instantiate this class by calling the :func:`~ket.operations.exp_value` function.
+    The commutator is zero if and only if the two operators share a common
+    eigenbasis, i.e., they can be measured simultaneously. A non-zero
+    commutator implies Heisenberg uncertainty between the corresponding
+    observables.
 
     Example:
 
         .. code-block:: python
 
             from ket import *
+            p = Process()
+            q = p.alloc()
+            with obs():
+                x = X(q)
+                z = Z(q)
+            xz_comm = commutator(x, z)    # [X, Z] = -2iY
+            print(xz_comm)                # displays the Pauli Y term
 
+    Args:
+        a: Left-hand operator.
+        b: Right-hand operator.
+
+    Returns:
+        The commutator :math:`[A, B]`.
+    """
+    return a @ b - b @ a
+
+
+class ExpValue(HasProcess):
+    """A deferred handle for the expectation value of a Hamiltonian.
+
+    Registering an expectation value does not immediately compute it,
+    in **live** execution mode, the value is computed right away; in **batch**
+    execution mode it is deferred and becomes available only after
+    :meth:`~ket.expv.ExpValue.get` (or a measurement) triggers process
+    execution.
+
+    .. note::
+        Do not instantiate this class directly. Use
+        :func:`~ket.operations.exp_value` instead.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
             p = Process()
             q = p.alloc(2)
-            CNOT(H(q[0]), q[1])
+            CNOT(H(q[0]), q[1])    # Bell state |Φ+⟩
             with obs():
-                result = exp_value(X(q))
-            print(result.value) # 1.0000000000000004
+                observable = X(q[0]) * X(q[1]) - Y(q[0]) * Y(q[1])
+            ev = exp_value(observable)
+            print(ev.get())        # 2.0 for the Bell state
 
     """
 
@@ -508,14 +597,27 @@ class ExpValue(HasProcess):
 
     @property
     def value(self) -> float | None:
-        """Retrieve the expected value if available."""
+        """The expectation value if available, otherwise ``None``.
+
+        In **live** execution mode this is populated immediately after
+        :class:`~ket.expv.ExpValue` is created. In **batch** mode it is
+        ``None`` until the process executes.
+
+        Returns:
+            The computed expectation value, or ``None`` if the
+            process has not yet executed.
+        """
         self._check()
         return self._value
 
     def get(self) -> float:
-        """Retrieve the expected values.
+        """Retrieve the expectation value, executing the process if necessary.
 
-        If the value is not available, the quantum process will execute to get the result.
+        Blocks until the expectation value is available. In **batch** execution
+        mode this call triggers process execution.
+
+        Returns:
+            The computed expectation value.
         """
         self._check(execute=True)
         return self.value

@@ -286,7 +286,7 @@ class NativeGateSet(ABC):
 
     Subclass this to define how abstract gates are translated into the
     instruction set of a specific backend (hardware or simulator).  The
-    three methods — :meth:`translate`, :meth:`cnot`, and :meth:`swap` —
+    three methods, :meth:`translate`, :meth:`cnot`, and :meth:`swap`,
     work at the Python level; all JSON marshalling with the C layer is
     handled internally.
 

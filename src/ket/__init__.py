@@ -22,19 +22,14 @@ Examples:
 
         from math import sqrt, pi
         import ket
-
         def grover(size: int, oracle) -> int:
             p = ket.Process(simulator="dense", num_qubits=size)
-
             s = ket.H(p.alloc(size))
-
             steps = int((pi / 4) * sqrt(2**size))
-
             for _ in range(steps):
                 oracle(s)
                 with ket.around(ket.H, s):
                     ket.phase_oracle(0, s)
-
             return ket.measure(s).value
 
     - Quantum teleportation protocol
@@ -42,38 +37,29 @@ Examples:
     .. code-block:: python
 
         import ket
-
         def teleport(alice_msg, alice_aux, bob_aux):
             ket.ctrl(alice_msg, ket.X)(alice_aux)
             ket.H(alice_msg)
-
             m0 = ket.measure(alice_msg)
             m1 = ket.measure(alice_aux)
-
             if m1.value == 1:
                 ket.X(bob_aux)
             if m0.value == 1:
                 ket.Z(bob_aux)
-
             return bob_aux
-
         def bell(qubits):
             return ket.ctrl(ket.H(qubits[0]), ket.X)(qubits[1])
-
         def message(qubit):
             ket.H(alice)
             ket.Z(alice)
-
         p = ket.Process()
-
         alice = p.alloc()  # alice = |0⟩
         message(alice)     # alice = |–⟩
-
         bob = teleport(alice, *bell(p.alloc(2)))  # bob  <- alice
-
         ket.H(bob)         # bob   = |1⟩
         bob_m = ket.measure(bob)
         print("Expected measure 1, result =", bob_m.value)
+        # Expected measure 1, result = 1
 
 """
 
@@ -110,8 +96,20 @@ __all__ = (
 
 
 def ket_version() -> list[str]:
-    """Return the version of the Ket platform components."""
-    from .clib.libket import API as libket_api  # pylint: disable=import-outside-toplevel
+    """Return the version strings of all Ket platform components.
+
+    Queries the underlying Rust libraries (``libket`` and ``kbw``) for their build
+    information and combines it with the Python package version.
+
+    Returns:
+        A list containing three version strings in the following order:
+            - ``"Ket v<version>"``, the Python package version.
+            - A build-info string from the ``libket`` Rust runtime library.
+            - A build-info string from the ``kbw`` quantum simulator library.
+    """
+    from .clib.libket import (
+        API as libket_api,
+    )  # pylint: disable=import-outside-toplevel
     from .clib.kbw import API as kbw_api  # pylint: disable=import-outside-toplevel
 
     libket_v, size = libket_api["ket_build_info"]()

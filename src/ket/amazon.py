@@ -10,38 +10,38 @@ programming environment and Amazon's cloud resources. This makes it
 an excellent choice for experiments that require high-performance simulation
 or access to different QPU architectures.
 
-:Example:
+Example:
 
-.. code-block:: python
+    .. code-block:: python
 
-    from ket import *
-    from ket.amazon import AmazonBraket
-    from math import sqrt
+        from ket import *
+        from ket.amazon import AmazonBraket
+        from math import sqrt
 
-    device = AmazonBraket()
-    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')
-    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')
-    # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')
-    # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')
+        device = AmazonBraket()
+        # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')
+        # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')
+        # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')
+        # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')
 
-    process = Process(device)
-    a, b = process.alloc(2)
+        process = Process(device)
+        a, b = process.alloc(2)
 
-    X(a + b)
-    CNOT(H(a), b)
+        X(a + b)
+        CNOT(H(a), b)
 
-    with ham():
-        a0 = Z(a)
-        a1 = X(a)
-        b0 = -(X(b) + Z(b)) / sqrt(2)
-        b1 = (X(b) - Z(b)) / sqrt(2)
-        h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
+        with ham():
+            a0 = Z(a)
+            a1 = X(a)
+            b0 = -(X(b) + Z(b)) / sqrt(2)
+            b1 = (X(b) - Z(b)) / sqrt(2)
+            h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
 
-    print(exp_value(h).get())
+        print(exp_value(h).get())
 
 
 To use the Braket QPUs and on demand simulators, you need to have an
@@ -49,6 +49,10 @@ AWS account and the necessary permissions to access the Braket service.
 You can find more information on how to set up your AWS account and
 permissions in the `Amazon Braket documentation <https://docs.aws.amazon.com/braket/>`_.
 
+Note:
+    This module requires additional dependencies from ``ket-lang[amazon]``.
+
+    Install with: ``pip install ket-lang[amazon]``.
 """
 
 from __future__ import annotations
@@ -61,7 +65,6 @@ from __future__ import annotations
 from functools import reduce
 from json import loads
 from operator import add
-from typing import Optional
 from .clib.libket.execution import BatchExecution
 
 try:
@@ -98,9 +101,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
 
     def __init__(
         self,
+        device: str | None = None,
         shots: int = 1024,
         gradient: bool = False,
-        device: Optional[str] = None,
         **kwargs,
     ):
         if not BRAKET_AVAILABLE:

@@ -1,7 +1,24 @@
-"""Quantum state snapshot.
+"""Quantum state snapshot representation and visualization.
 
-This module provides the base class for a snapshot of a quantum state obtained
-using a quantum simulator.
+This module provides :class:`~ket.quantumstate.QuantumState`, which captures a
+complete snapshot of the quantum state from a simulator at a given point in
+the circuit. The snapshot stores the full probability-amplitude dictionary
+:math:`\\{|x\\rangle : \\alpha_x\\}` and exposes utilities for:
+
+- Retrieving amplitudes and probabilities (:attr:`~ket.quantumstate.QuantumState.states`,
+  :attr:`~ket.quantumstate.QuantumState.probability`).
+- Simulating measurement shots from the snapshot
+  (:meth:`~ket.quantumstate.QuantumState.sample`).
+- Pretty-printing the state in plain text or LaTeX
+  (:meth:`~ket.quantumstate.QuantumState.show`).
+- Visualizing a single-qubit state on the Bloch sphere
+  (:meth:`~ket.quantumstate.QuantumState.sphere`).
+- Plotting the probability distribution as an interactive histogram
+  (:meth:`~ket.quantumstate.QuantumState.histogram`).
+
+Visualization methods require the optional ``ket-lang[plot]`` extras::
+
+    pip install ket-lang[plot]
 """
 
 from __future__ import annotations
@@ -48,16 +65,43 @@ __all__ = ["QuantumState"]
 
 
 class QuantumState(HasProcess):
-    """Snapshot of a quantum state.
+    """A snapshot of the full quantum state obtained from a simulator.
 
-    This class holds a reference for a snapshot of a quantum state obtained using a quantum
-    simulator. The result may not be available right after the measurement call, especially in batch
-    execution.
+    Captures the probability amplitudes of the current quantum state at the
+    point :func:`~ket.operations.dump` is called. The state is stored as a
+    sparse dictionary mapping non-zero basis state integers to their complex
+    amplitudes.
 
-    You can instantiate this class by calling the :func:`~ket.operations.dump` function.
+    .. note::
+        This class is available **only with simulators**. It cannot be used
+        with real quantum hardware.
+
+    .. note::
+        Do not instantiate this class directly. Use
+        :func:`~ket.operations.dump` instead.
+
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            p = Process()
+            q = p.alloc(3)
+
+            H(q[0])
+            CNOT(q[0], q[1])   # GHZ-like partial entanglement
+
+            state = dump(q)
+            print(state.show())
+            # |000⟩	(50.00%)
+            # |110⟩	(50.00%)
 
     Args:
-        qubits: Qubits from which to capture a quantum state snapshot.
+        *qubits: One or more qubit registers to
+            capture. Registers are labeled independently in the output of
+            :meth:`~ket.quantumstate.QuantumState.show`.
     """
 
     def __init__(self, *qubits: Quant):
@@ -89,48 +133,87 @@ class QuantumState(HasProcess):
         self.size = len(self.qubits)
 
     @property
-    def states(self) -> dict[int, complex] | None:
-        """Get the quantum state.
+    def states(self) -> dict[int, complex]:
+        """The quantum state as a sparse amplitude dictionary.
 
-        Returns a dictionary mapping base states to their corresponding probability amplitudes.
+        Maps each basis state (an integer whose binary representation gives
+        the qubit values, with the first qubit as the most-significant bit)
+        to its complex probability amplitude.
 
         Returns:
-            The quantum state, or None if the quantum state information is not available.
+            The amplitude dictionary.
+
+        Example:
+
+            .. code-block:: python
+
+                from ket import *
+
+                p = Process()
+                q = p.alloc(2)
+
+                CNOT(H(q[0]), q[1])    # Bell state
+
+                state = dump(q)
+                print(state.states)
+                # {0: (0.7071+0j), 3: (0.7071+0j)}
         """
         return self._states
 
     def get(self) -> dict[int, complex]:
-        """Get the quantum state.
+        """Retrieve the quantum state, executing the process if necessary.
 
-        If the quantum state is not available, the quantum process will execute to get the result.
+        Returns:
+            The amplitude dictionary (same as
+            :attr:`~ket.quantumstate.QuantumState.states`).
         """
         return self.states
 
     @property
-    def probability(self) -> dict[int, float] | None:
-        """Get the measurement probabilities.
+    def probability(self) -> dict[int, float]:
+        """Measurement probabilities derived from the quantum state amplitudes.
 
-        Returns a dictionary mapping base states to their corresponding measurement probabilities.
+        Maps each basis state to its Born-rule probability
+        :math:`|\\alpha_x|^2`.
 
         Returns:
-            The measurement probabilities, or None if the quantum state information is not
-            available.
+            A ``{basis_state: probability}`` dictionary
+            where probabilities sum to approximately 1.0.
         """
         return {state: abs(amp) ** 2 for state, amp in self._states.items()}
 
-    def sample(self, shots=4096, seed=None) -> dict[int, int] | None:
-        """Get the quantum execution shots.
+    def sample(self, shots=4096, seed=None) -> dict[int, int]:
+        """Simulate measurement sampling directly from the state snapshot.
 
-        The parameters ``shots`` and ``seed`` are used to generate the sample from the quantum state
-        snapshot.
+        Generates ``shots`` measurement outcomes by weighted random sampling
+        from the probability distribution defined by the stored amplitudes.
+        This is deterministic given the same ``seed`` and is faster than
+        re-running the circuit.
 
         Args:
-            shots: Number of shots. Defaults to 4096.
-            seed: Seed for the RNG.
+            shots: Number of measurement shots to simulate.
+                Defaults to ``4096``.
+            seed: Seed for the random number generator for
+                reproducible results. Defaults to ``None`` (random seed).
 
         Returns:
-            A dictionary mapping measurement outcomes to their frequencies in the generated sample,
-            or None if the quantum state information is not available.
+            A ``{basis_state: count}`` dictionary, or
+            ``None`` if the snapshot is not yet available.
+
+        Example:
+
+            .. code-block:: python
+
+                from ket import *
+
+                p = Process()
+                q = p.alloc(2)
+                CNOT(H(q[0]), q[1])    # Bell state
+
+                state = dump(q)
+                counts = state.sample(shots=1000, seed=42)
+                print(counts)
+                # {0: 503, 3: 497}
         """
 
         rng = Random(seed)
@@ -233,17 +316,23 @@ class QuantumState(HasProcess):
         ]
 
     def sphere(self) -> go.Figure:
-        """Generate a Bloch sphere plot representing the quantum state.
+        """Generate an interactive Bloch sphere plot for a single-qubit state.
 
-        This method creates a Bloch sphere plot visualizing of one qubit quantum state.
+        Computes the Bloch vector :math:`(\\langle X \\rangle, \\langle Y \\rangle,
+        \\langle Z \\rangle)` from the state snapshot and renders it as a 3-D
+        Plotly figure with the standard basis labels.
 
-        Note:
-            This method requires additional dependencies from ``ket-lang[plot]``.
+        .. note::
+            Requires the optional ``ket-lang[plot]`` extras::
 
-            Install with: ``pip install ket-lang[plot]``.
+                pip install ket-lang[plot]
 
         Returns:
-            A Bloch sphere plot illustrating the quantum state.
+            An interactive 3-D Bloch sphere
+            visualization of the current single-qubit state.
+
+        Raises:
+            ValueError: If the snapshot contains more than 1 qubit.
         """
         if len(self.qubits) != 1:
             raise ValueError("Bloch sphere plot is available only for 1 qubit")
@@ -333,17 +422,44 @@ class QuantumState(HasProcess):
         polar: bool = False,
         round_tol: float = 1e-6,
     ) -> str:
-        r"""Return the quantum state as a formatted string or LaTeX Math object.
+        r"""Format the quantum state as a human-readable string or LaTeX expression.
+
+        Renders each non-negligible basis state with its probability amplitude
+        in Dirac notation (ket notation). In a Jupyter Notebook, the default
+        output is a rendered LaTeX expression; in a terminal it is plain text.
 
         Args:
-            mode: If ``"str"``, returns a plain text string. If ``"latex"``, returns a LaTeX
-                Math representation. Defaults to ``"latex"`` in Jupyter Notebooks,
-                otherwise ``"str"``.
-            polar: If True, prints complex coefficients in polar form (r * e^{i * theta}).
-            round_tol: Numerical tolerance used when rounding values.
+            mode: Output format. ``'str'``
+                produces a plain-text string; ``'latex'`` produces an
+                :class:`~IPython.display.Math` object for Jupyter rendering.
+                Defaults to ``'latex'`` in notebooks, ``'str'`` otherwise.
+            polar: If ``True``, display amplitudes in polar form
+                :math:`r \cdot e^{i\theta}`. Defaults to ``False``
+                (Cartesian form).
+            round_tol: Amplitudes with absolute value below this
+                threshold are considered zero and omitted. Defaults to
+                ``1e-6``.
 
         Returns:
-            The formatted quantum state as a string, or Latex Math.
+            The formatted state string,
+            or a LaTeX ``Math`` object when in a notebook.
+
+        Example:
+
+            .. code-block:: python
+
+                from ket import *
+
+                p = Process()
+                q = p.alloc(2)
+                CNOT(H(q[0]), q[1])   # Bell state
+
+                state = dump(q)
+                print(state.show(mode='str'))
+                # |00⟩	(50.00%)
+                #  0.707107        ≅   1/√2
+                # |11⟩	(50.00%)
+                #  0.707107        ≅   1/√2
         """
         if mode is None:
             mode = "latex" if _IN_NOTEBOOK else "str"
@@ -579,7 +695,7 @@ class QuantumState(HasProcess):
 
         Args:
             mode: If ``"bin"``, display the states in binary format. If ``"dec"``,
-            display the states in decimal format. Defaults to ``"dec"``.
+                display the states in decimal format. Defaults to ``"dec"``.
             **kwargs: Additional keyword arguments passed to :func:`plotly.express.bar`.
 
         Returns:

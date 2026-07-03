@@ -309,18 +309,30 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
         gate: Quantum gate function.
         num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
-        qpu_size: Size of the quantum processing unit (QPU).
-            If specified, the number of qubits will be adjusted to fit the QPU size.
-        u4_gate: Type of U4 gate to use, either "CX" or "CZ".
-        u2_gates: Type of U2 gates to use, either "ZYZ" or "RzSx".
-        coupling_graph: Coupling graph of the QPU,
-            specified as a list of tuples representing connected qubits.
+        qubits: Alternative to ``num_qubits`` to specify the number of qubits.
+        qpu_size: Size of the quantum processing unit (QPU). If specified, the number of qubits will be adjusted to fit the QPU size.
+        decompose: Whether to decompose the gate into elementary gates.
         title: Title for the circuit diagram.
         keep_order: Maintain the gate call order.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
     Returns:
         Qiskit circuit diagram of the quantum gate.
+
+    Example:
+
+        .. code-block:: python
+            :skip:
+
+            from ket.qulib import draw
+            from ket import H, CNOT
+
+            def my_gate(q):
+                H(q[0])
+                CNOT(q[0], q[1])
+
+            fig = draw(my_gate, 2)
+            # fig.show()
     """
 
     # only qubits or num_qubits can be specified
@@ -479,7 +491,7 @@ def energy(  # pylint: disable=too-many-branches
         state = f"{state:0{num_qubits}b}"
 
     process = Process(
-        execution="batch",
+        execution="live",
         simulator="sparse",
         num_qubits=num_qubits,
     )
@@ -643,7 +655,7 @@ def exact_solver(
     r"""Finds the exact ground state of a Hamiltonian.
 
     Note:
-        This function evaluates :math:`2^\texttt{num_qubits}` states.
+        This function evaluates :math:`2^\texttt{num\_qubits}` states.
         Because the search space grows exponentially, this solver should
         only be used for small quantum systems (typically < 10 qubits).
         For larger systems, use heuristic methods like :func:`~ket.qulib.simulated_annealing`.
