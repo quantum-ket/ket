@@ -27,7 +27,6 @@ def test_xor_oracle_behavior():
     oracle(x, y)
 
     state = dump(x + y)
-    p.execute()
 
     probs = state.probability
 
@@ -57,7 +56,6 @@ def test_phase_oracle_behavior():
     phase_oracle(target_state, q)
 
     state = dump(q)
-    p.execute()
 
     amplitudes = state.get()
 

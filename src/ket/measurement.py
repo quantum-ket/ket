@@ -1,6 +1,20 @@
-"""Measurement classes.
+"""Quantum measurement result classes.
 
-This module provides classes for storing measurement results.
+This module provides :class:`~ket.measurement.Measurement` and
+:class:`~ket.measurement.Samples`, the two primary result handles for
+collecting classical data from a quantum circuit:
+
+- :class:`~ket.measurement.Measurement` stores the outcome of a single
+  projective measurement in the computational basis.
+- :class:`~ket.measurement.Samples` accumulates counts over many shots,
+  producing an empirical probability distribution over basis states.
+
+:class:`~ket.measurement.Samples` class is lazy: in **batch** execution mode
+the results are deferred until the process executes, which happens
+automatically when ``.get()`` is accessed.
+
+Prefer using the top-level functions :func:`~ket.operations.measure` and
+:func:`~ket.operations.sample` to create these objects.
 """
 
 from __future__ import annotations
@@ -12,11 +26,12 @@ from __future__ import annotations
 
 
 from ctypes import c_size_t
+import json
 from typing import Callable, Literal, Any
 
 from ket.expv import Hamiltonian
 
-from .clib.libket import HasProcess
+from .clib.libket import HasProcess, API as libket
 from .base import Quant
 
 try:
@@ -39,8 +54,7 @@ class Measurement(HasProcess):
     This class holds a reference for a measurement result. The result may not be available right
     after the measurement call, especially in batch execution.
 
-    To read the value, access the attribute :attr:`~ket.base.Measurement.value`. If the value is not
-    available, the measurement will return `None`; otherwise, it will return an unsigned integer.
+    To read the value, access the attribute :attr:`~ket.base.Measurement.value`.
 
     You can instantiate this class by calling the :func:`~ket.operations.measure` function.
 
@@ -64,72 +78,79 @@ class Measurement(HasProcess):
     ):
         super().__init__(ket_process=qubits.ket_process)
 
-        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            _unsafe_aux,
-        )
-
-        if not _unsafe_aux.get() and any(
-            self.ket_process._is_aux(q) for q in qubits.qubits
-        ):
+        if any(self.ket_process._is_aux(q) for q in qubits.qubits):
             raise ValueError("Auxiliary qubits cannot be measured")
 
         self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
         self.size = len(qubits)
-        self.indexes = [
+        result_values = [
             self.ket_process.measure((c_size_t * len(qubit))(*qubit), len(qubit)).value
             for qubit in self.qubits
         ]
-        self._value = None
+
+        self._value = 0
+        for value, qubit in zip(result_values, self.qubits):
+            self._value <<= len(qubit)
+            self._value |= value
+
         self.postprocessing = postprocessing
 
-    def _check(self):
-        if self._value is None:
-            available, values = zip(
-                *(self.ket_process.get_measurement(index) for index in self.indexes)
-            )
-            if all(map(lambda a: a.value, available)):
-                self._value = 0
-                for value, qubit in zip(values, self.qubits):
-                    self._value <<= len(qubit)
-                    self._value |= value.value
-
     @property
-    def value(self) -> Any | None:
-        """Retrieve the measurement value if available."""
-        self._check()
+    def value(self) -> Any:
+        """The measurement outcome as a (possibly post-processed) value.
+
+        If a ``postprocessing`` callable was supplied at construction (e.g.,
+        for :class:`~ket.qint.Qint` conversion), it is applied to the raw
+        integer outcome before returning.
+
+        Returns:
+            The post-processed measurement outcome.
+        """
         if self.postprocessing is not None and self._value is not None:
             return self.postprocessing(self._value)
         return self._value
 
     @property
-    def raw_value(self) -> int | None:
-        """Retrieve the measurement value if available (without postprocessing)."""
-        self._check()
+    def raw_value(self) -> int:
+        """The raw (pre-postprocessing) measurement outcome as an unsigned integer.
+
+        Returns:
+            The measurement result as a plain integer.
+        """
         return self._value
 
     @property
-    def bitstring(self) -> str | None:
-        """Retrieve the measurement bitstring if available."""
-        self._check()
+    def bitstring(self) -> str:
+        """The measurement outcome as a zero-padded binary string.
+
+        Converts the raw integer outcome to a binary string of length
+        ``len(qubits)``, with the most-significant bit corresponding to the
+        first qubit in the register.
+
+        Returns:
+            A binary string such as ``'0101'``.
+        """
         if self._value is not None:
             return f"{self._value:0{self.size}b}"
 
         return self._value
 
     def get(self) -> Any:
-        """Retrieve the measurement value.
+        """The measurement outcome as a (possibly post-processed) value.
 
-        If the value is not available, the quantum process will execute to get the result.
+        If a ``postprocessing`` callable was supplied at construction (e.g.,
+        for :class:`~ket.qint.Qint` conversion), it is applied to the raw
+        integer outcome before returning.
+
+        Returns:
+            The post-processed measurement outcome.
         """
 
-        self._check()
-        if self._value is None:
-            self.ket_process.execute()
         return self.value
 
     def __repr__(self):
         return (
-            f"<Ket 'Measurement' indexes={self.indexes}, "
+            f"<Ket 'Measurement' "
             f"value={self.value}, pid={hex(id(self.ket_process))}>"
         )
 
@@ -149,14 +170,14 @@ class Samples(HasProcess):
     right after the sample call, especially in batch execution.
 
     To read the value, access the attribute :attr:`~ket.base.Sample.value`. If the value is not
-    available, the measurement will return `None`; otherwise, it will return a dictionary mapping
+    available, the measurement will return ``None``; otherwise, it will return a dictionary mapping
     measurement outcomes to their respective counts.
 
     You can instantiate this class by calling the :func:`~ket.operations.sample` function.
 
     Example:
 
-        .. code-block:: py
+        .. code-block:: python
 
             from ket import *
 
@@ -185,38 +206,63 @@ class Samples(HasProcess):
         self.qubits = qubits.qubits
         self.size = len(qubits)
 
-        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            _unsafe_aux,
-        )
-
-        if not _unsafe_aux.get() and any(
-            self.ket_process._is_aux(q) for q in self.qubits
-        ):
+        if any(self.ket_process._is_aux(q) for q in self.qubits):
             raise ValueError("Auxiliary qubits cannot be measured")
 
-        self.index = self.ket_process.sample(
+        result_ptr = self.ket_process.sample(
             (c_size_t * len(self.qubits))(*self.qubits),
             len(self.qubits),
             shots,
-        ).value
-        self._value = None
+        )
+
+        sample = json.loads(result_ptr.value.decode("utf-8"))
+        if sample is not None:
+            states, counts = sample
+            self._value = {
+                int("".join(f"{s:064b}" for s in state), 2): count
+                for state, count in zip(states, counts)
+            }
+
+        else:
+            self._value = None
+
+        libket["ket_string_delete"](result_ptr)
+
         self.shots = shots
         self.postprocessing = postprocessing
 
     def _check(self):
         if self._value is None:
-            (
-                available,
-                states,
-                count,
-                size,
-            ) = self.ket_process.get_sample(self.index)
-            if available.value:
-                self._value = dict(zip(states[: size.value], count[: size.value]))
+            self.ket_process.execute()
+
+            result_ptr = self.ket_process.read_sample()
+
+            sample = json.loads(result_ptr.value.decode("utf-8"))
+            if sample is not None:
+                states, counts = sample
+                self._value = {
+                    int("".join(f"{s:064b}" for s in state), 2): count
+                    for state, count in zip(states, counts)
+                }
+
+            else:
+                self._value = None
+
+            libket["ket_string_delete"](result_ptr)
 
     @property
     def value(self) -> dict[Any, int] | None:
-        """Retrieve the measurement samples if available."""
+        """The measurement sample distribution as a dictionary.
+
+        Maps each observed measurement outcome to its count over ``shots``
+        repetitions. If a ``postprocessing`` callable was supplied, the keys
+        are the post-processed outcomes (e.g., signed integers for
+        :class:`~ket.qint.Qint`).
+
+        Returns:
+            A ``{outcome: count}`` dictionary, or
+            ``None`` if the result is not yet available (batch mode).
+        """
         self._check()
         if self._value is None:
             return None
@@ -229,13 +275,25 @@ class Samples(HasProcess):
 
     @property
     def raw_value(self) -> dict[int, int] | None:
-        """Retrieve the measurement samples if available (without postprocessing)."""
+        """The raw sample distribution without postprocessing.
+
+        Returns:
+            A ``{raw_integer_outcome: count}`` dictionary,
+            or ``None`` if not yet available.
+        """
         self._check()
         return self._value
 
     @property
     def bitstring(self) -> dict[str, int] | None:
-        """Retrieve the bitstring samples if available."""
+        """The sample distribution with outcomes formatted as binary strings.
+
+        Each key is a zero-padded binary string of length ``len(qubits)``.
+
+        Returns:
+            A ``{'0101': count, ...}`` dictionary,
+            or ``None`` if not yet available.
+        """
         self._check()
         if self._value is not None:
             return {
@@ -245,16 +303,26 @@ class Samples(HasProcess):
 
     @property
     def probability(self) -> dict[int, float] | None:
-        """Retrieve the measurement probabilities if available."""
+        """The sample distribution normalized to empirical probabilities.
+
+        Each value is the fraction of shots that produced the corresponding
+        outcome, in the range ``[0.0, 1.0]``.
+
+        Returns:
+            A ``{outcome: probability}`` dictionary,
+            or ``None`` if not yet available.
+        """
         self._check()
         if self._value is not None:
             return {state: count / self.shots for state, count in self._value.items()}
         return self._value
 
     def get(self) -> dict[int, int]:
-        """Retrieve the measurement samples.
+        """Retrieve the sample distribution, executing the process if necessary.
 
-        If the value is not available, the quantum process will execute to get the result.
+        Returns:
+            A ``{outcome: count}`` dictionary (with
+            postprocessing applied if configured).
         """
 
         self._check()
@@ -262,13 +330,32 @@ class Samples(HasProcess):
             self.ket_process.execute()
         return self.value
 
-    def most_frequent_state(self) -> int:
-        """Retrieve the most frequent state.
+    def most_frequent_state(self, raw: bool = False) -> int | Any:
+        """Return the most frequently observed measurement outcome.
 
-        If the value is not available, the quantum process will execute to get the result.
+        Triggers process execution if results are not yet available.
+
+        Args:
+            raw: If ``True``, ignores the postprocessing function and returns the raw integer state.
+
+        Returns:
+            The outcome that appeared most often across all shots. Ties are broken arbitrarily.
+
+        Example:
+
+            .. code-block:: python
+
+                from ket import *
+                p = Process()
+                q = p.alloc(2)
+                X(q[0]) # Prepare state |01> (decimal 1)
+                m = measure(q, shots=100)
+                print(m.most_frequent_state())
         """
-
-        return max(self.get().items(), key=lambda sc: sc[1])[0]
+        state = max(self.get().items(), key=lambda sc: sc[1])[0]
+        if not raw and self.postprocessing is not None:
+            state = self.postprocessing(state)
+        return state
 
     def histogram(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
         self,
@@ -372,4 +459,4 @@ class Samples(HasProcess):
         return fig
 
     def __repr__(self) -> str:
-        return f"<Ket 'Samples' index={self.index}, pid={hex(id(self.ket_process))}>"
+        return f"<Ket 'Samples' qubits={self.qubits}, pid={hex(id(self.ket_process))}>"

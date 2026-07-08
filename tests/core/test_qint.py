@@ -16,7 +16,6 @@ def test_qint_initialization():
     qi = Qint(q, 5)
 
     res = measure(qi)
-    p.execute()
 
     assert res.value == 5
 
@@ -32,7 +31,6 @@ def test_qreal_initialization():
 
     # Dump to verify postprocessing works correctly
     state = dump(qr)
-    p.execute()
 
     # Only the state corresponding to 1.5 should have probability 1.0
     probs = state.probability
@@ -60,7 +58,6 @@ def test_qint_addition():
     qres += qi4
 
     res = measure(qres)
-    p.execute()
 
     assert res.value == 9
 
@@ -97,7 +94,6 @@ def test_qint_twos_complement_overflow():
     q_overflow += 5
 
     res_overflow = measure(q_overflow)
-    p.execute()
 
     # The bitstring will be 1001, which Qint postprocessing interprets as -7
     assert res_overflow.value == -7
@@ -121,7 +117,6 @@ def test_qint_safe_addition():
     q_safe += 2
 
     res = measure(q_safe)
-    p.execute()
 
     # 3 + 4 + 2 = 9 (fits in 5 bits)
     assert res.value == 9
@@ -139,7 +134,6 @@ def test_qint_subtraction():
     qres += result
 
     res = measure(qres)
-    p.execute()
 
     assert res.value == 3
 
@@ -195,8 +189,6 @@ def test_qint_comparisons():
     res_eq = measure(qres_eq_res)
     res_gt = measure(qres_gt_res)
     res_lt = measure(qres_lt_res)
-
-    p.execute()
 
     assert res_eq.value == 1  # 2 == 2 (True)
     assert res_gt.value == 1  # 2 > 1 (True)

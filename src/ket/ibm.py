@@ -15,7 +15,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .clib.libket import BatchExecution
+from .clib.libket.execution import BatchExecution
 
 try:
     from qiskit import QuantumCircuit
@@ -34,19 +34,18 @@ except ImportError:
 class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     """IBM Qiskit backend for Ket process.
 
-    The arguments ``shots`` and ``classical_shadows`` control how the
-    execution is performed for estimating expectation values of an
-    Hamiltonian term. Only one of these arguments can be specified at a time.
-
     Args:
         backend: The backend to be used for the quantum execution. If not
             provided, it defaults to the AerSimulator.
+        optimization_level: The optimization level for the pass manager.
     """
 
     def __init__(
         self,
         backend: BackendV2 | None = None,
-        optimization_level=2,
+        num_qubits: int | None = None,
+        gradient: bool = False,
+        optimization_level: int = 2,
     ):
         if not QISKIT_AVAILABLE:
             raise ImportError(
@@ -60,6 +59,8 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
             backend = AerSimulator()
 
         self.num_qubits = backend.configuration().n_qubits
+        if num_qubits is not None and num_qubits < self.num_qubits:
+            self.num_qubits = num_qubits
 
         self.backend = backend
 
@@ -68,147 +69,96 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
             optimization_level=optimization_level,
         )
 
-        self.circuit = None
-        self.parameters = None
+        self.gradient = gradient
 
-        self.qubits_from_sample = None
-        self.result = None
-        self.exp_value_result = []
+    def _build_circuit(self, gates):
+        """Build a Qiskit QuantumCircuit from a NativeGate list."""
+        circuit = QuantumCircuit(self.num_qubits)
 
-    def clear(self):
-        self.circuit = QuantumCircuit(self.num_qubits, self.num_qubits)
-        self.parameters = None
+        for gate_name, params, qubits in gates:
+            match gate_name:
+                case "h":
+                    g = library.HGate()
+                case "x":
+                    g = library.XGate()
+                case "y":
+                    g = library.YGate()
+                case "z":
+                    g = library.ZGate()
+                case "rx":
+                    g = library.RXGate(params[0])
+                case "ry":
+                    g = library.RYGate(params[0])
+                case "rz":
+                    g = library.RZGate(params[0])
+                case "p":
+                    g = library.PhaseGate(params[0])
+                case "cnot":
+                    g = library.CXGate()
+                case "cz":
+                    g = library.CZGate()
+                case _:
+                    raise RuntimeError(f"Undefined gate '{gate_name}'")
 
-        self.qubits_from_sample = None
-        self.result = None
-        self.exp_value_result = []
+            circuit.append(g, qubits)
 
-    def submit_execution(self, circuit, parameters):
-        self.parameters = parameters
-        self.process_instructions(circuit)
+        return circuit
 
-    def get_result(self):
-        if self.result is not None:
-            parsed_counts = {
-                "".join(s[-q - 1] for q in self.qubits_from_sample): c
-                for s, c in self.result.items()
-            }
-            if parsed_counts:
-                result = [
-                    list(zip(*((int(s, 2), c) for s, c in parsed_counts.items())))
-                ]
-            else:
-                result = [[]]
-        else:
-            result = []
-
-        results_dict = {
-            "measurements": [],
-            "exp_values": self.exp_value_result,
-            "samples": result,
-            "dumps": [],
-            "gradients": None,
-        }
-
-        return results_dict
-
-    def pauli_x(self, target, control):
-        gate = library.XGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def pauli_y(self, target, control):
-        gate = library.YGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def pauli_z(self, target, control):
-        gate = library.ZGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def hadamard(self, target, control):
-        gate = library.HGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def rotation_x(self, target, control, **kwargs):
-        gate = library.RXGate(kwargs["Value"])
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def rotation_y(self, target, control, **kwargs):
-        gate = library.RYGate(
-            kwargs["Value"]
-            if "Value" in kwargs
-            else self.parameters[kwargs["Ref"]["index"]] * kwargs["Ref"]["multiplier"]
-        )
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def rotation_z(self, target, control, **kwargs):
-        gate = library.RZGate(
-            kwargs["Value"]
-            if "Value" in kwargs
-            else self.parameters[kwargs["Ref"]["index"]] * kwargs["Ref"]["multiplier"]
-        )
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def phase(self, target, control, **kwargs):
-        gate = library.PhaseGate(
-            kwargs["Value"]
-            if "Value" in kwargs
-            else self.parameters[kwargs["Ref"]["index"]] * kwargs["Ref"]["multiplier"]
-        )
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-
-    def sample(self, _, qubits, shots):
-        self.circuit.measure(qubits, qubits)
-
-        isa_circuit = self.pm.run(self.circuit)
-        sampler = Sampler(mode=self.backend)
-        job = sampler.run([isa_circuit], shots=shots)
-        self.result = job.result()[0].data.c.get_counts()
-        self.qubits_from_sample = qubits
-
-    def exp_value(self, _, hamiltonian):
-        """Compute the expectation value.
+    def sample(self, gates, qubits_to_sample, shots):
+        """Execute the circuit and sample the given qubits.
 
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        pauli_strings = []
-        for pauli, coef in zip(hamiltonian["products"], hamiltonian["coefficients"]):
-            string = ["I"] * self.num_qubits
-            for item in pauli:
-                string[item["qubit"]] = item["pauli"][-1]
-            pauli_strings.append(("".join(reversed(string)), coef))
+        circuit = self._build_circuit(gates)
+        circuit.measure_all(inplace=True)
 
-        observable = SparsePauliOp.from_list(pauli_strings)
+        isa_circuit = self.pm.run(circuit)
 
-        isa_circuit = self.pm.run(self.circuit)
-        isa_observables = observable.apply_layout(isa_circuit.layout)
+        sampler = Sampler(mode=self.backend)
+        job = sampler.run([isa_circuit], shots=shots)
+        raw_counts = job.result()[0].data["meas"].get_counts()
+
+        parsed_counts = {
+            int("".join(s[-q - 1] for q in qubits_to_sample), 2): c
+            for s, c in raw_counts.items()
+        }
+
+        mask_64bit = (1 << 64) - 1
+        num_chunks = (len(qubits_to_sample) + 63) // 64
+
+        states, counts = zip(*parsed_counts.items())
+        return [
+            [(s >> (64 * i)) & mask_64bit for i in range(num_chunks)] for s in states
+        ], list(counts)
+
+    def exp_value(self, gates, hamiltonian_list):
+        """Execute the circuit and compute expectation values.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        circuit = self._build_circuit(gates)
+        observables = []
+
+        for hamiltonian in hamiltonian_list:
+            pauli_strings = []
+            for pauli, coef in zip(
+                hamiltonian["pauli_strings"], hamiltonian["coefficients"]
+            ):
+                string = ["I"] * self.num_qubits
+                for item in pauli:
+                    string[item["qubit"]] = item["pauli"][-1]
+                pauli_strings.append(("".join(reversed(string)), coef))
+
+            observables.append(SparsePauliOp.from_list(pauli_strings))
+
+        isa_circuit = self.pm.run(circuit)
+        isa_observables = [o.apply_layout(isa_circuit.layout) for o in observables]
         estimator = Estimator(mode=self.backend)
-        job = estimator.run([(isa_circuit, isa_observables)])
-        self.exp_value_result = [float(job.result()[0].data.evs)]
+        job = estimator.run([(isa_circuit, o) for o in isa_observables])
+        return [float(result.data.evs) for result in job.result()]
 
     def connect(self):
-        self.clear()
-
-        return super().configure(
-            num_qubits=self.num_qubits,
-            execution_managed_by_target={
-                "sample": "Basic",
-                "exp_value": "Basic",
-            },
-        )
+        """Connect to the device and return the configuration."""
+        return self.configure(gradient=self.gradient)

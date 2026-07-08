@@ -1,39 +1,47 @@
 """Quantum gate definitions.
 
-All quantum gates take one or more :class:`~ket.base.Quant` as input and return them at the end.
-This allows for concatenating quantum operations.
+All quantum gates accept one or more :class:`~ket.base.Quant` objects as input
+and return them unchanged, enabling method chaining:
 
-Example:
+.. code-block:: python
 
-    .. code-block:: python
+    from ket import *
 
-        from ket import *
+    p = Process()
+    a, b = p.alloc(2)
 
-        p = Process()
-        a, b = p.alloc(2)
+    S(X(a))           # Apply X then S on qubit `a`.
+    CNOT(H(a), b)     # Apply H on `a`, then CNOT with `a` as control.
 
-        S(X(a))  # Apply a Pauli X followed by an S gate on `a`.
+For parameterized gates (e.g., rotation gates), **partial application** is
+supported: if the qubit argument is omitted, a gate callable is returned
+instead of being applied immediately:
 
-        CNOT(H(a), b)  # Apply a Hadamard on `a` followed by a CNOT gate on `a` and `b`.
+.. code-block:: python
 
-For gates that take classical parameters, such as rotation gates, if non-qubits are passed,
-it will return a new gate with the classical parameter set.
+    from math import pi
+    from ket import *
 
-Example:
+    # Create reusable gate instances with pre-set angles
+    s_gate = P(pi / 2)   # returns a callable, not applied yet
+    t_gate = P(pi / 4)
 
-    .. code-block:: python
+    p = Process()
+    q = p.alloc()
 
-        from math import pi
-        from ket import *
+    s_gate(q)             # now applied
+    t_gate(q)
 
-        s_gate = P(pi/2)
-        t_gate = P(pi/4)
+Gates that accept two-qubit arguments (e.g., :func:`~ket.gates.RXX`,
+:func:`~ket.gates.CNOT`) also support partial application: passing only the
+angle returns a two-qubit gate callable.
 
-        p = Process()
-        q = p.alloc()
-
-        s_gate(q)
-        t_gate(q)
+**Observable mode** (``with obs():``):
+Several single-qubit gate functions (:func:`~ket.gates.X`, :func:`~ket.gates.Y`,
+:func:`~ket.gates.Z`, :func:`~ket.gates.I`) have a dual role: inside an
+:func:`~ket.gates.obs` context manager block they construct
+:class:`~ket.expv.Pauli` objects for Hamiltonian building rather than
+applying the physical gate to the circuit.
 """
 
 from __future__ import annotations
@@ -46,33 +54,21 @@ from __future__ import annotations
 # pylint: disable=protected-access
 
 from contextlib import contextmanager
-from math import isclose, pi, prod
+from math import pi, prod
 from functools import reduce, wraps
 from typing import Any, Callable
 import functools
 import contextvars
 
-from .clib.libket import (
-    HADAMARD,
-    PAULI_X,
-    PAULI_Y,
-    PAULI_Z,
-    ROTATION_X,
-    ROTATION_Y,
-    ROTATION_Z,
-    PHASE_SHIFT,
-)
+from ket.clib.libket import search_process
 
 from .base import Process, Quant, Parameter
 from .operations import (
-    _search_process,
     control,
     ctrl,
     cat,
     kron,
     around,
-    _allow_permutation,
-    _unsafe_aux,
 )
 
 from .expv import Pauli, Hamiltonian
@@ -120,52 +116,44 @@ def _gate_docstring(name, matrix, effect=None) -> str:
 
 
 _build_obs = contextvars.ContextVar("build_obs", default=False)
-_is_diagonal = contextvars.ContextVar("is_diagonal", default=False)
-_is_permutation = contextvars.ContextVar("is_permutation", default=False)
 
 
 @contextmanager
 def obs():
-    """
-    Context manager to define a observable in Ket.
+    r"""Context manager for constructing quantum observables in symbolic form.
 
-    When used within a ``with obs():`` block, any operator expressions
-    constructed (e.g., sums of Pauli terms) are interpreted as part
-    of a observable definition.
+    Inside a ``with obs():`` block, the Pauli gate functions
+    (:func:`~ket.gates.X`, :func:`~ket.gates.Y`, :func:`~ket.gates.Z`,
+    :func:`~ket.gates.I`) return :class:`~ket.expv.Pauli` objects instead of
+    applying the physical gate to the circuit. These objects can be combined
+    with arithmetic operators to build :class:`~ket.expv.Hamiltonian` objects
+    suitable for :func:`~ket.operations.exp_value`.
 
-    This enables a more natural and symbolic style for building
-    observable, closely mirroring their mathematical form.
+    This approach mirrors the mathematical notation for observables and
+    avoids manually constructing :class:`~ket.expv.Pauli` instances.
 
     Example:
 
         .. code-block:: python
 
+            from ket import *
+
+            p = Process()
+            q = p.alloc(4)
+
+            edges = [(q[0], q[1]), (q[1], q[2]), (q[2], q[3])]
+
             with obs():
+                # MaxCut QUBO cost Hamiltonian
                 h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
 
+            ev = exp_value(h_c)
     """
     token = _build_obs.set(True)
     try:
         yield
     finally:
         _build_obs.reset(token)
-
-
-def _validate_qubit(process: Process, qubit: int, is_diag: bool):
-    """Centralized validation for safe uncomputation on a target qubit."""
-    unsafe = _unsafe_aux.get()
-    if unsafe:
-        return
-
-    is_aux = process._is_aux(qubit)
-    is_blocked = process._is_blocked(qubit)
-    aux_allowed = is_diag or _allow_permutation.get()
-
-    if is_blocked or (is_aux and not aux_allowed):
-        raise RuntimeError("Gate application blocked for safe uncomputation")
-
-    if not (_is_diagonal.get() or _is_permutation.get()) and (is_aux and not is_diag):
-        process._block_ctrl()
 
 
 def I(  # pylint: disable=invalid-name missing-function-docstring
@@ -198,11 +186,10 @@ def X(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = _is_diagonal.get() and not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(PAULI_X, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("PauliX", qubit)
     return qubits
 
 
@@ -224,11 +211,10 @@ def Y(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = _is_diagonal.get() and not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(PAULI_Y, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("PauliY", qubit)
     return qubits
 
 
@@ -250,11 +236,11 @@ def Z(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(PAULI_Z, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("PauliZ", qubit)
+
     return qubits
 
 
@@ -273,11 +259,11 @@ def H(  # pylint: disable=invalid-name missing-function-docstring
         qubits = reduce(Quant.__add__, qubits)
 
     process = qubits.ket_process
-    is_diag = _is_diagonal.get() and not _is_permutation.get()
 
-    for qubit in qubits.qubits:
-        _validate_qubit(process, qubit, is_diag)
-        process.apply_gate(HADAMARD, 0.0, False, 0, qubit)
+    with process.block_builder() as block:
+        for qubit in qubits.qubits:
+            block.append_gate("Hadamard", qubit)
+
     return qubits
 
 
@@ -291,54 +277,32 @@ H.__doc__ = _gate_docstring(
 )
 
 
-def _isclose_mod(value: float, target: float, tolerance: float = 1e-8) -> bool:
-    remainder = value % target
-
-    is_zero = isclose(remainder, 0.0, abs_tol=tolerance)
-    is_target = isclose(remainder, target, abs_tol=tolerance)
-
-    return is_zero or is_target
-
-
 def RX(  # pylint: disable=invalid-name missing-function-docstring
     theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
-
-    if not isinstance(theta, Parameter):
-        theta_diagonal = _isclose_mod(theta, 2 * pi)
-        theta_permutation = _isclose_mod(theta, pi)
-    else:
-        theta_diagonal = False
-        theta_permutation = False
 
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = (_is_diagonal.get() or theta_diagonal) and not (
-            _is_permutation.get() or theta_permutation
-        )
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "RotationX": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"RotationX": {"Value": theta}}
+                block.append_gate(gate, qubit)
 
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    ROTATION_X,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    ROTATION_X,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
         return qubits
 
     if qubits is None:
@@ -362,41 +326,28 @@ def RY(  # pylint: disable=invalid-name missing-function-docstring
     theta: float | Parameter, qubits: Quant | None = None
 ) -> Quant | Callable[[Quant], Quant]:
 
-    if not isinstance(theta, Parameter):
-        theta_diagonal = _isclose_mod(theta, 2 * pi)
-        theta_permutation = _isclose_mod(theta, pi)
-    else:
-        theta_diagonal = False
-        theta_permutation = False
-
     def inner(qubits: Quant) -> Quant:
         if not isinstance(qubits, Quant):
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = (_is_diagonal.get() or theta_diagonal) and not (
-            _is_permutation.get() or theta_permutation
-        )
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "RotationY": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"RotationY": {"Value": theta}}
+                block.append_gate(gate, qubit)
 
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    ROTATION_Y,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    ROTATION_Y,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
         return qubits
 
     if qubits is None:
@@ -425,27 +376,23 @@ def RZ(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = not _is_permutation.get()
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "RotationZ": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"RotationZ": {"Value": theta}}
+                block.append_gate(gate, qubit)
 
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    ROTATION_Z,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    ROTATION_Z,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
         return qubits
 
     if qubits is None:
@@ -470,27 +417,23 @@ def P(  # pylint: disable=invalid-name missing-function-docstring
             qubits = reduce(Quant.__add__, qubits)
 
         process = qubits.ket_process
-        is_diag = not _is_permutation.get()
 
-        for qubit in qubits.qubits:
-            _validate_qubit(process, qubit, is_diag)
+        with process.block_builder() as block:
+            for qubit in qubits.qubits:
+                if isinstance(theta, Parameter):
+                    gate = {
+                        "Phase": {
+                            "Ref": {
+                                "index": theta._index,
+                                "multiplier": theta._multiplier,
+                                "value": theta._param,
+                            }
+                        }
+                    }
+                else:
+                    gate = {"Phase": {"Value": theta}}
+                block.append_gate(gate, qubit)
 
-            if isinstance(theta, Parameter):
-                process.apply_gate(
-                    PHASE_SHIFT,
-                    theta._multiplier,
-                    True,
-                    theta._index,
-                    qubit,
-                )
-            else:
-                process.apply_gate(
-                    PHASE_SHIFT,
-                    theta,
-                    False,
-                    0,
-                    qubit,
-                )
         return qubits
 
     if qubits is None:
@@ -766,11 +709,11 @@ def global_phase(
 
     Example:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        @global_phase(pi / 2)
-        def my_z_gate(qubit):
-            return RZ(pi, qubit)
+            @global_phase(pi / 2)
+            def my_z_gate(qubit):
+                return RZ(pi, qubit)
 
     This example defines a custom quantum gate equivalent to a Pauli Z
     operation, where :math:`Z = e^{i\frac{\pi}{2}}R_z(\pi)`.
@@ -782,11 +725,11 @@ def global_phase(
     def _global_phase(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
         @functools.wraps(gate)
         def inner(*args, ket_process: Process | None = None, **kwargs):
-            ket_process = _search_process(ket_process, args, kwargs)
-
-            ket_process.apply_global_phase(theta)
-
-            return gate(*args, **kwargs)
+            ket_process = search_process(ket_process, args, kwargs)
+            with ket_process.block_builder() as block:
+                ret = gate(*args, **kwargs)
+                block.add_global_phase(theta)
+            return ret
 
         return inner
 
@@ -805,16 +748,43 @@ SX.__doc__ = _gate_docstring(
 
 
 def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
-    r"""Quantum Fourier Transform.
+    r"""Apply the Quantum Fourier Transform (QFT) to the given qubits.
+
+    Implements the standard recursive QFT circuit:
 
     .. math::
 
-        \text{QFT}\left|x\right> =
-        \frac{1}{\sqrt{N}} \sum_{k=0}^{N-1} e^{2\pi i x k / N} \left|k\right>
+        \text{QFT}\left|x\right\rangle =
+        \frac{1}{\sqrt{N}} \sum_{k=0}^{N-1} e^{2\pi i x k / N} \left|k\right\rangle
 
-    args:
-        qubits: The qubits to apply the QFT to.
-        do_swap: Whether to invert the qubits after the transformation.
+    where :math:`N = 2^n` and :math:`n` is the number of qubits.
+
+    The circuit consists of Hadamard gates and controlled phase rotations,
+    followed by an optional SWAP network that puts the output in the standard
+    bit-order (most-significant qubit first). Set ``do_swap=False`` when the
+    SWAP is handled externally.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            p = Process(simulator="dense", num_qubits=4)
+            q = p.alloc(4)
+
+            # Initialize to |1⟩ and apply QFT
+            X(q[3])
+            QFT(q)
+
+            state = dump(q)
+            print(state.show())
+
+    Args:
+        qubits: The register to apply the QFT to.
+            Must have at least 1 qubit.
+        do_swap: If ``True`` (default), applies the qubit-reversal SWAP
+            network at the end so the output is in standard bit order.
     """
     if len(qubits) == 1:
         H(qubits)
@@ -834,17 +804,41 @@ def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
             SWAP(qubits[i], qubits[size - i - 1])
 
 
-def B(qubit):  # pylint: disable=invalid-name
-    r"""Binary-encoded observable.
+def B(qubit: Quant):  # pylint: disable=invalid-name
+    r"""Construct a binary-encoded QUBO observable for a qubit register.
 
-    Construct an observable that has eigenvalue 0 for :math:`\left|0\right>`
-    and 1 for :math:`\left|1\right>`. This is useful for QUBO
-    Hamiltonian construction.
+    Returns a :class:`~ket.expv.Hamiltonian` with eigenvalue ``0`` for
+    :math:`\left|0\right\rangle` and eigenvalue ``1`` for
+    :math:`\left|1\right\rangle`. When applied to a register, the result
+    is the tensor product, giving eigenvalue equal to the binary integer
+    encoded in the register:
 
     .. math::
 
-        \frac{1 - Z}{2}
+        B = \frac{\mathbf{1} - Z}{2}
 
+    This observable is essential for building **QUBO Hamiltonians** where the
+    cost function is a polynomial over binary variables.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            p = Process()
+            q = p.alloc(3)
+
+            # QUBO cost: x0 + x1*x2 - 2*x0*x2
+            cost = B(q[0]) + B(q[1]) * B(q[2]) - 2 * B(q[0]) * B(q[2])
+
+    Args:
+        qubit: The qubit(s) to apply the observable
+            to. If a multi-qubit register is passed, the result is the tensor
+            product of :math:`B` over all qubits.
+
+    Returns:
+        The binary-encoded observable.
     """
 
     with obs():
@@ -871,15 +865,41 @@ def _rzg(angle, qubits):
             _rzg(angle, qubits[1:])
 
 
-_RGATE = {
-    "X": RX,
-    "Y": RY,
-    "Z": RZ,
-}
+_RGATE = {"X": RX, "Y": RY, "Z": RZ}
 
 
 def evolve(hamiltonian: Hamiltonian):
-    """Evolve the quantum state according to the given Hamiltonian."""
+    r"""Time evolution :math:`e^{-iHt}` for a Hamiltonian.
+
+    For each Pauli term :math:`c_k P_k` in the Hamiltonian, applies the
+    corresponding single-step Trotter evolution gate
+    :math:`e^{-i c_k P_k}` to the qubits in that term.
+
+    .. note::
+        This implements a single Trotter step, **not** a full time evolution.
+        For accurate dynamics, you may need to call ``evolve`` multiple times
+        with a small coefficient or compose it with other techniques.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            p = Process()
+            q = p.alloc(2)
+
+            with obs():
+                # Transverse-field Ising: -J Z0Z1 - h X0
+                H_ising = -1.0 * Z(q[0]) * Z(q[1]) - 0.5 * X(q[0])
+
+            evolve(H_ising)   # one Trotter step with t encoded in the coefficients
+
+    Args:
+        hamiltonian: The Hamiltonian to
+            simulate. The coefficient of each term serves as the rotation
+            angle.
+    """
     process = hamiltonian.ket_process
     for term in hamiltonian.terms:
         gates_qubits = [
@@ -901,36 +921,76 @@ def evolve(hamiltonian: Hamiltonian):
 
 
 def is_diagonal(gate: Callable) -> Callable:
-    """Force to consider as a diagonal gate.
+    """Decorator that marks a gate as diagonal in the computational basis.
+
+    This tells the Ket runtime that the gate only adds phases to basis states
+    without permuting them, which relaxes certain uncomputation safety checks.
+
+    Use this decorator when you have implemented a custom gate that is
+    provably diagonal (e.g., a phase oracle or a controlled-phase network)
+    and you want the runtime to recognize and exploit that property.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            @is_diagonal
+            def phase_oracle(qubits):
+                # Flips the phase of the |111> state.
+                ctrl(qubits[:-1], Z)(qubits[-1])
 
     Args:
-        gate: Quantum gate
+        gate: The quantum gate function to decorate.
+
+    Returns:
+        A wrapped version of ``gate`` whose block is flagged as diagonal.
     """
 
     @wraps(gate)
     def inner(*args, **kwargs) -> Any:
-        token = _is_diagonal.set(True)
-        try:
+        process = search_process(None, args, kwargs)
+        with process.block_builder(diagonal=True):
             return gate(*args, **kwargs)
-        finally:
-            _is_diagonal.reset(token)
 
     return inner
 
 
 def is_permutation(gate: Callable) -> Callable:
-    """Force to consider as a permutation gate.
+    """Decorator that marks a gate as a permutation of computational basis states.
+
+    This tells the Ket runtime that the gate maps
+    each basis state to exactly one other basis state (i.e., it is a
+    classical reversible function), which enables optimizations and loosens
+    uncomputation restrictions on auxiliary qubits written by permutations.
+
+    Use this decorator for gates that implement reversible classical logic
+    (e.g., arithmetic adders, LUT-based oracles, swap networks).
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            @is_permutation
+            def increment(qubits):
+                # Increment a binary register modulo 2^n.
+                for i, q in enumerate(qubits):
+                    ctrl(qubits[:i], X)(q)
 
     Args:
-        gate: Quantum gate
+        gate: The quantum gate function to decorate.
+
+    Returns:
+        A wrapped version of ``gate`` whose block is flagged as a permutation.
     """
 
     @wraps(gate)
     def inner(*args, **kwargs) -> Any:
-        token = _is_permutation.set(True)
-        try:
+        process = search_process(None, args, kwargs)
+        with process.block_builder(permutation=True):
             return gate(*args, **kwargs)
-        finally:
-            _is_permutation.reset(token)
 
     return inner

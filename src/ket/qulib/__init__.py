@@ -28,10 +28,10 @@ except ImportError:
     _MULTIPROCESS_AVAILABLE = False
 
 
-from ..clib.libket import BatchExecution
+from ..clib.libket.execution import BatchExecution, LiveExecution
 from ..base import Process, Quant
 from ..operations import dump, exp_value
-from ..gates import H, CNOT, X
+from ..gates import H, CNOT, X, Z, obs
 from ..expv import Hamiltonian
 from . import gates, prepare, oracle, ham
 
@@ -50,7 +50,7 @@ except ImportError:
 
 try:
     from qiskit import QuantumCircuit, QuantumRegister
-    from qiskit.circuit import library
+    from qiskit.circuit import library, Gate
 
     QISKIT_AVAILABLE = True
 except ImportError:
@@ -100,7 +100,7 @@ def dump_matrix(
     if process is None:
         process = Process(
             num_qubits=2 * num_qubits,
-            execution="batch",
+            execution="live",
             simulator="sparse",
         )
 
@@ -159,38 +159,23 @@ DRAW_STYLE = {
 }
 
 
-class _IBMDeviceForDraw(BatchExecution):
+class _IBMDeviceForDraw(LiveExecution):
     """IBMDevice use for qulib.draw"""
 
     def __init__(
         self,
         num_qubits: list[int],
         names: list[str],
-        qpu: dict | None = None,
+        decompose: bool = False,
         keep_order: bool = True,
     ):
         super().__init__()
         qubits = [QuantumRegister(n, l) for n, l in zip(num_qubits, names)]
         self.circuit = QuantumCircuit(*qubits)
         self.num_qubits = sum(num_qubits)
-        self.qpu = qpu
+        self.decompose = decompose
         self.keep_order = keep_order
         self.last_gate = None
-
-    def clear(self):
-        pass
-
-    def submit_execution(self, circuit, _p):
-        self.process_instructions(circuit)
-
-    def get_result(self):
-        return {
-            "measurements": [],
-            "exp_values": [],
-            "samples": [],
-            "dumps": [],
-            "gradients": None,
-        }
 
     def pauli_x(self, target, control):
         if self.keep_order and self.last_gate != "X":
@@ -228,51 +213,77 @@ class _IBMDeviceForDraw(BatchExecution):
         self.circuit.append(gate, control + [target])
         self.last_gate = "H"
 
-    def rotation_x(self, target, control, **kwargs):
+    def rotation_x(self, target, control, angle):
         if self.keep_order and self.last_gate != "RX":
             self.circuit.barrier()
-        gate = library.RXGate(kwargs["Value"])
+        gate = library.RXGate(angle)
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
         self.last_gate = "RX"
 
-    def rotation_y(self, target, control, **kwargs):
+    def rotation_y(self, target, control, angle):
         if self.keep_order and self.last_gate != "RY":
             self.circuit.barrier()
-        gate = library.RYGate(kwargs["Value"])
+        gate = library.RYGate(angle)
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
         self.last_gate = "RY"
 
-    def rotation_z(self, target, control, **kwargs):
+    def rotation_z(self, target, control, angle):
         if self.keep_order and self.last_gate != "RZ":
             self.circuit.barrier()
-        gate = library.RZGate(kwargs["Value"])
+        gate = library.RZGate(angle)
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
         self.last_gate = "RZ"
 
-    def phase(self, target, control, **kwargs):
+    def phase(self, target, control, angle):
         if self.keep_order and self.last_gate != "P":
             self.circuit.barrier()
-        gate = library.PhaseGate(kwargs["Value"])
+        gate = library.PhaseGate(angle)
         if len(control) >= 1:
             gate = gate.control(len(control))
         self.circuit.append(gate, control + [target])
         self.last_gate = "P"
 
-    def connect(
-        self,
-    ):
+    def measure(self, qubits: list[int]) -> int:
+        measure = Gate(name="measure", num_qubits=len(qubits), params=[])
+        if self.keep_order and self.last_gate != "M":
+            self.circuit.barrier()
+        self.circuit.append(measure, qubits)
+        self.last_gate = "M"
+        return 0
+
+    def exp_value(self, _):
+        """Compute the expectation value of the given Hamiltonian."""
+        return 0
+
+    def sample(self, qubits: list[int], shots: int):
+        sample = Gate(name=f"sample({shots=})", num_qubits=len(qubits), params=[])
+        if self.keep_order and self.last_gate != "M":
+            self.circuit.barrier()
+        self.circuit.append(sample, qubits)
+        self.last_gate = "M"
+        return ([[0]], [0])
+
+    def dump(self, qubits: list[int]) -> dict:
+        dump_gate = Gate(name="dump", num_qubits=len(qubits), params=[])
+        if self.keep_order and self.last_gate != "M":
+            self.circuit.barrier()
+        self.circuit.append(dump_gate, qubits)
+        self.last_gate = "M"
+        return {
+            "basis_states": [[0]],
+            "amplitudes_real": [0.0],
+            "amplitudes_imag": [0.0],
+        }
+
+    def connect(self):
         """Configure process"""
-        return super().configure(
-            num_qubits=self.num_qubits,
-            execution_managed_by_target={},
-            qpu=self.qpu,
-        )
+        return super().configure(self.decompose)
 
 
 def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
@@ -282,9 +293,7 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
     *,
     qubits: int | list[int] | None = None,
     qpu_size: int | None = None,
-    u4_gate: Literal["CX", "CZ"] | None = None,
-    u2_gates: Literal["ZYZ", "RzSx"] | None = None,
-    coupling_graph: list[tuple[int, int]] | None = None,
+    decompose: bool = False,
     title: str | None = None,
     keep_order: bool = True,
     **kwargs,
@@ -300,18 +309,31 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
         gate: Quantum gate function.
         num_qubits: Number of qubits.
         args: Classical arguments to pass to the gate function.
-        qpu_size: Size of the quantum processing unit (QPU).
-            If specified, the number of qubits will be adjusted to fit the QPU size.
-        u4_gate: Type of U4 gate to use, either "CX" or "CZ".
-        u2_gates: Type of U2 gates to use, either "ZYZ" or "RzSx".
-        coupling_graph: Coupling graph of the QPU,
-            specified as a list of tuples representing connected qubits.
+        qubits: Alternative to ``num_qubits`` to specify the number of qubits.
+        qpu_size: Size of the quantum processing unit (QPU). If specified,
+            the number of qubits will be adjusted to fit the QPU size.
+        decompose: Whether to decompose the gate into elementary gates.
         title: Title for the circuit diagram.
         keep_order: Maintain the gate call order.
         **kwargs: Keyword arguments to pass to the Qiskit drawer.
 
     Returns:
         Qiskit circuit diagram of the quantum gate.
+
+    Example:
+
+        .. code-block:: python
+            :skip:
+
+            from ket.qulib import draw
+            from ket import H, CNOT
+
+            def my_gate(q):
+                H(q[0])
+                CNOT(q[0], q[1])
+
+            fig = draw(my_gate, 2)
+            # fig.show()
     """
 
     # only qubits or num_qubits can be specified
@@ -347,30 +369,14 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
         num_qubits.append(qpu_size - total)
         names.append("AUX")
 
-    qpu = {}
-
-    if u4_gate is not None:
-        if not u4_gate in ["CX", "CZ"]:
-            raise ValueError("u4_gate must be 'CX' or 'CZ'")
-        qpu["u4_gate"] = u4_gate
-    if u2_gates is not None:
-        if not u2_gates in ["ZYZ", "RzSx"]:
-            raise ValueError("u2_gates must be 'ZYZ' or 'RzSx'")
-        qpu["u2_gates"] = u2_gates
-    if coupling_graph is not None:
-        qpu["coupling_graph"] = coupling_graph
-
-    device = _IBMDeviceForDraw(
-        [qpu_size] if coupling_graph is not None else num_qubits,
-        ["Q"] if coupling_graph is not None else names,
-        qpu if len(qpu) else None,
-        keep_order,
-    )
+    device = _IBMDeviceForDraw(num_qubits, names, decompose, keep_order)
 
     p = Process(device)
     q = [p.alloc(n) for n in (num_qubits if qpu_size is None else num_qubits[:-1])]
     gate(*args, *q)
-    p.execute()
+
+    with obs():
+        exp_value(Z(q[0]))
 
     if "output" not in kwargs and _IN_NOTEBOOK:
         kwargs["output"] = "mpl"
@@ -486,7 +492,7 @@ def energy(  # pylint: disable=too-many-branches
         state = f"{state:0{num_qubits}b}"
 
     process = Process(
-        execution="batch",
+        execution="live",
         simulator="sparse",
         num_qubits=num_qubits,
     )
@@ -650,7 +656,7 @@ def exact_solver(
     r"""Finds the exact ground state of a Hamiltonian.
 
     Note:
-        This function evaluates :math:`2^\texttt{num_qubits}` states.
+        This function evaluates :math:`2^\texttt{num\_qubits}` states.
         Because the search space grows exponentially, this solver should
         only be used for small quantum systems (typically < 10 qubits).
         For larger systems, use heuristic methods like :func:`~ket.qulib.simulated_annealing`.

@@ -16,7 +16,6 @@ def test_prepare_bell():
     bell(q[0], q[1])
 
     state = dump(q)
-    p.execute()
 
     probs = state.probability
     assert 0 in probs and 3 in probs
@@ -31,7 +30,6 @@ def test_prepare_ghz():
     ghz(q)
 
     state = dump(q)
-    p.execute()
 
     probs = state.probability
     assert 0 in probs and 7 in probs
@@ -46,7 +44,6 @@ def test_prepare_w():
     w(q)
 
     state = dump(q)
-    p.execute()
 
     probs = state.probability
     # W state has 1 excitation: states 1 (001), 2 (010), 4 (100)
@@ -67,7 +64,6 @@ def test_prepare_dicke():
     dicke(excitations, q)
 
     state = dump(q)
-    p.execute()
 
     probs = state.probability
 
@@ -89,7 +85,6 @@ def test_prepare_pauli_states():
     pauli_state("Y", -1, q)
 
     state = dump(q)
-    p.execute()
 
     amplitudes = state.get()
     # |-i> = 1/sqrt(2) * (|0> - i|1>)

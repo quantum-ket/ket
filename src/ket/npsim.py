@@ -10,7 +10,7 @@ high-performance simulator. For better performance, use the KBW simulator.
 # SPDX-License-Identifier: Apache-2.0
 
 from random import choices
-from .clib.libket import LiveExecution
+from .clib.libket.execution import LiveExecution
 
 try:
     import numpy as np
@@ -40,14 +40,7 @@ class NPSim(LiveExecution):
         self.state_vector[0, 0] = 1.0
 
     def connect(self):
-        return self.configure(
-            num_qubits=self.num_qubit,
-            execution_managed_by_target={
-                "measure": "Advanced",
-                "dump": "Advanced",
-            },
-            qpu={"u4_gate": "CX"},
-        )
+        return self.configure()
 
     def _apply_gate(self, gate, target):
         gate_kron = np.kron(

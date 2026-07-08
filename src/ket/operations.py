@@ -16,15 +16,14 @@ from __future__ import annotations
 
 from collections.abc import Sized
 from contextlib import contextmanager
-import contextvars
-from ctypes import c_size_t
 from functools import reduce, wraps
+import json
 from operator import add
-from typing import Any, Callable, Sequence
+from typing import Any, Callable
 from inspect import signature
 import warnings
 
-from ket.clib.libket import PAULI_X
+from ket.clib.libket import search_process, API as libket
 
 
 from .base import Process, Quant
@@ -72,12 +71,9 @@ def _flip_to_control(
         .. code-block:: python
 
             from ket import *
-
             p = Process()
             q = p.alloc(3)
-
             H(q[:2])
-
             with around(_flip_to_control(0b01), q[:2]):
                 ctrl(q[:2], X)(q[2])
 
@@ -113,7 +109,8 @@ def _flip_to_control(
 
         for i, qubit in zip(state, qubits):
             if i == 0:
-                process.apply_gate(PAULI_X, 0.0, False, 0, qubit.qubits[0])
+                with process.block_builder() as block:
+                    block.append_gate("PauliX", qubit.qubits[0])
         return qubits
 
     if qubits is None:
@@ -123,46 +120,56 @@ def _flip_to_control(
 
 @contextmanager
 def control(control_qubits: Quant, state: int | list[int] | None = None):
-    r"""Controlled scope.
+    r"""Context manager that conditions all operations in its body on a qubit state.
 
-    Opens a controlled scope where quantum operations are applied only if the qubits of the
-    parameter ``control_qubits`` are in the state :math:`\ket{1}`.
+    Opens a controlled scope where every quantum operation applied inside is
+    conditioned on the ``control_qubits`` being in the :math:`\left|1\right\rangle`
+    state (by default). All operations in the body are automatically wrapped in
+    a multi-qubit controlled block.
 
     :Usage:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        with control(control_qubits):
-            # Apply operations only if control_qubits are in the state |1>
-            ...
+            with control(control_qubits):
+                # All operations here are applied only if control_qubits = |1⟩
+                ...
 
     Example:
 
         .. code-block:: python
 
             from ket import *
-
             p = Process()
-
             c = p.alloc(2)
-            a, b = q.alloc(2)
-
-            # CNOT c[0] a
+            a, b = p.alloc(2)
+            # CNOT: flip `a` if c[0] = |1⟩
             with control(c[0]):
                 X(a)
-
-            # Toffoli c[0] c[1] a
+            # Toffoli: flip `a` if both c[0] = c[1] = |1⟩
             with control(c):
                 X(a)
-
-            # CSWAP c[0] a b
+            # Fredkin (CSWAP): swap `a` and `b` if c[0] = |1⟩
             with control(c[0]):
                 SWAP(a, b)
 
     Args:
-        control_qubits: The qubits to control the quantum operations.
-        state: **Deprecated.** The state to apply to the control qubits.
-            Defaults to :math:`\ket{1}`.
+        control_qubits: The qubit(s) that act as
+            controls. All qubits must belong to the same process.
+        state: **Deprecated.** Bit pattern specifying
+            the control state. Use ``with control(q == state):`` instead.
+            Defaults to :math:`\left|1\right\rangle`.
+
+    .. deprecated:: 0.9.3
+        The ``state`` argument is deprecated. Replace::
+
+            with control(q, state=0b01):
+                ...
+
+        with::
+
+            with control(q == 0b01):
+                ...
     """
 
     if not isinstance(control_qubits, Quant):
@@ -178,23 +185,17 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
             stacklevel=2,
         )
         with around(_flip_to_control(state), control_qubits, ket_process=process):
-            process.ctrl_push(
-                (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
-                len(control_qubits.qubits),
-            )
+            with process.block_builder(control=control_qubits.qubits):
+                try:
+                    yield
+                finally:
+                    pass
+    else:
+        with process.block_builder(control=control_qubits.qubits):
             try:
                 yield
             finally:
-                process.ctrl_pop()
-    else:
-        process.ctrl_push(
-            (c_size_t * len(control_qubits.qubits))(*control_qubits.qubits),
-            len(control_qubits.qubits),
-        )
-        try:
-            yield
-        finally:
-            process.ctrl_pop()
+                pass
 
 
 def ctrl(
@@ -206,23 +207,18 @@ def ctrl(
 
     :Usage:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        from ket import *
-
-        p = Process()
-
-        c = p.alloc(2)
-        a, b = q.alloc(2)
-
-        # CNOT c[0] a
-        ctrl(c[0], X)(a)
-
-        # Toffoli c[0] c[1] a
-        ctrl(c, X)(a)
-
-        # CSWAP c[0] a b
-        ctrl(c[0], SWAP)(a, b)
+            from ket import *
+            p = Process()
+            c = p.alloc(2)
+            a, b = q.alloc(2)
+            # CNOT c[0] a
+            ctrl(c[0], X)(a)
+            # Toffoli c[0] c[1] a
+            ctrl(c, X)(a)
+            # CSWAP c[0] a b
+            ctrl(c[0], SWAP)(a, b)
 
     Args:
         control_qubits: The qubits to control the quantum operations.
@@ -241,13 +237,30 @@ def ctrl(
 
 
 def C(gate: Callable) -> Callable:  # pylint: disable=invalid-name
-    """Create a controlled gate
+    """Convert a gate into a controlled version where the first argument is the control.
+
+    This is a convenience decorator/wrapper that reorders the arguments of a
+    gate so that the first positional argument becomes the control qubit(s).
+    It is equivalent to calling ``ctrl(control_qubits, gate)(*args)``.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            c, a, b = p.alloc(3)
+            CX = C(X)          # CX is equivalent to CNOT
+            CCNOT = C(C(X))    # Toffoli gate
+            CX(c, a)           # CNOT: c is control, a is target
+            CCNOT(c, a, b)     # Toffoli: c and a are controls, b is target
 
     Args:
-        gate: Quantum gate.
+        gate: The quantum gate to make controlled.
 
     Returns:
-        A gate with the first parameter as control.
+        A new callable where the first positional argument is used as
+        the control qubit(s) for ``gate``.
     """
 
     @wraps(gate)
@@ -257,68 +270,42 @@ def C(gate: Callable) -> Callable:  # pylint: disable=invalid-name
     return inner
 
 
-def _search_process(ket_process, args, kwargs):
-    def inner(ket_process, arg):
-        if hasattr(arg, "ket_process"):
-            arg_process = arg.ket_process
-            if ket_process is not None and ket_process is not arg_process:
-                raise ValueError("parameter with different Ket processes")
-            ket_process = arg_process
-        return ket_process
-
-    def search(ket_process, args):
-        for arg in args:
-            if isinstance(arg, Sequence) and not isinstance(arg, str):
-                for subarg in arg:
-                    ket_process = inner(ket_process, subarg)
-            else:
-                ket_process = inner(ket_process, arg)
-        return ket_process
-
-    if ket_process is None:
-        ket_process = search(ket_process, args)
-        ket_process = search(ket_process, kwargs.values())
-
-    if ket_process is None:
-        raise ValueError("Ket process not found in the parameters")
-
-    return ket_process
-
-
 def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
-    """Return the inverse of a gate.
+    """Return the adjoint (inverse/Hermitian conjugate) of a gate.
 
-    Create a new callable that applies the inverse of the given ``gate``.
+    Creates a new callable that applies the time-reversed sequence of
+    operations of the given ``gate``. For unitary gates, the adjoint is
+    the inverse operation.
 
-    The resulting callable will iterate over the parameters to identify the
-    :class:`~ket.base.Process` that the inverse operation will be applied. If non of the parameters
-    are a :class:`~ket.base.Quant`, the keyword argument ``ket_process`` must be given.
+    The process is inferred automatically from the :class:`~ket.base.Quant`
+    arguments. If no :class:`~ket.base.Quant` is present in the arguments
+    (e.g., when all parameters are classical), the keyword argument
+    ``ket_process`` must be supplied explicitly.
 
     :Usage:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        from ket import *
-
-        p = Process()
-
-        a, b = q.alloc(2)
-
-        bell = cat(kron(H, I), CNOT)
-
-        adj(bell)(a, b)
+            from ket import *
+            p = Process()
+            a, b = p.alloc(2)
+            # Prepare a Bell state and then un-prepare it
+            bell = cat(kron(H, I), CNOT)
+            bell(a, b)          # entangle
+            adj(bell)(a, b)     # un-entangle: returns |00⟩
 
     Args:
-        gate: The gate to apply the inverse.
+        gate: The quantum gate to invert.
 
     Returns:
-        A new callable that applies the inverse of the given gate.
-
+        A new callable that applies the adjoint of ``gate``.
+        Accepts the same arguments as ``gate`` plus an optional
+        ``ket_process`` keyword argument.
     """
 
     @wraps(gate)
     def inner(*args, ket_process: Process | None = None, **kwargs) -> Any:
-        ket_process = _search_process(ket_process, args, kwargs)
+        ket_process = search_process(ket_process, args, kwargs)
 
         with inverse(ket_process):
             return gate(*args, **kwargs)
@@ -328,51 +315,76 @@ def adj(gate: Callable[[Any], Any]) -> Callable[[Any], Any]:
 
 @contextmanager
 def inverse(process: Process):
-    """Inverse scope.
+    """Context manager that reverses the order of all quantum operations in its body.
 
-    Open a scope where all the quantum operations are executed backwards.
+    All gates applied inside the ``with inverse(process):`` block are
+    collected and then appended to the circuit in **reverse order**, with each
+    individual gate also inverted (i.e., the adjoint of each gate). This
+    implements the unitary inverse :math:`U^\\dagger` of the sequence
+    :math:`U`.
 
     :Usage:
 
-    .. code-block:: python
+        .. code-block:: python
 
-       with inverse(process):
-            # Classical and quantum operations
-            ...
-
-    Args:
-        process: The process where the inverse operations will be applied.
-    """
-    process.adj_begin()
-    try:
-        yield
-    finally:
-        process.adj_end()
-
-
-def cat(*gates) -> Callable[[Any], Any]:
-    """Concatenate gates.
-
-    Create a new callable concatenating all the quantum gates.
+            with inverse(process):
+                # Operations here are appended in reversed, adjoint form
+                ...
 
     Example:
 
         .. code-block:: python
 
             from ket import *
-
-            z_gate = cat(H, X, H)
-
-            p = process()
-            q = p.alloc()
-
-            z_gate(q)
+            p = Process()
+            q = p.alloc(2)
+            H(q[0])
+            CNOT(q[0], q[1])      # Prepare Bell state
+            with inverse(p):      # Undo the Bell preparation
+                CNOT(q[0], q[1])
+                H(q[0])
+            # q is now back to |00⟩
 
     Args:
-        *gates: Quantum gates to concatenate.
+        process: The process to apply the inverse
+            scope to.
+    """
+    with process.block_builder(inverse=True):
+        try:
+            yield
+        finally:
+            pass
+
+
+def cat(*gates) -> Callable[[Any], Any]:
+    """Create a sequential composition (concatenation) of quantum gates.
+
+    Returns a new callable that applies all the given ``gates`` one after the
+    other to the **same** set of arguments. This is the quantum analogue of
+    function composition when all gates operate on the same qubits.
+
+    Gate application order matches the argument order: ``cat(U, V)`` first
+    applies ``U``, then ``V`` (left-to-right).
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            # A Z gate can be decomposed as H-X-H
+            z_gate = cat(H, X, H)
+            p = Process()
+            q = p.alloc()
+            z_gate(q)     # equivalent to Z(q)
+
+    Args:
+        *gates: Quantum gate callables to compose sequentially.
+            Each gate receives the full argument list.
 
     Returns:
-        A new callable that concatenates the given quantum gates.
+        A single callable that applies all ``gates`` in order.
+        If only one argument was passed to the composed callable, returns that
+        argument; if multiple were passed, returns them as a tuple.
     """
 
     def inner(*args):
@@ -387,28 +399,43 @@ def cat(*gates) -> Callable[[Any], Any]:
 
 
 def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
-    """Gates tensor product.
+    """Create a tensor-product (parallel) composition of quantum gates.
 
-    Create a new callable that with the tensor product of the given gates.
+    Returns a new callable that applies each gate to the corresponding
+    positional argument independently. Unlike :func:`~ket.operations.cat`,
+    which applies all gates to the *same* arguments, ``kron`` maps
+    each gate to a *separate* argument, mirroring the tensor product
+    :math:`U_1 \\otimes U_2 \\otimes \\cdots`.
+
+    The optional ``n`` parameter repeats the entire gate list ``n`` times,
+    which is useful for applying the same set of gates across multiple
+    register pairs.
 
     Example:
 
         .. code-block:: python
 
             from ket import *
-
-            p = process()
-            a, b = p.alloc(2)
-
+            p = Process()
+            a, b, c, d = p.alloc(4)
             HX = kron(H, X)
-
-            HX(a, b) # Apply an Hadamard on qubit `a` and a Pauli X on qubit `b`
+            HX(a, b)   # H on a, X on b
+            # Apply H⊗H⊗H to three separate qubits at once
+            HHH = kron(H, n=3)
+            HHH(a, b, c)   # H on each
 
     Args:
-        *gates: Quantum gates to tensor product.
+        *gates: Quantum gate callables to apply in parallel. Gate ``i`` is
+            applied to argument ``i``.
+        n: Repeat the full gate list ``n`` times. Defaults to ``1``.
 
     Returns:
-        A new callable that represents the tensor product of the given quantum gates.
+        A new callable that applies each gate to its corresponding
+        argument and returns all results as a tuple.
+
+    Raises:
+        ValueError: If the number of gates does not match the number of
+            arguments supplied when the resulting callable is called.
     """
 
     gates = gates * n
@@ -417,7 +444,7 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
         if len(gates) != len(args):
             raise ValueError(
                 f"Number of gates ({len(gates)}) is different from"
-                " number of arguments ({len(args)})"
+                f" number of arguments ({len(args)})"
             )
 
         return tuple(
@@ -428,59 +455,79 @@ def kron(*gates, n: int = 1) -> Callable[[Any], Any]:
     return inner
 
 
-_allow_permutation = contextvars.ContextVar("allow_permutation", default=False)
-
-
 def undo(
     gate: Callable[[Quant], Any],
     qubits: Quant,
 ) -> Quant:
-    """Automatic uncomputation of a quantum operation.
+    """Apply a gate and schedule its adjoint for automatic uncomputation.
 
-    Applies the specified ``gate`` on the ``qubits`` and returns a
-    :class:`~ket.operations.Quant` instance. At the end of the returned
-    object's lifecycle (when it is garbage-collected), the adjoint (inverse)
-    of the gate is automatically applied to uncompute the operation.
+    Applies the specified ``gate`` to ``qubits`` immediately and returns a
+    new :class:`~ket.base.Quant` wrapping the same qubits. When this returned
+    object is garbage-collected or goes out of scope (or is used as a context
+    manager and exits), the **adjoint** of ``gate`` is automatically appended
+    to the circuit, uncomputing the operation.
 
-    This is highly useful for managing temporary quantum states and ensuring
-    they are properly disentangled before disposal.
+    This is the recommended pattern for managing temporary quantum states:
+    apply a computation, use its result, and rely on automatic cleanup rather
+    than manually calling :func:`~ket.operations.adj`.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            c, t = p.alloc(2)
+            H(c)
+            # Compute a CNOT result, then auto-uncompute on scope exit
+            with undo(ctrl(c, X), t) as flipped:
+                sample_result = sample(c + flipped)
+            # adjoint CNOT is automatically applied here
 
     Args:
-        gate: A callable representing the quantum gate/operation to apply.
-        qubits: The quantum bits on which the gate will be applied.
-    """
+        gate: The quantum gate or operation to apply.
+            Must accept a :class:`~ket.base.Quant` as its argument.
+        qubits: The target qubits for the gate.
 
-    token = _allow_permutation.set(True)
+    Returns:
+        A :class:`~ket.base.Quant` wrapping the same
+        qubit indices. When this object is finalized, the adjoint of ``gate``
+        is appended to the circuit.
+
+    Raises:
+        RuntimeError: If ``gate`` attempts a non-permutation operation on an
+            auxiliary qubit, which would violate uncomputation safety.
+    """
 
     ket_process = qubits.ket_process
 
-    ket_process._blocked_push()
-    ket_process.ctrl_stack()
-    try:
+    with ket_process.block_builder(append=False) as compute:
         gate(qubits)
-    finally:
-        ket_process.ctrl_unstack()
-        _allow_permutation.reset(token)
-        blocked_qubits = ket_process._blocked_pop()
+        compute.lock_control()
 
+    proprieties_ptr = compute.proprieties_json()
+    proprieties = json.loads(proprieties_ptr.value)
+    libket["ket_string_delete"](proprieties_ptr)
+
+    blocked_qubits = set()
+
+    for target, op in proprieties.items():
+        target = int(target)
+        if (op["propriety"] == "Permutation") and ket_process._is_aux(target):
+            blocked_qubits.update(op["read_qubits"])
+        elif (op["propriety"] == "Unitary") and ket_process._is_aux(target):
+            raise RuntimeError("Operation not allowed on axillary qubit.")
+
+    uncompute = compute.inverse()
+    ket_process.append_block(compute, check_qubits=False)
     ket_process._block_qubits(blocked_qubits)
 
     def undo_func():
-        if ket_process.get_metadata()["terminated"]:
+        if ket_process.status().value.decode("utf-8") == "Terminated":
             return
 
-        ket_process._blocked_push()
-        token_undo = _allow_permutation.set(True)
-
-        ket_process.ctrl_stack()
-        try:
-            adj(gate)(qubits)
-        finally:
-            ket_process.ctrl_unstack()
-            _allow_permutation.reset(token_undo)
-            ket_process._blocked_pop()
-
         ket_process._unblock_qubits(blocked_qubits)
+        ket_process.append_block(uncompute, check_qubits=False)
 
     return Quant(
         qubits=qubits.qubits,
@@ -492,73 +539,136 @@ def undo(
 
 @contextmanager
 def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
-    r"""Applying and then reversing quantum gates.
+    r"""Apply a gate, execute a body block, then apply the gate's adjoint: :math:`UVU^\dagger`.
 
-    Apply the given quantum gate (:math:`U`) and then execute a code block (:math:`V`). After the
-    code block is executed, the inverse of the gate (:math:`U^\dagger`) is applied, resulting in
-    :math:`UVU^\dagger`.
+    This context manager implements the *conjugation pattern* common in quantum
+    algorithms. It applies the given gate :math:`U`, then runs the code inside
+    the ``with`` block (:math:`V`), and finally automatically appends
+    :math:`U^\dagger` (the adjoint of :math:`U`). The resulting circuit
+    fragment is :math:`UVU^\dagger`.
+
+    This is particularly useful for changing the basis of an operation without
+    manually writing the inverse:
 
     Example:
 
         .. code-block:: python
 
             from ket import *
-
             p = Process()
             a, b = p.alloc(2)
+            # CZ gate expressed as H-CNOT-H (change of basis)
+            with around(H, b):
+                CNOT(a, b)  # CNOT in the Z basis becomes CZ in the X basis
 
-            bell = cat(kron(H, I), CNOT)
+    Example with multi-qubit gate:
 
-            with around(bell, a, b): # Apply bell(a, b)
-                X(q)                 # Execute the code block
-                                    # Apply adj(bell)(a, b)
+    .. code-block:: python
+
+        from ket import *
+        p = Process()
+        a, b = p.alloc(2)
+        bell = cat(kron(H, I), CNOT)
+        with around(bell, a, b):  # Apply bell(a, b) = U
+            X(a)                  # V is applied in the Bell basis
+                                  # adj(bell)(a, b) = U† is applied on exit
 
     Args:
-        gate: Quantum gate to apply.
-        *arg: Qubits or classical parameters for the gate.
-        ket_process: Explicitly specify the quantum process. If not provided, the process
-                     is inferred from the qubits.
-        **kwargs: Additional parameters for the quantum gate.
+        gate: The quantum gate :math:`U` to apply before and invert
+            after the body.
+        *args: Positional arguments forwarded to ``gate``.
+        ket_process: Explicitly specify the
+            quantum process. If ``None``, the process is inferred automatically
+            from the qubit arguments.
+        **kwargs: Additional keyword arguments forwarded to ``gate``.
 
+    Raises:
+        RuntimeError: If the body block attempts an operation that violates
+            uncomputation rules (e.g., writing to a blocked auxiliary qubit).
     """
 
-    token = _allow_permutation.set(True)
+    ket_process = search_process(ket_process, args, kwargs)
 
-    ket_process = _search_process(ket_process, args, kwargs)
-    ket_process._blocked_push()
-
-    ket_process.ctrl_stack()
-    try:
+    with ket_process.block_builder(append=False) as compute:
         gate(*args, **kwargs)
-    finally:
-        ket_process.ctrl_unstack()
-        _allow_permutation.reset(token)
+        compute.lock_control()
+
+    proprieties_ptr = compute.proprieties_json()
+    proprieties = json.loads(proprieties_ptr.value)
+    libket["ket_string_delete"](proprieties_ptr)
+
+    blocked_qubits = set()
+    written_qubits = set()
+
+    for target, op in proprieties.items():
+        target = int(target)
+        match op["propriety"]:
+            case "Identity" | "Diagonal":
+                pass
+            case "Permutation":
+                if ket_process._is_aux(target):
+                    blocked_qubits.update(op["read_qubits"])
+                written_qubits.add(target)
+            case "Unitary":
+                if ket_process._is_aux(target):
+                    raise RuntimeError("Operation not allowed on axillary qubit.")
+                written_qubits.add(target)
+
+    allow_approximated_decomposition = True
 
     try:
-        yield
+        with ket_process.block_builder(append=False) as action:
+            yield
+
+        proprieties_ptr = action.proprieties_json()
+        proprieties = json.loads(proprieties_ptr.value)
+        libket["ket_string_delete"](proprieties_ptr)
+
+        for target, op in proprieties.items():
+            target = int(target)
+            if op["propriety"] in ["Permutation", "Unitary"]:
+                if target in blocked_qubits:
+                    raise RuntimeError("Operation violates uncomputation.")
+                if target in written_qubits:
+                    allow_approximated_decomposition = False
+
     finally:
-        ket_process._blocked_pop()
 
-        ket_process._blocked_push()
-        token_adj = _allow_permutation.set(True)
+        if allow_approximated_decomposition:
+            compute.enable_approximated_decomposition()
 
-        ket_process.ctrl_stack()
-        try:
-            adj(gate)(*args, ket_process=ket_process, **kwargs)
-        finally:
-            ket_process.ctrl_unstack()
-            _allow_permutation.reset(token_adj)
-            ket_process._blocked_pop()
+        uncompute = compute.inverse()
+        ket_process.append_block(compute, check_qubits=False)
+        ket_process.append_block(action, check_qubits=False)
+        ket_process.append_block(uncompute, check_qubits=False)
 
 
 def measure(qubits: Quant) -> Measurement:
-    """Measure the given qubits and return a measurement object.
+    """Measure qubits in the computational basis and return a measurement handle.
+
+    Schedules a measurement operation on the given ``qubits``.
+
+    The measured integer represents the bit-string of the qubits in big-endian
+    order: the first qubit in the register is the most significant bit.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            q = p.alloc(2)
+            CNOT(H(q[0]), q[1])   # Bell state
+            result = measure(q)
+            print(result.value)   # 0 or 3 (|00⟩ or |11⟩)
 
     Args:
-        qubits: Qubits to be measured.
+        qubits: The qubits to measure.
 
     Returns:
-        Object representing the measurement results.
+        A handle to the measurement
+        result. Access :attr:`~ket.measurement.Measurement.value` to retrieve
+        the outcome as an unsigned integer, or ``None`` if not yet available.
     """
     if not isinstance(qubits, Quant):
         qubits = reduce(Quant.__add__, qubits)
@@ -571,27 +681,68 @@ def measure(qubits: Quant) -> Measurement:
 
 
 def dump(*qubits: list[Quant]) -> QuantumState:
-    """Obtain the quantum state snapshot.
+    """Capture a full quantum state snapshot of the given qubit registers.
+
+    Returns a :class:`~ket.quantumstate.QuantumState` object containing the
+    probability amplitudes of every basis state with non-zero amplitude. This
+    operation is only supported by simulators and is not available on real
+    quantum hardware.
+
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            q = p.alloc(2)
+            CNOT(H(q[0]), q[1])    # Bell state
+            state = dump(q)
+            print(state.states)    # {0: (0.707..+0j), 3: (0.707..+0j)}
+            print(state.show())    # pretty printed state
 
     Args:
-        qubits: Qubits to be observed.
+        *qubits: One or more qubit registers
+            to capture. Multiple registers are shown as separate ket labels.
 
     Returns:
-        Object representing the quantum state.
+        A snapshot of the current
+        quantum state, mapping basis state integers to their complex amplitudes.
     """
 
     return QuantumState(*qubits)
 
 
 def sample(qubits: Quant, shots: int = 2048) -> Samples:
-    """Get the quantum state measurement samples.
+    """Sample the measurement outcomes of a quantum state over multiple shots.
+
+    Runs the circuit ``shots`` times (or simulates doing so) and returns
+    the empirical outcome distribution as a :class:`~ket.measurement.Samples`
+    object. Unlike :func:`~ket.operations.measure`, which collapses the state
+    to a single outcome, ``sample`` accumulates counts over many simulated
+    shots.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            q = p.alloc(2)
+            CNOT(H(q[0]), q[1])   # Bell state
+            results = sample(q, shots=4096)
+            print(results.value)  # e.g., {0: 2051, 3: 2045}
+            print(results.probability)  # normalized probabilities
 
     Args:
-        qubits: Qubits to be measured.
-        shots: Number of measurement shots.
+        qubits: The qubits to sample.
+        shots: Number of measurement repetitions (shots). Defaults to
+            ``2048``.
 
     Returns:
-        Object representing the measurement samples.
+        A handle to the sample result,
+        mapping measurement outcome integers to their counts. Returns ``None``
+        if the result is not yet available (batch mode).
     """
     if not isinstance(qubits, Quant):
         qubits = reduce(Quant.__add__, qubits)
@@ -604,33 +755,87 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
 
 
 def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
-    """Calculate the expected value for a quantum state.
+    """Calculate the expectation value of a Hamiltonian for the current quantum state.
+
+    Registers an expectation-value computation for the given Hamiltonian or
+    Pauli operator. In **live** execution mode the result is computed
+    immediately; in **batch** mode it is deferred until execution.
+
+    The Hamiltonian should be constructed using the :func:`~ket.gates.obs`
+    context manager and the Pauli gate functions (:func:`~ket.gates.X`,
+    :func:`~ket.gates.Y`, :func:`~ket.gates.Z`).
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            p = Process()
+            q = p.alloc(2)
+            CNOT(H(q[0]), q[1])    # Prepare |Bell⟩
+            with obs():
+                h = X(q[0]) * X(q[1])   # XX observable
+            ev = exp_value(h)
+            print(ev.get())    # ⟨Bell|XX|Bell⟩ = 1.0
 
     Args:
-        hamiltonian: Hamiltonian or Pauli operator for calculating the expected value.
+        hamiltonian:
+            The observable to evaluate.
 
     Returns:
-        Object representing the expected value.
+        A handle to the expectation value result.
+        Access :attr:`~ket.expv.ExpValue.value` or call ``.get()`` to retrieve
+        the result as a ``float``.
     """
     return ExpValue(hamiltonian)
 
 
-_unsafe_aux = contextvars.ContextVar("unsafe_aux", default=False)
-
-
 def using_aux(unsafe: bool = False, **names):
-    """Add axillary qubits to a quantum gate.
+    """Decorator factory that automatically allocates auxiliary qubits for a gate.
+
+    Wraps a gate function so that one or more auxiliary (ancilla) qubit
+    arguments are allocated automatically by the process, rather than
+    requiring the caller to manage them. The allocated qubits are passed as
+    keyword arguments to the wrapped function.
+
+    Each entry in ``names`` maps an argument name to the number of auxiliary
+    qubits to allocate. The count can be either a fixed ``int`` or a
+    ``Callable`` that accepts a subset of the gate's other arguments
+    (by name) and returns the desired qubit count.
+
+    When ``unsafe=True``, the gate body is executed inside a
+    :meth:`~ket.base.Process.block_builder` marked as diagonal, which
+    disables some safety checks. This is only appropriate for operations
+    that are provably diagonal in the computational basis.
 
     Example:
-            .. code-block:: python
 
-                @using_aux(a=lambda c: 0 if len(c) <= 2 else 1)
-                def v_chain(c, t, a):
-                    if len(c) <= 2:
-                        ctrl(c, X)(t)
-                    else:
-                        with around(ctrl(c[:2], X), a):
-                            v_chain(a + c[2:], t)
+        .. code-block:: python
+
+            from ket import *
+            @using_aux(a=lambda c: 0 if len(c) <= 2 else 1)
+            def v_chain(c, t, a=None):
+                # Multi-controlled X using a V-chain ancilla.
+                if len(c) <= 2:
+                    ctrl(c, X)(t)
+                else:
+                    with around(ctrl(c[:2], X), a):
+                        v_chain(a + c[2:], t)
+            p = Process()
+            c = p.alloc(4)  # 4 control qubits
+            t = p.alloc()   # 1 target qubit
+            v_chain(c=c, t=t)   # ancilla allocated automatically
+
+    Args:
+        unsafe: If ``True``, mark the operation as diagonal, skipping
+            certain uncomputation safety checks. Defaults to ``False``.
+        **names: Keyword arguments mapping parameter names (``str``) to the
+            number of auxiliary qubits needed (``int``), or a callable that
+            computes the count from other gate arguments.
+
+    Returns:
+        A decorator that wraps a gate function with automatic
+        auxiliary qubit allocation.
     """
 
     def inner(func):
@@ -638,7 +843,7 @@ def using_aux(unsafe: bool = False, **names):
 
         @wraps(func)
         def call(*args, ket_process: Process | None = None, **kwargs):
-            ket_process = _search_process(ket_process, args, kwargs)
+            ket_process = search_process(ket_process, args, kwargs)
 
             kwargs_ex = {**kwargs, **dict(zip(param, args))}
 
@@ -664,13 +869,10 @@ def using_aux(unsafe: bool = False, **names):
 
                 kwargs[name] = ket_process.alloc_aux(num_qubits)
 
-            token = _unsafe_aux.set(unsafe)
-            try:
-                ret = func(*args, **kwargs)
-            finally:
-                _unsafe_aux.reset(token)
-
-            return ret
+            if unsafe:
+                with ket_process.block_builder(diagonal=True):
+                    return func(*args, **kwargs)
+            return func(*args, **kwargs)
 
         return call
 
@@ -678,26 +880,50 @@ def using_aux(unsafe: bool = False, **names):
 
 
 def kernel(*p_args, **p_kwargs):
-    """Quantum kernel decorator.
+    """Decorator factory for self-contained, reusable quantum kernel functions.
+
+    Creates a two-level decorator that:
+
+    1. Accepts :class:`~ket.base.Process` constructor arguments (``*p_args``,
+       ``**p_kwargs``).
+    2. Returns an inner decorator that maps named parameters to qubit allocations
+       and wraps a Python function as a standalone quantum kernel.
+
+    Each call to the resulting kernel function creates a **fresh**
+    :class:`~ket.base.Process`, allocates the declared qubits, calls the
+    function body, and returns its return value. This makes kernels ideal for
+    benchmarking, unit testing, or defining reusable quantum subroutines that
+    always start from a clean state.
 
     Example:
+
         .. code-block:: python
 
-            @kernel(num_qubits=2, execution="batch")(a=1, b=1)
-            def bell(a, b):
-                X(a + b)
+            from math import sqrt, pi
+            from ket import *
+            # A kernel that measures ⟨CHSH⟩ for a Bell state.
+            @kernel(num_qubits=2, simulator="dense")(a=1, b=1)
+            def bell_chsh(a, b):
                 CNOT(H(a), b)
-
                 with obs():
                     a0 = Z(a)
                     a1 = X(a)
                     b0 = -(X(b) + Z(b)) / sqrt(2)
-                    b1 = (X(b) - Z(b)) / sqrt(2)
+                    b1 =  (X(b) - Z(b)) / sqrt(2)
                     h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
-
                 return exp_value(h).get()
+            print(bell_chsh())   # Approx. 2√2 ≈ 2.828
 
-            print(bell())
+    Args:
+        *p_args: Positional arguments forwarded to the :class:`~ket.base.Process`
+            constructor (e.g., ``simulator="dense"``).
+        **p_kwargs: Keyword arguments forwarded to the :class:`~ket.base.Process`
+            constructor (e.g., ``num_qubits=4``, ``execution="batch"``).
+
+    Returns:
+        A decorator that accepts ``**names`` (parameter-name to
+        qubit-count mappings) and returns a decorator that wraps a quantum
+        function as a self-contained kernel.
     """
 
     def make_process(**names):

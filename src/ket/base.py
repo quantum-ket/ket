@@ -16,22 +16,26 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from collections import Counter
-from ctypes import c_size_t, c_uint8, c_void_p
+from collections import defaultdict
+from contextlib import contextmanager
+from ctypes import c_void_p
 from functools import partial
-from json import loads
-from typing import Literal, Optional, Any, Iterable
+import json
+from typing import Literal, Optional, Any
 import weakref
 
 from .clib.libket import (
+    Block,
     HasProcess,
-    LiveExecution,
     Process as LibketProcess,
-    BatchExecution,
+    API as libket,
 )
+
+from .clib.libket.execution import LiveExecution, BatchExecution
+
 from .clib.kbw import get_simulator
 
-__all__ = ["Process", "Quant"]
+__all__ = ["Process", "Quant", "Parameter"]
 
 
 class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
@@ -48,7 +52,6 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         .. code-block:: python
 
             from ket import Process
-
             p = Process()
             qubits = p.alloc(10)  # Allocate 10 qubits
 
@@ -78,16 +81,11 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
     .. code-block:: python
 
         from ket import *
-
         p = Process(execution="batch")
         a, b = p.alloc(2)
-
         CNOT(H(a), b)  # Prepare a Bell state
-
         d = sample(a + b)
-
         print(d.get())  # Execution happens here
-
         CNOT(a, b)  # Raises an error: process already executed
 
     Live Execution Example:
@@ -97,11 +95,8 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         from ket import *
         p = Process(execution="live")
         a, b = p.alloc(2)
-
         CNOT(H(a), b)  # Prepare a Bell state
-
         print(sample(a + b).get())  # Output is available immediately
-
         CNOT(a, b)
         H(a)
         print(sample(a + b).get())
@@ -152,7 +147,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             self.configuration = execution_target
             ptr = self.configuration.connect()
             assert isinstance(ptr, c_void_p)
-            super().__init__(self, ptr)
+            super().__init__(ptr)
         else:
             simulator = "sparse" if simulator is None else simulator
             num_qubits = (
@@ -161,7 +156,6 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 else num_qubits
             )
             super().__init__(
-                self,
                 get_simulator(
                     num_qubits=num_qubits,
                     simulator=simulator,
@@ -171,52 +165,48 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 ),
             )
 
-        self._aux_pool = []
+        self._exp_value_count = 0
+        self._exp_values = None
+
+        self._qubit_pool = []
         self._aux = set()
+        self._blocked_qubits = defaultdict(int)
 
-        self._blocked = []
-        self._blocked_counter = Counter()
+        self._blocks = []
+        self._is_diagonal = 0
+        self._is_permutation = 0
 
-        self._ctrl_buffer_size = 512
-        self._ctrl_buffer = (c_size_t * self._ctrl_buffer_size)()
-        self._metadata_buffer_size = 512
-        self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
-        self._buffer_size = 2048
-        self._buffer = (c_uint8 * self._buffer_size)()
+    def _block_qubits(self, qubits):
+        for q in qubits:
+            self._blocked_qubits[q] += 1
+
+    def _unblock_qubits(self, qubits):
+        for q in qubits:
+            self._blocked_qubits[q] -= 1
+            if self._blocked_qubits[q] == 0:
+                del self._blocked_qubits[q]
+
+    def _get_exp_value_index(self) -> int:
+        index = self._exp_value_count
+        self._exp_value_count += 1
+        return index
+
+    def _get_exp_value(self, index, execute=False):
+        if execute:
+            self.execute()
+            result_ptr = self.read_exp_value()
+            self._exp_values = json.loads(result_ptr.value.decode("utf-8"))
+            libket["ket_string_delete"](result_ptr)
+
+        if self._exp_values is None:
+            return None
+
+        return self._exp_values[index]
 
     def _alloc(self) -> int:
-        if self._aux_pool:
-            return self._aux_pool.pop(0)
-        return self.allocate_qubit().value
-
-    def _blocked_push(self):
-        self._blocked.append(set())
-
-    def _blocked_pop(self) -> set[int]:
-        """Remove and return the last blocked set from the stack."""
-        return self._blocked.pop()
-
-    def _block_qubits(self, qubits: Iterable[int]):
-        """Increment the reference block counter for the given qubits."""
-        for q in qubits:
-            self._blocked_counter[q] += 1
-
-    def _unblock_qubits(self, qubits: Iterable[int]):
-        """Decrement the reference block counter for the given qubits."""
-        for q in qubits:
-            self._blocked_counter[q] -= 1
-            if self._blocked_counter[q] <= 0:
-                del self._blocked_counter[q]
-
-    def _block_ctrl(self):
-        if self._blocked:
-            self._blocked[-1].update(self._ctrl_list())
-
-    def _is_blocked(self, index: int) -> bool:
-        """Check if a qubit is blocked either by scope stack or by reference counter."""
-        return (index in self._blocked_counter) or any(
-            index in blocked for blocked in self._blocked
-        )
+        if self._qubit_pool:
+            return self._qubit_pool.pop(0)
+        return super().__getattr__("alloc")().value
 
     def _is_aux(self, index):
         return index in self._aux
@@ -229,11 +219,13 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         reference to the parent :class:`~ket.base.Process` object.
 
         Example:
-            >>> from ket import Process
-            >>> p = Process()
-            >>> qubits = p.alloc(3)
-            >>> print(qubits)
-            <Ket 'Quant' [0, 1, 2] pid=0x...>
+            .. code-block:: python
+
+                from ket import Process
+                p = Process()
+                qubits = p.alloc(3)
+                print(qubits)
+                # <Ket 'Quant' [0, 1, 2] pid=0x...>
 
 
         Args:
@@ -250,17 +242,44 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         return Quant(qubits=qubits_index, process=self)
 
     def alloc_aux(self, num_qubits: int = 1) -> Quant:
-        """Allocate axillary qubits"""
+        """Allocate auxiliary qubits managed by the process for uncomputation.
+
+        Auxiliary (ancilla) qubits are temporary qubits used in intermediate
+        computation steps, such as in multi-controlled gates or temporary
+        registers. The process tracks them separately and prevents accidental
+        measurement. When the returned :class:`~ket.base.Quant` object goes out
+        of scope or is used as a context manager, the auxiliary qubits are
+        automatically freed and returned to the internal qubit pool for reuse.
+
+        The recommended usage is as a context manager with the ``with`` statement:
+
+        Example:
+            .. code-block:: python
+
+                from ket import Process, ctrl, X
+                p = Process()
+                c, t = p.alloc(), p.alloc()
+                with p.alloc_aux() as aux:         # aux is freed on exit
+                    with around(ctrl(c, X), aux):  # use aux as intermediate
+                        ctrl(aux, X)(t)            # fanout to target
+
+        Args:
+            num_qubits: The number of auxiliary qubits to allocate.
+                Defaults to 1.
+
+        Returns:
+            A :class:`~ket.base.Quant` object containing
+            the auxiliary qubits. It supports use as a context manager: on exit
+            the qubits are returned to the qubit pool.
+
+        Raises:
+            ValueError: If ``num_qubits`` is less than 1.
+        """
         if num_qubits < 1:
             raise ValueError("Cannot allocate less than 1 qubit")
 
-        while len(self._aux_pool) < num_qubits:
-            self._aux_pool.append(self.allocate_qubit().value)
+        aux_index = [self._alloc() for _ in range(num_qubits)]
 
-        aux_index, self._aux_pool = (
-            self._aux_pool[:num_qubits],
-            self._aux_pool[num_qubits:],
-        )
         self._aux.update(aux_index)
 
         return Quant(
@@ -274,151 +293,45 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             raise RuntimeError("Cannot free an non-auxiliary qubit")
 
         self._aux.difference_update(qubits)
-        self._aux_pool.extend(qubits)
+        self._qubit_pool.extend(qubits)
 
-    def get_instructions(self) -> list[dict]:
-        """Retrieve quantum instructions from the process.
+    def param(self, *param: float) -> list[Parameter] | Parameter:
+        """Register one or more differentiable parameters for gradient computation.
 
-        The format of the instructions is defined in the runtime library Libket.
+        Each numeric value is wrapped in a :class:`~ket.base.Parameter` object
+        that can be scaled (via multiplication or division) and passed directly
+        to parameterized gates such as :func:`~ket.gates.RX`, :func:`~ket.gates.RY`,
+        or :func:`~ket.gates.P`. After circuit execution, the gradient of the
+        expected value with respect to each parameter can be retrieved via
+        :attr:`~ket.base.Parameter.grad`.
 
-        Example:
-            >>> from ket import *
-            >>> p = Process()
-            >>> a, b = p.alloc(2)
-            >>> CNOT(H(a), b)
-            >>> # Get quantum instructions
-            >>> instructions = p.get_instructions()
-            >>> pprint(instructions)
-            [{'Gate': {'control': [],
-                       'gate': 'Hadamard',
-                       'target': {'Main': {'index': 0}}}},
-             {'Gate': {'control': [{'Main': {'index': 0}}],
-                       'gate': 'PauliX',
-                       'target': {'Main': {'index': 1}}}}]
-
-
-        Returns:
-            A list of dictionaries containing quantum instructions extracted from the process.
-        """
-        while True:
-            write_size = self.instructions_json(self._buffer, self._buffer_size)
-            if write_size.value <= self._buffer_size:
-                break
-            self._buffer_size = write_size.value + 1
-            self._buffer = (c_uint8 * self._buffer_size)()
-
-        return loads(bytearray(self._buffer[: write_size.value]))
-
-    def get_mapped_instructions(self) -> list[dict] | None:
-        """Retrieve quantum instructions after the circuit mapping.
-
-        The format of the instructions is defined in the runtime library Libket.
-
-        The instructions are extracted after the circuit mapping step, which is
-        performed during the compilation process. A qubit coupling graph must be passed to the
-        process for the quantum circuit mapping to happen. Note that at this point, the single
-        qubit gates have not been translated to the native gate set of the quantum hardware yet.
+        .. note::
+            Gradient computation requires creating the process with
+            ``gradient=True``.
 
         Example:
+            .. code-block:: python
 
-            >>> n = 4
-            >>> coupling_graph = [(0, 1), (1, 2), (2, 3), (3, 0)]
-            >>> p = Process(num_qubits=n, coupling_graph=coupling_graph)
-            >>> q = p.alloc(n)
-            >>> ctrl(H(q[0]), X)(q[1:])
-            >>> m = measure(q)
-            >>> p.prepare_for_execution()
-            >>> pprint(p.get_mapped_instructions())
-            [{'Gate': {'control': [], 'gate': 'Hadamard', 'target': {'index': 0}}},
-             {'Gate': {'control': [{'index': 0}],
-                       'gate': 'PauliX',
-                       'target': {'index': 1}}},
-             'Identity',
-             {'Gate': {'control': [{'index': 3}],
-                       'gate': 'PauliX',
-                       'target': {'index': 0}}},
-             {'Gate': {'control': [{'index': 0}],
-                       'gate': 'PauliX',
-                       'target': {'index': 3}}},
-             {'Gate': {'control': [{'index': 3}],
-                       'gate': 'PauliX',
-                       'target': {'index': 2}}},
-             {'Measure': {'index': 0,
-                          'qubits': [{'index': 3},
-                                     {'index': 1},
-                                     {'index': 0},
-                                     {'index': 2}]}}]
-
-
-        Returns:
-            A list of dictionaries containing quantum instructions extracted from the process
-            if the process has been transpiled, otherwise None.
-
-        """
-        while True:
-            write_size = self.isa_instructions_json(self._buffer, self._buffer_size)
-            if write_size.value <= self._buffer_size:
-                break
-            self._buffer_size = write_size.value + 1
-            self._buffer = (c_uint8 * self._buffer_size)()
-
-        return loads(bytearray(self._buffer[: write_size.value]))
-
-    def get_metadata(self) -> dict[str, Any]:
-        """Retrieve metadata from the quantum process.
-
-        Example:
-
-            >>> n = 4
-            >>> coupling_graph = [(0, 1), (1, 2), (2, 3), (3, 0)]
-            >>> p = Process(num_qubits=n, coupling_graph=coupling_graph)
-            >>> q = p.alloc(n)
-            >>> ctrl(H(q[0]), X)(q[1:])
-            >>> m = measure(q)
-            >>> p.prepare_for_execution()
-            >>> pprint(p.get_mapped_instructions())
-            {'allocated_qubits': 4,
-             'decomposition': {'NoAuxCX': 3},
-             'logical_circuit_depth': 3,
-             'logical_gate_count': {'1': 1, '2': 3},
-             'physical_circuit_depth': 5,
-             'physical_gate_count': {'1': 1, '2': 4},
-             'terminated': True}
-
-
-        Returns:
-            A dictionary containing metadata information extracted from the process.
-
-        """
-        while True:
-            write_size = self.metadata_json(
-                self._metadata_buffer, self._metadata_buffer_size
-            )
-            if write_size.value <= self._metadata_buffer_size:
-                break
-            self._metadata_buffer_size = write_size.value + 1
-            self._metadata_buffer = (c_uint8 * self._metadata_buffer_size)()
-
-        return loads(bytearray(self._metadata_buffer[: write_size.value]))
-
-    def _ctrl_list(self) -> list[int]:
-        while True:
-            write_size = self.get_ctrl(self._ctrl_buffer, self._ctrl_buffer_size)
-            if write_size.value <= self._ctrl_buffer_size:
-                break
-            self._ctrl_buffer_size = write_size.value + 1
-            self._ctrl_buffer = (c_uint8 * self._ctrl_buffer_size)()
-
-        return self._ctrl_buffer[: write_size.value]
-
-    def param(self, *param) -> list[Parameter] | Parameter:
-        """Register a parameter for gradient calculation.
+                from math import pi
+                from ket import Process, RX, exp_value
+                from ket.gates import obs
+                import ket
+                p = Process(gradient=True)
+                theta = p.param(pi / 4)
+                q = p.alloc()
+                RX(theta, q)
+                with obs():
+                    h = ket.Z(q)
+                ev = ket.exp_value(h)
+                ev.get()        # trigger execution
+                theta.grad      # d<Z>/d(theta)
 
         Args:
-            *param: Variable-length argument list of floats.
+            *param: One or more initial float values for the parameters.
 
         Returns:
-            A list of :class:`~ket.base.Parameter` objects.
+            A single :class:`~ket.base.Parameter` if one value is provided,
+            otherwise a list of :class:`~ket.base.Parameter` objects.
         """
         parameters = [
             Parameter(process=self, index=self.set_parameter(p).value, value=p)
@@ -430,6 +343,148 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
     def __repr__(self) -> str:
         return f"<Ket 'Process' id={hex(id(self))}>"
+
+    def gates(self):
+        """Return the gate sequence of the process as a parsed JSON object.
+
+        Serializes the internal circuit representation into a JSON-compatible
+        Python object (typically a list of gate dictionaries). This is primarily
+        used for inspection, debugging, or exporting the circuit.
+
+        Returns:
+            A JSON-parsed object representing the gate sequence of the
+            current process.
+
+        Example:
+            .. code-block:: python
+
+                from ket import Process, H, X
+                p = Process()
+                q = p.alloc(2)
+                H(q[0])
+                X(q[1])
+                circuit = p.gates()
+                print(type(circuit))
+                # <class 'list'>
+        """
+        block_str = self.gates_json()
+        block = json.loads(block_str.value)
+        libket["ket_string_delete"](block_str)
+        return block
+
+    def append_block(self, block, check_qubits=True):
+        """Append a pre-built gate block to the process circuit.
+
+        .. caution::
+            This is an internal method and is not intended for direct use by
+            library consumers. Use quantum gate functions instead.
+
+        If there is a currently active nested block (e.g., inside a
+        :meth:`~ket.base.Process.block_builder` context), the block is appended
+        to the innermost active block. Otherwise, it is appended directly to the
+        process circuit.
+
+        When ``check_qubits`` is ``True`` (the default), the method validates that
+        no uncomputation rules are violated, for example, it prevents applying
+        non-diagonal operations to auxiliary qubits that are currently blocked.
+
+
+        Args:
+            block: The compiled gate block to append.
+            check_qubits: If ``True``, validate qubit operation rules
+                before appending. Defaults to ``True``.
+
+        Raises:
+            RuntimeError: If ``check_qubits`` is ``True`` and the block contains
+                an operation that violates uncomputation constraints.
+        """
+        if self._blocks:
+            self._blocks[-1].append_block(block.take())
+        else:
+            if check_qubits:
+                proprieties_json_ptr = block.proprieties_json()
+                proprieties = json.loads(proprieties_json_ptr.value)
+                libket["ket_string_delete"](proprieties_json_ptr)
+
+                for target, op in proprieties.items():
+                    target = int(target)
+                    if (op["propriety"] in ["Permutation", "Unitary"]) and (
+                        (target in self._blocked_qubits) or self._is_aux(target)
+                    ):
+                        raise RuntimeError("Operation violates uncomputation.")
+            super().__getattr__("append_block")(block.take())
+
+    @contextmanager
+    def block_builder(
+        self,
+        inverse=False,
+        control: list[int] | None = None,
+        append: bool = True,
+        diagonal=False,
+        permutation=False,
+    ):
+        """Context manager for constructing and optionally appending a gate block.
+
+        .. caution::
+            This is an internal method. Prefer using the high-level gate API and
+            context managers (:func:`~ket.operations.control`,
+            :func:`~ket.operations.inverse`, :func:`~ket.operations.around`).
+
+        All quantum operations performed inside the ``with`` block are collected
+        into a single circuit ``Block`` object. On exit, the block can optionally
+        be inverted, wrapped in a controlled operation, and/or appended to the
+        process circuit.
+
+        This is the primary building primitive used internally by gate functions
+        and higher-level operations like :func:`~ket.operations.around` and
+        :func:`~ket.operations.inverse`.
+
+
+        Args:
+            inverse: If ``True``, invert the block before appending.
+                Defaults to ``False``.
+            control: If provided, wrap the block in a
+                multi-qubit controlled operation on the specified qubit indices.
+                Defaults to ``None``.
+            append: If ``True``, append the block to the process circuit
+                on exit. Set to ``False`` to obtain the block without appending
+                it. Defaults to ``True``.
+            diagonal: If ``True``, mark the block as a diagonal operation.
+                Defaults to ``False``.
+            permutation: If ``True``, mark the block as a permutation
+                operation. Defaults to ``False``.
+
+        Yields:
+            Block: The in-progress gate block being constructed.
+        """
+        block = Block(self)
+        self._blocks.append(block)
+        if diagonal:
+            self._is_diagonal += 1
+        elif permutation:
+            self._is_permutation += 1
+
+        try:
+            yield block
+        finally:
+            if inverse:
+                block.set(block.inverse())
+            if control is not None:
+                block.set(block.control(control))
+
+            if self._is_diagonal > 0:
+                block.set_as_diagonal()
+            elif self._is_permutation > 0:
+                block.set_as_permutation()
+
+            if diagonal:
+                self._is_diagonal -= 1
+            elif permutation:
+                self._is_permutation -= 1
+
+            self._blocks.pop()
+            if append:
+                self.append_block(block)
 
 
 class Quant(HasProcess):
@@ -444,32 +499,28 @@ class Quant(HasProcess):
 
     Example:
 
-        .. code-block:: py
+        .. code-block:: python
 
             from ket import *
             # Create a quantum process
             p = Process()
-
             # Allocate 2 qubits
             q1 = p.alloc(2)
-
             # Apply a Hadamard gates on the first qubit of `q1`
             H(q1[0])
-
             # Allocate more 2 qubits
             q2 = p.alloc(2)
-
             # Concatenate two Quant objects
             result_quant = q1 + q2
-            print(result_quant)  # <Ket 'Quant' [0, 1, 2, 3] pid=0x...>
-
+            print(result_quant)
+            # <Ket 'Quant' [0, 1, 2, 3] pid=0x...>
             # Use the fist qubit to control the application of
             # a Pauli X gate on the other qubits
             ctrl(result_quant[0], X)(result_quant[1:])
-
             # Select qubits at specific indexes
             selected_quant = result_quant.at([0, 1])
-            print(selected_quant)  # <Ket 'Quant' [0, 1] pid=0x...>
+            print(selected_quant)
+            # <Ket 'Quant' [0, 1] pid=0x...>
 
     Supported operations:
 
@@ -493,6 +544,34 @@ class Quant(HasProcess):
         self.source = source
 
     def __add__(self, other: Quant) -> Quant:
+        """Concatenate two :class:`~ket.base.Quant` objects into a single register.
+
+        Creates a new :class:`~ket.base.Quant` whose qubit list is the ordered
+        concatenation of ``self`` followed by ``other``. Both objects must belong
+        to the same :class:`~ket.base.Process` and must not share any qubit indices.
+
+        Example:
+            .. code-block:: python
+
+                from ket import Process
+                p = Process()
+                q1 = p.alloc(2)
+                q2 = p.alloc(2)
+                combined = q1 + q2
+                print(len(combined))
+                # 4
+
+        Args:
+            other: The qubit register to append.
+
+        Returns:
+            A new register containing all qubits from
+            ``self`` followed by all qubits from ``other``.
+
+        Raises:
+            ValueError: If ``other`` belongs to a different process, or if the
+                two registers share any qubit indices.
+        """
         if not isinstance(other, Quant):
             return NotImplemented
         if self.ket_process is not other.ket_process:
@@ -513,16 +592,13 @@ class Quant(HasProcess):
 
         Example:
 
-            .. code-block:: py
+            .. code-block:: python
 
                 from ket import *
-
                 # Create a quantum process
                 p = Process()
-
                 # Allocate 5 qubits
                 q = p.alloc(5)
-
                 # Select qubits at odd indices (1, 3)
                 odd_qubits = q.at([1, 3])
 
@@ -577,43 +653,91 @@ class Quant(HasProcess):
             self._finalizer()
 
     def as_int(self, number: int = 0):
-        """Interprets and initializes the quantum register as a quantum integer.
+        """Interpret and initialize this quantum register as a quantum integer.
+
+        Wraps the register as a :class:`~ket.qint.Qint`, enabling quantum
+        arithmetic operations (addition, subtraction, comparison, etc.) on the
+        underlying qubits. The register is initialized to the given classical
+        integer value using :func:`~ket.gates.X` gates.
+
+        The :class:`~ket.qint.Qint` uses a two's-complement signed representation
+        internally.
+
+        Example:
+            .. code-block:: python
+
+                from ket import Process, measure
+                p = Process()
+                q = p.alloc(5)
+                qi = q.as_int(5)    # register initialized to |5⟩
+                qi += 3             # in-place addition: |5⟩ → |8⟩
+                print(measure(qi).value)
+                # 8
 
         Args:
-            number: The initial classical integer value to set the quantum
-                register to. Defaults to 0.
+            number: The initial classical integer value to encode into the
+                quantum register. Defaults to ``0``.
 
         Returns:
-            :class:`~ket.qint.Qint`: A quantum integer data
-            structure wrapping this register.
+            A quantum integer wrapping this register,
+            initialized to ``number``.
         """
         from .qint import Qint  # pylint: disable=import-outside-toplevel,cyclic-import
 
         return Qint(self, number)
 
     def as_real(self, exp: int, number: float = 0.0):
-        r"""Interprets and initializes the quantum register as a fixed-point quantum real.
+        r"""Interpret and initialize this quantum register as a fixed-point quantum real number.
 
-        The real number is represented internally as an integer scaled by :math:`2^\texttt{exp}`.
-        A positive exponent provides fractional precision, while a negative exponent
-        allows representing larger numbers at the cost of fine-grained precision.
+        Wraps the register as a :class:`~ket.qint.Qreal`, enabling quantum
+        arithmetic operations on floating-point values encoded in a fixed-point
+        binary representation.
+
+        The real number is stored internally as an integer scaled by
+        :math:`2^{\texttt{exp}}`:
+
+        - A **positive** ``exp`` increases fractional precision (smaller representable
+          step size of :math:`2^{-\texttt{exp}}`).
+        - A **negative** ``exp`` increases the representable magnitude at the cost of
+          precision.
+
+        Example:
+            .. code-block:: python
+
+                from ket import Process, measure
+                p = Process()
+                q = p.alloc(8)         # 8 qubits for fixed-point
+                qr = q.as_real(4, 1.5) # precision: 1/16, initialized to 1.5
+                qr += 0.25             # in-place addition
+                print(measure(qr).value)
+                # 1.75
 
         Args:
-            exp: The exponent defining the fixed-point scale (value x 2**exp).
-            number: The initial classical float value to set the quantum register to.
-                Defaults to 0.0.
+            exp: The exponent defining the fixed-point scale. The stored
+                integer ``n`` represents the real value ``n / 2**exp``.
+            number: The initial classical float value to encode into the
+                quantum register. Defaults to ``0.0``.
 
         Returns:
-            :class:`~ket.qint.Qreal`: A quantum real number data structure wrapping this register.
+            A quantum real number wrapping this register,
+            initialized to ``number``.
         """
         from .qint import Qreal  # pylint: disable=import-outside-toplevel,cyclic-import
 
         return Qreal(self, exp, number)
 
     def dump_format(self):
-        """Format for dump.
+        """Return the state-formatting callable used by :func:`~ket.operations.dump`.
 
-        Used internally em calling :func:`~ket.operations.dump`.
+        Provides a function that converts a raw integer basis-state index into a
+        zero-padded binary string of the correct width for this register. This is
+        used internally by :class:`~ket.quantumstate.QuantumState` to display
+        multi-register states with per-register labels.
+
+        Returns:
+            A function that accepts an integer basis-state
+            value and returns its binary string representation (zero-padded to
+            ``len(self)`` bits).
         """
 
         def dump_format(size, state):
@@ -626,10 +750,28 @@ class Quant(HasProcess):
 
 
 class Parameter(HasProcess):
-    """Parameter for gradient calculation.
+    """A differentiable scalar parameter for variational quantum circuits.
 
-    This class represents a parameter for gradient calculation in a quantum process. It should not
-    be instanced directly, but rather obtained from the :meth:`~ket.base.Process.param`  method.
+    This class wraps a floating-point value and registers it with a
+    :class:`~ket.base.Process` so that the runtime can compute analytical
+    gradients (e.g., using the parameter-shift rule). It supports scalar
+    arithmetic (``*``, ``/``, unary ``-``) so that a single registered
+    parameter can be reused across multiple gates with different multipliers.
+
+    .. important::
+        Do not instantiate this class directly. Obtain :class:`~ket.base.Parameter`
+        objects from :meth:`~ket.base.Process.param`.
+
+    Example:
+        .. code-block:: python
+
+            from math import pi
+            from ket import Process, RX, RZ
+            p = Process(gradient=True)
+            theta = p.param(pi / 3)
+            q = p.alloc()
+            RX(theta, q)       # use the parameter directly
+            RZ(theta / 2, q)   # reuse with a scaled copy
     """
 
     def __init__(self, process, index, value, multiplier=1):
@@ -678,17 +820,53 @@ class Parameter(HasProcess):
 
     @property
     def value(self) -> float:
-        """Retrieve the parameter actual value."""
+        """The effective (scaled) value of this parameter.
+
+        Returns the product of the original registered value and any
+        multiplier applied via arithmetic operators.
+
+        Returns:
+            ``param * multiplier``.
+        """
         return self._param * self._multiplier
 
     @property
     def param(self) -> float:
-        """Retrieve the original value of the parameter."""
+        """The original, unscaled value as registered with the process.
+
+        Returns:
+            The raw value passed when creating this parameter via
+            :meth:`~ket.base.Process.param`.
+        """
         return self._param
 
     @property
     def grad(self) -> float | None:
-        """Retrieve the gradient value if available."""
+        """The gradient of the circuit output with respect to this parameter.
+
+        Lazily fetched from the process after circuit execution. Returns
+        ``None`` if the gradient has not yet been computed (i.e., the process
+        has not executed) or if gradient computation was not enabled on the
+        :class:`~ket.base.Process`.
+
+        Returns:
+            The gradient value, or ``None`` if unavailable.
+
+        Example:
+            .. code-block:: python
+
+                from math import pi
+                import ket
+                p = ket.Process(gradient=True)
+                theta = p.param(pi / 4)
+                q = p.alloc()
+                ket.RX(theta, q)
+                with ket.gates.obs():
+                    h = ket.Z(q)
+                ev = ket.exp_value(h)
+                ev.get()         # execute and retrieve expected value
+                print(theta.grad)  # d<Z>/d(theta)
+        """
         if self._gradient is None:
             available, value = self.ket_process.get_gradient(self._index)
             if available.value:

@@ -102,8 +102,8 @@ def test_v_chain_clean_decomposition():
         num_qubits=(c, 1),
         process=Process(
             num_qubits=n,
-            coupling_graph=[(i, j) for i in range(n) for j in range(i)],
             simulator="sparse",
+            execution="live",
         ),
     )
     assert validate_decomposition(dumped, GATES["X"][1])
@@ -137,8 +137,8 @@ def test_v_chain_dirty_decomposition():
         num_qubits=(c, 1),
         process=Process(
             num_qubits=n,
-            coupling_graph=[(i, j) for i in range(n) for j in range(i)],
             simulator="sparse",
+            execution="live",
         ),
     )
     assert validate_decomposition(dumped, GATES["X"][1])

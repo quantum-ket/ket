@@ -1,4 +1,51 @@
-"""Quantum integer data structure."""
+"""Quantum integer and fixed-point real number data structures.
+
+This module provides :class:`~ket.qint.Qreal` and :class:`~ket.qint.Qint`,
+two high-level quantum data structures that wrap a :class:`~ket.base.Quant`
+register and expose Python-style arithmetic operators as quantum operations.
+
+Both types use a **QFT-based arithmetic** approach:
+
+- In-place addition/subtraction are implemented via phase rotations in the
+  Quantum Fourier Transform basis.
+- Quantum comparisons (:meth:`~ket.qint.Qreal.__lt__`, etc.) produce
+  ancilla qubit results that are cleaned up automatically via
+  :func:`~ket.operations.undo`.
+- Multiplication and division are built from repeated addition in the Fourier
+  basis.
+
+All operations produce **uncomputed** intermediate registers where possible,
+keeping the circuit depth manageable.
+
+Typical Usage
+-------------
+
+.. code-block:: python
+
+    from ket import Process, measure
+
+    p = Process()
+    q = p.alloc(8)
+
+    # Integer arithmetic
+    qi = q.as_int(7)    # initialize register to |7⟩
+    qi += 3             # quantum addition: |7⟩ → |10⟩
+    print(measure(qi).value)   # 10
+    # 10
+
+.. code-block:: python
+
+    from ket import Process, measure
+
+    p = Process()
+    q = p.alloc(8)
+
+    # Fixed-point real arithmetic with 4 bits of fractional precision
+    qr = q.as_real(4, 1.5)   # step size 2**-4 = 0.0625
+    qr += 0.25
+    print(measure(qr).value)  # 1.75
+    # 1.75
+"""
 
 # SPDX-FileCopyrightText: 2026 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 #
@@ -112,17 +159,44 @@ def _addi(lhs, rhs, m: int = 1):
 
 
 class Qreal(Quant):  # pylint: disable=too-few-public-methods
-    """A quantum real data structure using fixed-point representation.
+    """A quantum register interpreted as a fixed-point signed real number.
 
-    This class represents a real number encoded within a quantum register.
-    It provides a high-level interface for quantum arithmetic, supporting
-    in-place addition, subtraction, multiplication, and division.
+    Extends :class:`~ket.base.Quant` to support in-place arithmetic
+    (:math:`+=`, :math:`-=`), non-in-place arithmetic (:math:`+`, :math:`-`,
+    :math:`\\times`, :math:`/`), and comparisons (:math:`<`, :math:`>`,
+    :math:`\\leq`, :math:`\\geq`, :math:`=`, :math:`\\neq`) as quantum
+    operations.
+
+    The register stores a **two's-complement signed integer** :math:`n` that
+    represents the real value
+
+    .. math::
+
+        x = \\frac{n}{2^{\\texttt{exp}}}
+
+    - A positive ``exp`` gives finer fractional resolution
+      (:math:`2^{-\\texttt{exp}}` per step).
+    - A negative ``exp`` gives coarser resolution but a larger range.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import Process, measure
+
+            p = Process()
+            q = p.alloc(8)            # 8-qubit register
+
+            # Fixed-point with 4-bit fractional precision (step = 1/16)
+            qr = q.as_real(4, 1.5)    # stored integer = round(1.5 * 16) = 24
+            qr += 0.5                 # 24 + 8 = 32 → x = 32/16 = 2.0
+            print(measure(qr).value)  # 2.0
+            # 2.0
 
     Args:
-        qubits: The quantum register to allocate for this number.
-        exp: The exponent defining the fixed-point scale (value x 2**exp).
-        number: The initial classical float value to set the quantum register to.
-                Defaults to 0.0.
+        qubits: The quantum register to wrap.
+        exp: Fixed-point exponent. The register stores ``round(number * 2**exp)``.
+        number: Initial real value to encode. Defaults to ``0.0``.
     """
 
     def __init__(self, qubits: Quant, exp, number: float = 0.0):
@@ -149,7 +223,17 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
     __isub__ = adj(__iadd__)
 
     def copy(self):
-        """Copies the quantum state into a new Qreal register."""
+        """Create a copy of this register in a fresh auxiliary register.
+
+        Allocates a new auxiliary qubit register of the same size and uses
+        CNOT gates to copy the state qubit-by-qubit. The copy is wrapped
+        in :func:`~ket.operations.undo` so that the auxiliary register is
+        automatically uncomputed when the returned object goes out of scope.
+
+        Returns:
+            A new :class:`~ket.qint.Qreal` wrapping
+            an auxiliary register that holds a copy of this register's state.
+        """
         other = self.ket_process.alloc_aux(len(self))
 
         def inner_copy(other):
@@ -181,14 +265,21 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return Qreal(undo(inner_sub, result), exp=self.exp)
 
     def mul(self, other, result):
-        """Performs quantum multiplication.
+        """Quantum multiplication: accumulate ``self * other`` into ``result``.
 
-        Multiplies the Qreal ``self`` (multiplier) by ``other``
-        (multiplicand) and accumulates the product into the ``result`` Qreal.
+        Performs an in-place multiply-accumulate: each bit of ``self``
+        (the multiplier) controls an addition of the appropriately shifted
+        ``other`` (the multiplicand) into ``result``.
+
+        This method is used internally by :meth:`~ket.qint.Qreal.__mul__` and
+        :meth:`~ket.qint.Qreal.__truediv__`.
 
         Args:
-            other: The multiplicand (can be a classical scalar or another Qreal).
-            result: The target quantum register where the product is accumulated.
+            other: The multiplicand.
+                If a :class:`~ket.qint.Qreal`, the fixed-point exponents are
+                reconciled automatically.
+            result: The target register where the
+                product is accumulated. Must be initialized to 0.
         """
         if isinstance(other, Qreal):
             m = self.exp - other.exp
@@ -277,7 +368,17 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return undo(X, self == other)
 
     def postprocessing(self):
-        """Returns a function to convert the internal integer state back to a float."""
+        """Return a function that converts the raw qubit measurement to a float.
+
+        Used internally by :func:`~ket.operations.measure` and
+        :func:`~ket.operations.dump` to convert the measured integer
+        back to its fixed-point float representation.
+
+        Returns:
+            A function that accepts the raw unsigned
+            integer measurement result and returns the corresponding float
+            value (with sign extension for two's-complement).
+        """
 
         def postprocessing(exp, size, value):
             value = _to_signed(value, size)
@@ -294,20 +395,42 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
 
 class Qint(Qreal):
-    """A quantum integer data structure.
+    """A quantum register interpreted as a signed integer.
 
-    A specialized case of Qreal where the exponent is strictly 0.
+    A specialization of :class:`~ket.qint.Qreal` with ``exp=0``, meaning the
+    stored integer is the value directly (no fractional scaling). Uses
+    two's-complement representation for signed arithmetic.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import Process, measure
+
+            p = Process()
+            q = p.alloc(4)
+
+            qi = q.as_int(-3)   # two's-complement encoding
+            qi += 5
+            print(measure(qi).value)   # 2
+            # 2
 
     Args:
-        qubits: The quantum register to allocate for this number.
-        number: The initial classical integer value. Defaults to 0.
+        qubits: The quantum register to wrap.
+        number: Initial integer value to encode. Defaults to ``0``.
     """
 
     def __init__(self, qubits, number: int = 0):
         super().__init__(qubits, exp=0, number=number)
 
     def postprocessing(self):
-        """Returns a function to convert the internal integer state back to a int."""
+        """Return a function that converts a raw measurement to a signed integer.
+
+        Returns:
+            A function that accepts the unsigned integer
+            measurement result and returns the corresponding signed (two's
+            complement) integer value.
+        """
 
         def postprocessing(size, value):
             return _to_signed(value, size)

@@ -10,38 +10,38 @@ programming environment and Amazon's cloud resources. This makes it
 an excellent choice for experiments that require high-performance simulation
 or access to different QPU architectures.
 
-:Example:
+Example:
 
-.. code-block:: python
+    .. code-block:: python
 
-    from ket import *
-    from ket.amazon import AmazonBraket
-    from math import sqrt
+        from ket import *
+        from ket.amazon import AmazonBraket
+        from math import sqrt
 
-    device = AmazonBraket()
-    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')
-    # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')
-    # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')
-    # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')
-    # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')
+        device = AmazonBraket()
+        # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/tn1')
+        # device = AmazonBraket('arn:aws:braket:::device/quantum-simulator/amazon/dm1')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-1')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Aria-2')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-1')
+        # device = AmazonBraket('arn:aws:braket:us-east-1::device/qpu/ionq/Forte-Enterprise-1')
+        # device = AmazonBraket('arn:aws:braket:eu-north-1::device/qpu/iqm/Garnet')
+        # device = AmazonBraket('arn:aws:braket:us-west-1::device/qpu/rigetti/Ankaa-3')
 
-    process = Process(device)
-    a, b = process.alloc(2)
+        process = Process(device)
+        a, b = process.alloc(2)
 
-    X(a + b)
-    CNOT(H(a), b)
+        X(a + b)
+        CNOT(H(a), b)
 
-    with ham():
-        a0 = Z(a)
-        a1 = X(a)
-        b0 = -(X(b) + Z(b)) / sqrt(2)
-        b1 = (X(b) - Z(b)) / sqrt(2)
-        h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
+        with ham():
+            a0 = Z(a)
+            a1 = X(a)
+            b0 = -(X(b) + Z(b)) / sqrt(2)
+            b1 = (X(b) - Z(b)) / sqrt(2)
+            h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
 
-    print(exp_value(h).get())
+        print(exp_value(h).get())
 
 
 To use the Braket QPUs and on demand simulators, you need to have an
@@ -49,6 +49,10 @@ AWS account and the necessary permissions to access the Braket service.
 You can find more information on how to set up your AWS account and
 permissions in the `Amazon Braket documentation <https://docs.aws.amazon.com/braket/>`_.
 
+Note:
+    This module requires additional dependencies from ``ket-lang[amazon]``.
+
+    Install with: ``pip install ket-lang[amazon]``.
 """
 
 from __future__ import annotations
@@ -58,9 +62,10 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from functools import reduce
 from json import loads
-from typing import Optional, List, Dict
-from .clib.libket import BatchExecution
+from operator import add
+from .clib.libket.execution import BatchExecution
 
 try:
     # pip3 install amazon-braket-sdk
@@ -83,19 +88,8 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
     tests and large-scale quantum experiments. Only Gate Model QPUs and
     simulators are supported.
 
-    The arguments ``shots`` and ``classical_shadows`` control how the
-    execution is performed for estimating expectation values of an
-    Hamiltonian term. Only one of these arguments can be specified at a time.
-
-    If ``shots`` is specified, it will run the circuit multiple times
-    (the number of shots) to estimate the expectation values.
-    If ``classical_shadows`` is specified, it will use the classical shadows
-    technique for state estimation. The dictionary should be in the
-    format: ``{"bias": (int, int, int), "samples": int, "shots": int}``.
-    The ``bias`` tuple represents the bias for the randomized measurements on the
-    X, Y, and Z axes, respectively. The ``samples`` is the number of
-    classical shadows to be generated, and ``shots`` is the number of shots
-    for each sample.
+    The ``shots`` argument controls how many shots are used for expectation
+    value estimation.
 
     Args:
         device: The ARN (Amazon Resource Name) string of the
@@ -107,8 +101,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
 
     def __init__(
         self,
-        device: Optional[str] = None,
+        device: str | None = None,
         shots: int = 1024,
+        gradient: bool = False,
         **kwargs,
     ):
         if not BRAKET_AVAILABLE:
@@ -137,116 +132,43 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
                 f"Received: {self.device_paradigm['braketSchemaHeader']['name']}"
             )
 
-        self.num_qubits = self.device_paradigm["qubitCount"]
-
-        if (
-            hasattr(self.device, "topology_graph")
-            and self.device.topology_graph is not None
-        ):
-            self.coupling_graph = list(
-                (i - 1, j - 1) for i, j in self.device.topology_graph.edges
-            )
-        else:
-            self.coupling_graph = None
-
-        self.circuit = Circuit()
-        self.result = None
-        self.exp_value_result = None
-
-        self.sample_results_by_index: Dict[int, List[int]] = {}
-        self.executed_operation_indices: List[int] = []
-
-        self.parameters = None
-
         self.shots = shots
+        self.gradient = gradient
 
-    def clear(self):
-        self.circuit = Circuit()
-        self.sample_results_by_index.clear()
-        self.executed_operation_indices.clear()
-        self.result = None
-        self.parameters = None
-        self.exp_value_result = None
+    def _build_circuit(self, gates):
+        """Build a Braket Circuit from a NativeGate list.
 
-    def submit_execution(self, circuit, parameters):
-        self.parameters = parameters
-        self.process_instructions(circuit)
+        Each gate is a 3-tuple: (name: str, params: list[float], qubits: list[int]).
+        Control qubits are qubits[:-1] and target is qubits[-1].
+        """
+        circuit = Circuit()
 
-    def get_result(self):
-        if self.result is not None:
-            samples = [list(zip(*self.result.items()))]
-            exp_values = []
-        else:
-            exp_values = [float(self.exp_value_result)]
-            samples = []
+        for gate_name, params, qubits in gates:
+            match gate_name:
+                case "h":
+                    circuit.h(qubits[0])
+                case "x":
+                    circuit.x(qubits[0])
+                case "y":
+                    circuit.y(qubits[0])
+                case "z":
+                    circuit.z(qubits[0])
+                case "rx":
+                    circuit.rx(target=qubits[0], angle=params[0])
+                case "ry":
+                    circuit.ry(target=qubits[0], angle=params[0])
+                case "rz":
+                    circuit.rz(target=qubits[0], angle=params[0])
+                case "p":
+                    circuit.phaseshift(target=qubits[0], angle=params[0])
+                case "cnot":
+                    circuit.cnot(*qubits)
+                case "cz":
+                    circuit.cz(*qubits)
+                case _:
+                    raise RuntimeError(f"Undefined gate '{gate_name}'")
 
-        results_dict = {
-            "measurements": [],
-            "exp_values": exp_values,
-            "samples": samples,
-            "dumps": [],
-            "gradients": None,
-        }
-
-        return results_dict
-
-    def pauli_x(self, target, control):
-        assert len(control) <= 1, "Control qubits are not supported"
-        if len(control) == 0:
-            self.circuit.x(target)
-        else:
-            self.circuit.cnot(control[0], target)
-
-    def pauli_y(self, target, control):
-        assert len(control) == 0, "Control qubits are not supported"
-        self.circuit.y(target)
-
-    def pauli_z(self, target, control):
-        assert len(control) == 0, "Control qubits are not supported"
-        self.circuit.z(target)
-
-    def hadamard(self, target, control):
-        assert len(control) == 0, "Control qubits are not supported"
-        self.circuit.h(target)
-
-    def rotation_x(self, target, control, **kwargs):
-        assert len(control) == 0, "Control qubits are not supported"
-        match kwargs:
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
-            case {"Value": value}:
-                ...
-
-        self.circuit.rx(target=target, angle=value)
-
-    def rotation_y(self, target, control, **kwargs):
-        assert len(control) == 0, "Control qubits are not supported"
-        match kwargs:
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
-            case {"Value": value}:
-                ...
-
-        self.circuit.ry(target=target, angle=value)
-
-    def rotation_z(self, target, control, **kwargs):
-        assert len(control) == 0, "Control qubits are not supported"
-        match kwargs:
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
-            case {"Value": value}:
-                ...
-
-        self.circuit.rz(target=target, angle=value)
-
-    def phase(self, target, control, **kwargs):
-        match kwargs:
-            case {"Ref": {"index": index, "multiplier": multiplier, "value": _}}:
-                value = self.parameters[index] * multiplier
-            case {"Value": value}:
-                ...
-
-        self.circuit.phaseshift(target, value)
+        return circuit
 
     @staticmethod
     def _from_braket_to_ket(state, qubits, aws_map):
@@ -265,66 +187,66 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             2,
         )
 
-    def sample(self, _, qubits, shots: int):
-        result = self.device.run(self.circuit, shots=shots).result()
+    def sample(self, gates, qubits_to_sample, shots):
+        """Execute the circuit and sample the given qubits.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        circuit = self._build_circuit(gates)
+        result = self.device.run(circuit, shots=shots).result()
         aws_map = {q: i for i, q in enumerate(result.measured_qubits)}
-        self.result = {
-            self._from_braket_to_ket(k, qubits, aws_map): v
+
+        counts = {
+            self._from_braket_to_ket(k, qubits_to_sample, aws_map): v
             for k, v in result.measurement_counts.items()
         }
 
-    def exp_value(self, _, hamiltonian):
-        gates = {
-            "I": Observable.I,
+        mask_64bit = (1 << 64) - 1
+        num_chunks = (len(qubits_to_sample) + 63) // 64
+
+        states, shot_counts = zip(*counts.items())
+        return [
+            [(s >> (64 * i)) & mask_64bit for i in range(num_chunks)] for s in states
+        ], list(shot_counts)
+
+    def exp_value(self, gates, hamiltonian_list):
+        """Execute the circuit and compute expectation values.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        gates_dict = {
             "X": Observable.X,
             "Y": Observable.Y,
             "Z": Observable.Z,
         }
 
-        def observable_from_string(s: str) -> Observable:
-            return Observable.TensorProduct(
-                [gates[pauli](idx) for idx, pauli in enumerate(s)]
-            )
+        circuit = self._build_circuit(gates)
+        observables = []
 
-        terms = []
-        for pauli, coef in zip(hamiltonian["products"], hamiltonian["coefficients"]):
-            string = ["I"] * self.num_qubits
-            for item in pauli:
-                string[item["qubit"]] = item["pauli"][-1]
-            terms.append(
-                (
-                    observable_from_string("".join(string)),
-                    coef,
+        for hamiltonian in hamiltonian_list:
+            terms = []
+            for pauli, coef in zip(
+                hamiltonian["pauli_strings"], hamiltonian["coefficients"]
+            ):
+
+                obs_term = Observable.TensorProduct(
+                    gates_dict[item["pauli"][-1]](item["qubit"]) for item in pauli
                 )
-            )
 
-        if not terms:
-            self.exp_value_result = sum(hamiltonian.get("coefficients", [0.0]))
-            return
+                terms.append((obs_term, coef))
 
-        observables = terms[0][1] * terms[0][0]
-        for p, c in terms[1:]:
-            observables += c * p
+            observables.append(reduce(add, (c * p for p, c in terms)))
 
-        binding = CircuitBinding(self.circuit, [], observables=observables)
+        binding = CircuitBinding(circuit, [], observables=observables)
         program_set = ProgramSet(binding)
 
-        self.exp_value_result = (
-            self.device.run(program_set, shots=self.shots).result()[0].expectation()
-        )
+        return [
+            float(result.expectation)
+            for result in self.device.run(program_set, shots=self.shots).result()[0]
+        ]
 
     def connect(self):
-        self.clear()
-
-        return super().configure(
-            execution_managed_by_target={
-                "sample": "Basic",
-                "exp_value": "Basic",
-            },
-            num_qubits=self.num_qubits,
-            qpu={
-                "coupling_graph": self.coupling_graph,
-                "u4_gate_type": "CX",
-                "u2_gate_set": "All",
-            },
-        )
+        """Connect to the device and return the configuration."""
+        return self.configure(gradient=self.gradient)

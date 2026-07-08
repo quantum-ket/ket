@@ -89,7 +89,7 @@ Lint:
   stage: lint
   script:
     - uvx pylint src
-    - uvx reuse lint
+    - uvx reuse[charset-normalizer] lint
 
 Test:
   image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
