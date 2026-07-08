@@ -79,6 +79,8 @@ from .qint import *
 from .qint import __all__ as all_qint
 from .measurement import *
 from .measurement import __all__ as all_measurement
+from .fermion import *
+from .fermion import __all__ as all_fermion
 from . import qulib
 
 __version__ = "0.10.0b1"
@@ -91,6 +93,7 @@ __all__ = (
     + all_state
     + all_qint
     + all_measurement
+    + all_fermion
     + ["qulib"]
 )
 
