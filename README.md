@@ -124,11 +124,9 @@ To get started with Ket development, follow these steps:
 
 1. **Rust Installation**
   
-    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install). After installation, set the Rust version to 1.88 using the following command:
+    Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install).
 
-    ```shell
-    rustup default 1.88
-    ```
+    **Important**: For Rust development, make sure to use the exact same rustc version as the current ket distribution. This version-matching is not required if you are developing with Python or C FFI.
 
 2. **Clone and Compile**
 

@@ -49,8 +49,9 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     execution: Literal["live", "batch"] = "live",
     simulator: Literal[
         "sparse",
-        "sparse",
+        "sparse v2",
         "dense",
+        "dense v1",
         "dense v2",
         "dense gpu",
     ] = "sparse",

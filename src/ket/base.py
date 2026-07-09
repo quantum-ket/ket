@@ -111,8 +111,6 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
     - ``"sparse"``: Sparse simulator with limited multithreading capabilities.
     - ``"dense"``: Dense simulator with good multithreaded performance.
-    - ``"dense v2"``: Dense simulator with a smaller memory footprint.
-      Not necessarily more efficient than ``"dense"``.
     - ``"dense gpu"``: Dense simulator designed to run on most GPUs, including
       integrated Intel, AMD, and Apple GPUs, as well as NVIDIA GPUs. This simulator
       is generally recommended for simulations involving a large number of qubits.
@@ -132,7 +130,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         self,
         execution_target: BatchExecution | LiveExecution | None = None,
         num_qubits: Optional[int] = None,
-        simulator: Optional[Literal["sparse", "dense", "dense v2", "dense gpu"]] = None,
+        simulator: Optional[Literal["sparse", "dense", "dense gpu"]] = None,
         execution: Optional[Literal["live", "batch"]] = None,
         gradient: bool = False,
         **kwargs,
