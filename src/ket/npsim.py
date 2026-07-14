@@ -40,7 +40,7 @@ class NPSim(LiveExecution):
         self.state_vector[0, 0] = 1.0
 
     def connect(self):
-        return self.configure()
+        return self.configure(self.num_qubit, True)
 
     def _apply_gate(self, gate, target):
         gate_kron = np.kron(

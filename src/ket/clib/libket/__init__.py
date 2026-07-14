@@ -19,6 +19,7 @@ from ctypes import (
     c_uint64,
     c_double,
     c_char_p,
+    byref,
 )
 import json
 from typing import Sequence
@@ -53,7 +54,37 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
                 POINTER(c_double),  # result
             ),
         ),
-        ("exp_value_available", CFUNCTYPE(c_bool)),
+        (
+            "sample_native",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # gates_json
+                POINTER(c_size_t),  # qubits_to_sample
+                c_size_t,  # qubits_to_sample_len
+                c_size_t,  # shots
+                POINTER(c_char_p),  # sample_json
+            ),
+        ),
+        (
+            "exp_value_native",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # gates_json
+                c_char_p,  # hamiltonian_list_json
+                POINTER(c_double),  # result
+            ),
+        ),
+        (
+            "gradient",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # gates_json
+                c_char_p,  # hamiltonian_json
+                c_char_p,  # parameters_json
+                POINTER(c_double),  # exp_result
+                POINTER(c_double),  # grad
+            ),
+        ),
     ]
 
 
@@ -63,6 +94,13 @@ class LiveCExecution(Structure):  # pylint: disable=too-few-public-methods
     _fields_ = [
         (
             "compute_gate",
+            CFUNCTYPE(
+                c_int32,
+                c_char_p,  # json
+            ),
+        ),
+        (
+            "compute_native_gates",
             CFUNCTYPE(
                 c_int32,
                 c_char_p,  # json
@@ -129,15 +167,6 @@ class CNativeGateSet(Structure):  # pylint: disable=too-few-public-methods
                 POINTER(c_char_p),  # native_gate_json
             ),
         ),
-        (
-            "swap",
-            CFUNCTYPE(
-                c_int32,
-                c_size_t,  # a
-                c_size_t,  # b
-                POINTER(c_char_p),  # native_gate_json
-            ),
-        ),
     ]
 
 
@@ -193,18 +222,25 @@ api_argtypes = {
         [c_char_p],  # proprieties
     ),
     "ket_quantum_execution_live": (
-        [POINTER(LiveCExecution), c_bool],  # live, decompose
-        [c_void_p],  # quantum_execution
+        [
+            c_size_t,  # num_qubits
+            POINTER(LiveCExecution),  # live
+            c_bool,  # decompose
+            c_void_p,  # native_gate_set
+        ],
+        [c_void_p],  # qpu_config
     ),
     "ket_quantum_execution_batch": (
         [
-            POINTER(BatchCExecution),
-            POINTER(CNativeGateSet),
-            c_bool,
-            c_char_p,
-            c_char_p,
-        ],  # batch, native_gate_set, gradient, coupling_graph_json
-        [c_void_p],  # quantum_execution
+            c_size_t,  # num_qubits
+            POINTER(BatchCExecution),  # batch
+            c_void_p,  # native_gate_set
+            c_bool,  # decompose
+            c_bool,  # gradient
+            c_char_p,  # coupling_graph_json
+            c_char_p,  # exp_value_strategy_json
+        ],
+        [c_void_p],  # qpu_config,
     ),
     "ket_process_new": (
         [c_void_p],  # qpu_config
@@ -275,6 +311,7 @@ api_argtypes = {
     "ket_process_status": ([c_void_p], [c_char_p]),
     "ket_block_set_as_diagonal": ([c_void_p], []),
     "ket_block_set_as_permutation": ([c_void_p], []),
+    "ket_process_set_parameter": ([c_void_p, c_double], [c_size_t]),
 }
 
 

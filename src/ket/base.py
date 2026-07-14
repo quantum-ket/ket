@@ -866,7 +866,12 @@ class Parameter(HasProcess):
                 print(theta.grad)  # d<Z>/d(theta)
         """
         if self._gradient is None:
-            available, value = self.ket_process.get_gradient(self._index)
-            if available.value:
-                self._gradient = value.value
+            result_ptr = self.ket_process.read_gradient()
+            if result_ptr:
+                val_str = result_ptr.value.decode("utf-8")
+                if val_str != "null":
+                    grads = json.loads(val_str)
+                    if grads is not None:
+                        self._gradient = grads[self._index]
+                libket["ket_string_delete"](result_ptr)
         return self._gradient

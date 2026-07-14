@@ -46,6 +46,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         num_qubits: int | None = None,
         gradient: bool = False,
         optimization_level: int = 2,
+        qiskit_compiler=True,
     ):
         if not QISKIT_AVAILABLE:
             raise ImportError(
@@ -63,6 +64,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
             self.num_qubits = num_qubits
 
         self.backend = backend
+        self.decompose = not qiskit_compiler
 
         self.pm = generate_preset_pass_manager(
             backend=self.backend,
@@ -71,36 +73,91 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
 
         self.gradient = gradient
 
+    @staticmethod
+    def _get_gate(gate):
+        match gate:
+            case "Hadamard":
+                return library.HGate()
+            case "PauliX":
+                return library.XGate()
+            case "PauliY":
+                return library.YGate()
+            case "PauliZ":
+                return library.ZGate()
+            case {"RotationX": {"Value": angle}}:
+                return library.RXGate(angle)
+            case {
+                "RotationX": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                return library.RXGate(multiplier * value)
+            case {"RotationY": {"Value": angle}}:
+                return library.RYGate(angle)
+            case {
+                "RotationY": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                return library.RYGate(multiplier * value)
+            case {"RotationZ": {"Value": angle}}:
+                return library.RZGate(angle)
+            case {
+                "RotationZ": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                return library.RZGate(multiplier * value)
+            case {"Phase": {"Value": angle}}:
+                return library.PhaseGate(angle)
+            case {
+                "Phase": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                return library.PhaseGate(multiplier * value)
+            case _:
+                raise RuntimeError(f"Undefined gate '{gate}'")
+
     def _build_circuit(self, gates):
         """Build a Qiskit QuantumCircuit from a NativeGate list."""
         circuit = QuantumCircuit(self.num_qubits)
 
-        for gate_name, params, qubits in gates:
-            match gate_name:
-                case "h":
-                    g = library.HGate()
-                case "x":
-                    g = library.XGate()
-                case "y":
-                    g = library.YGate()
-                case "z":
-                    g = library.ZGate()
-                case "rx":
-                    g = library.RXGate(params[0])
-                case "ry":
-                    g = library.RYGate(params[0])
-                case "rz":
-                    g = library.RZGate(params[0])
-                case "p":
-                    g = library.PhaseGate(params[0])
-                case "cnot":
-                    g = library.CXGate()
-                case "cz":
-                    g = library.CZGate()
-                case _:
-                    raise RuntimeError(f"Undefined gate '{gate_name}'")
+        for gate_inst in gates:
+            gate = gate_inst["gate"]
+            target = gate_inst["target"]
+            control = gate_inst["control"]
+            decomposed = gate_inst["decomposed"]
 
-            circuit.append(g, qubits)
+            if decomposed is not None:
+                for gate in decomposed:
+                    match gate:
+                        case {"U": (gate, target)}:
+                            circuit.append(self._get_gate(gate), [target])
+                        case {"CNOT": (control, target)}:
+                            circuit.cx(control, target)
+            else:
+                gate = self._get_gate(gate)
+                if control:
+                    circuit.append(gate.control(len(control)), control + [target])
+                else:
+                    circuit.append(gate, [target])
 
         return circuit
 
@@ -161,4 +218,8 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
 
     def connect(self):
         """Connect to the device and return the configuration."""
-        return self.configure(gradient=self.gradient)
+        return self.configure(
+            self.num_qubits,
+            gradient=self.gradient,
+            decompose=self.decompose,
+        )

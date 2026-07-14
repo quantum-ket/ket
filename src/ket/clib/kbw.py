@@ -22,6 +22,7 @@ api_argtypes = {
             c_size_t,  # num_qubits
             c_char_p,  # simulator
             c_bool,  # use_live
+            c_bool,  # decompose
             c_bool,  # gradient
             c_char_p,  # coupling_graph_json
         ],
@@ -54,20 +55,22 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
         "dense v1",
         "dense v2",
         "dense gpu",
-    ] = "sparse",
+    ] = "dense",
     coupling_graph: list[tuple[int, int]] | None = None,
     gradient: bool = False,
+    decompose: bool = False,
 ):
     """Create a configuration"""
     if gradient:
         execution = "batch"
 
-    coupling_graph = json.dumps(coupling_graph).encode("utf-8")
+    coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
 
     return API["kbw_make_configuration"](
         num_qubits,  # num_qubits
         simulator.encode("utf-8"),  # simulator
         execution != "batch",  # use_live
+        decompose,  # decompose
         gradient,  # gradient
-        coupling_graph,  # coupling_graph
+        coupling_graph_json,  # coupling_graph
     )

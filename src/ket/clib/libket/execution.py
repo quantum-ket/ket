@@ -16,6 +16,8 @@ from ctypes import (
     POINTER,
     c_uint64,
     c_double,
+    c_void_p,
+    byref,
 )
 import json
 from abc import ABC, abstractmethod
@@ -74,40 +76,99 @@ class BatchExecution(ABC):
                 result[i] = v
             return 0
 
-        @CFUNCTYPE(c_bool)
-        def exp_value_available():
-            return True
+        @CFUNCTYPE(
+            c_int32,
+            c_char_p,  # gates_json
+            POINTER(c_size_t),  # qubits_to_sample
+            c_size_t,  # qubits_to_sample_len
+            c_size_t,  # shots
+            POINTER(c_char_p),  # sample_json
+        )
+        def sample_native(
+            gates_json, qubits_to_sample, qubits_to_sample_len, shots, result_json
+        ):
+            gates = json.loads(gates_json)
+            qubits = [qubits_to_sample[i] for i in range(qubits_to_sample_len)]
+            sample_data, counts = self.sample_native(gates, qubits, shots)
+            self._sample_native_result = json.dumps([sample_data, counts]).encode(
+                "utf-8"
+            )
+            result_json[0] = self._sample_native_result
+            return 0
+
+        self._sample_native_result = None
+
+        @CFUNCTYPE(
+            c_int32,
+            c_char_p,  # gates_json
+            c_char_p,  # hamiltonian_list_json
+            POINTER(c_double),  # result
+        )
+        def exp_value_native(
+            gates_json,
+            hamiltonian_list_json,
+            result,
+        ):
+            gates = json.loads(gates_json)
+            hamiltonian_list = json.loads(hamiltonian_list_json)
+            values = self.exp_value_native(gates, hamiltonian_list)
+            for i, v in enumerate(values):
+                result[i] = v
+            return 0
+
+        @CFUNCTYPE(
+            c_int32,
+            c_char_p,  # gates_json
+            c_char_p,  # hamiltonian_json
+            c_char_p,  # parameters_json
+            POINTER(c_double),  # exp_result
+            POINTER(c_double),  # grad
+        )
+        def gradient(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+            gates_json,
+            hamiltonian_json,
+            exp_result,
+            grad,
+        ):
+            gates = json.loads(gates_json)
+            hamiltonian = json.loads(hamiltonian_json)
+            exp_val, grad_vals = self.gradient(gates, hamiltonian)
+            exp_result[0] = exp_val
+            for i, v in enumerate(grad_vals):
+                grad[i] = v
+            return 0
 
         self._cb_sample = sample
         self._cb_exp_value = exp_value
-        self._exp_value_available = exp_value_available
+        self._cb_sample_native = sample_native
+        self._cb_exp_value_native = exp_value_native
+        self._cb_gradient = gradient
 
         self.c_struct = BatchCExecution(
             self._cb_sample,
             self._cb_exp_value,
-            self._exp_value_available,
+            self._cb_sample_native,
+            self._cb_exp_value_native,
+            self._cb_gradient,
         )
 
     def configure(
         self,
+        num_qubits: int,
         gradient: bool = False,
         coupling_graph: list[tuple[int, int]] | None = None,
         native_gate_set: NativeGateSet | None = None,
+        decompose: bool = False,
     ):
         """Configure the batch execution and return a QuantumExecution pointer."""
         return make_batch_configuration(
+            num_qubits,
             execution=self,
             gradient=gradient,
             coupling_graph=coupling_graph,
             native_gate_set=native_gate_set,
+            decompose=decompose,
         )
-
-    @staticmethod
-    def get_gate_and_angle(gate):
-        """Get the gate and possible angle from the gate object."""
-        if isinstance(gate, str):
-            return gate, {}
-        return list(gate.items())[0]
 
     def sample(self, gates, qubits_to_sample, shots):
         """Execute the circuit and sample the given qubits.
@@ -124,6 +185,15 @@ class BatchExecution(ABC):
             This method is called by Libket and should not be called directly.
         """
         raise NotImplementedError("`exp_value` method not implemented")
+
+    def sample_native(self, gates, qubits, shots):
+        raise NotImplementedError
+
+    def exp_value_native(self, gates, hamiltonians):
+        raise NotImplementedError
+
+    def gradient(self, gates, hamiltonian):
+        raise NotImplementedError
 
 
 class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
@@ -210,7 +280,16 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
             result[0] = self.exp_value(h)
             return 0
 
+        @CFUNCTYPE(
+            c_int32,
+            c_char_p,  # json
+        )
+        def compute_native_gates(json_ptr):
+            gate_dict = json.loads(json_ptr)
+            return self.compute_native_gates(gate_dict)
+
         self._cb_compute_gate = compute_gate
+        self._cb_compute_native_gates = compute_native_gates
         self._cb_measure = measure
         self._cb_dump = dump
         self._cb_sample = sample
@@ -218,6 +297,7 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
 
         self.c_struct = LiveCExecution(
             self._cb_compute_gate,
+            self._cb_compute_native_gates,
             self._cb_measure,
             self._cb_dump,
             self._cb_sample,
@@ -276,9 +356,9 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
     def connect(self):
         """Call configure with the appropriated arguments to generate the object."""
 
-    def configure(self, decompose: bool = False):
+    def configure(self, num_qubits: int, decompose: bool = False):
         """Configure the live execution and return a QuantumExecution pointer."""
-        return make_live_configuration(execution=self, decompose=decompose)
+        return make_live_configuration(num_qubits, execution=self, decompose=decompose)
 
 
 class NativeGateSet(ABC):
@@ -345,29 +425,13 @@ class NativeGateSet(ABC):
 
         self._cnot_result = None
 
-        @CFUNCTYPE(
-            c_int32,
-            c_size_t,  # a
-            c_size_t,  # b
-            POINTER(c_char_p),  # native_gate_json  (out)
-        )
-        def swap(a, b, native_gate_json):
-            result = self.swap(a, b)
-            self._swap_result = json.dumps(result).encode("utf-8")
-            native_gate_json[0] = self._swap_result
-            return 0
-
-        self._swap_result = None
-
         # Keep references alive for the duration of the object's lifetime.
         self._cb_translate = translate
         self._cb_cnot = cnot
-        self._cb_swap = swap
 
         self.c_struct = CNativeGateSet(
             self._cb_translate,
             self._cb_cnot,
-            self._cb_swap,
         )
 
     @abstractmethod
@@ -401,37 +465,55 @@ class NativeGateSet(ABC):
             A list of native gate objects that implement CNOT.
         """
 
-    @abstractmethod
-    def swap(self, a: int, b: int) -> list:
-        """Produce native instructions implementing a SWAP gate.
 
-        Args:
-            a: Index of the first qubit.
-            b: Index of the second qubit.
+def make_live_configuration(
+    num_qubits: int,
+    execution: LiveExecution,
+    native_gate_set: NativeGateSet | None = None,
+    decompose: bool = False,
+):
+    """
+    Constructs a LiveConfiguration.
 
-        Returns:
-            A list of native gate objects that implement SWAP.
-        """
+    Args:
+        execution (LiveExecution): The execution wrapper instance.
+    """
 
+    if native_gate_set is not None:
+        native_gate_set_ptr = native_gate_set.c_struct
+    else:
+        native_gate_set_ptr = None
 
-def make_live_configuration(execution: LiveExecution, decompose: bool = False):
-    """Create a live QuantumExecution from a LiveExecution instance."""
-    return API["ket_quantum_execution_live"](execution.c_struct, decompose)
+    return API["ket_quantum_execution_live"](
+        num_qubits,
+        execution.c_struct,
+        decompose,
+        native_gate_set_ptr,
+    )
 
 
 def make_batch_configuration(
+    num_qubits: int,
     execution: BatchExecution,
     gradient: bool = False,
     coupling_graph: list[tuple[int, int]] | None = None,
     exp_value_strategy=None,
     native_gate_set: NativeGateSet | None = None,
+    decompose: bool = False,
 ):
-    """Create a batch QuantumExecution from a BatchExecution instance."""
-    if exp_value_strategy is None:
-        exp_value_strategy = "Native"
+    """
+    Constructs a BatchConfiguration.
 
-    exp_value_strategy_json = json.dumps(exp_value_strategy).encode("utf-8")
+    Args:
+        execution (BatchExecution): The execution wrapper instance.
+    """
+
     coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
+
+    if exp_value_strategy is not None:
+        exp_value_strategy_json = json.dumps(exp_value_strategy).encode("utf-8")
+    else:
+        exp_value_strategy_json = json.dumps("Native").encode("utf-8")
 
     if native_gate_set is not None:
         native_gate_set_ptr = native_gate_set.c_struct
@@ -439,8 +521,10 @@ def make_batch_configuration(
         native_gate_set_ptr = None
 
     return API["ket_quantum_execution_batch"](
+        num_qubits,
         execution.c_struct,
         native_gate_set_ptr,
+        decompose,
         gradient,
         coupling_graph_json,
         exp_value_strategy_json,

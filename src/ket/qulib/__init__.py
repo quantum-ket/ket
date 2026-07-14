@@ -283,7 +283,7 @@ class _IBMDeviceForDraw(LiveExecution):
 
     def connect(self):
         """Configure process"""
-        return super().configure(self.decompose)
+        return super().configure(self.num_qubits, self.decompose)
 
 
 def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branches

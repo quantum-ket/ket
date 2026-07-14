@@ -132,41 +132,89 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
                 f"Received: {self.device_paradigm['braketSchemaHeader']['name']}"
             )
 
+        self.num_qubits = self.device_paradigm["qubitCount"]
         self.shots = shots
         self.gradient = gradient
 
-    def _build_circuit(self, gates):
-        """Build a Braket Circuit from a NativeGate list.
+    @staticmethod
+    def _call_gate(circuit, gate, target):
+        match gate:
+            case "Hadamard":
+                circuit.h(target)
+            case "PauliX":
+                circuit.x(target)
+            case "PauliY":
+                circuit.y(target)
+            case "PauliZ":
+                circuit.z(target)
+            case {"RotationX": {"Value": angle}}:
+                circuit.rx(target=target, angle=angle)
+            case {
+                "RotationX": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                circuit.rx(target=target, angle=multiplier * value)
+            case {"RotationY": {"Value": angle}}:
+                circuit.ry(target=target, angle=angle)
+            case {
+                "RotationY": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                circuit.ry(target=target, angle=multiplier * value)
+            case {"RotationZ": {"Value": angle}}:
+                circuit.rz(target=target, angle=angle)
+            case {
+                "RotationZ": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                circuit.rz(target=target, angle=multiplier * value)
+            case {"Phase": {"Value": angle}}:
+                circuit.phaseshift(target=target, angle=angle)
+            case {
+                "Phase": {
+                    "Ref": {
+                        "index": _,
+                        "multiplier": multiplier,
+                        "value": value,
+                    }
+                }
+            }:
+                circuit.phaseshift(target=target, angle=multiplier * value)
+            case _:
+                raise RuntimeError(f"Undefined gate '{gate}'")
 
-        Each gate is a 3-tuple: (name: str, params: list[float], qubits: list[int]).
-        Control qubits are qubits[:-1] and target is qubits[-1].
-        """
+    def _build_circuit(self, gates):
         circuit = Circuit()
 
-        for gate_name, params, qubits in gates:
-            match gate_name:
-                case "h":
-                    circuit.h(qubits[0])
-                case "x":
-                    circuit.x(qubits[0])
-                case "y":
-                    circuit.y(qubits[0])
-                case "z":
-                    circuit.z(qubits[0])
-                case "rx":
-                    circuit.rx(target=qubits[0], angle=params[0])
-                case "ry":
-                    circuit.ry(target=qubits[0], angle=params[0])
-                case "rz":
-                    circuit.rz(target=qubits[0], angle=params[0])
-                case "p":
-                    circuit.phaseshift(target=qubits[0], angle=params[0])
-                case "cnot":
-                    circuit.cnot(*qubits)
-                case "cz":
-                    circuit.cz(*qubits)
-                case _:
-                    raise RuntimeError(f"Undefined gate '{gate_name}'")
+        for gate_inst in gates:
+            gate = gate_inst["gate"]
+            target = gate_inst["target"]
+            decomposed = gate_inst["decomposed"]
+
+            if decomposed is not None:
+                for gate in decomposed:
+                    match gate:
+                        case {"U": (gate, target)}:
+                            self._call_gate(circuit, gate, target)
+                        case {"CNOT": (control, target)}:
+                            circuit.cnot(control, target)
+            else:
+                self._call_gate(circuit, gate, target)
 
         return circuit
 
@@ -194,6 +242,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             This method is called by Libket and should not be called directly.
         """
         circuit = self._build_circuit(gates)
+
         result = self.device.run(circuit, shots=shots).result()
         aws_map = {q: i for i, q in enumerate(result.measured_qubits)}
 
@@ -242,11 +291,13 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         binding = CircuitBinding(circuit, [], observables=observables)
         program_set = ProgramSet(binding)
 
-        return [
+        result = [
             float(result.expectation)
             for result in self.device.run(program_set, shots=self.shots).result()[0]
         ]
 
+        return result
+
     def connect(self):
         """Connect to the device and return the configuration."""
-        return self.configure(gradient=self.gradient)
+        return self.configure(self.num_qubits, gradient=self.gradient, decompose=True)
