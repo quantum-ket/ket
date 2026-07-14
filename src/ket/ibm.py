@@ -37,7 +37,17 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
     Args:
         backend: The backend to be used for the quantum execution. If not
             provided, it defaults to the AerSimulator.
-        optimization_level: The optimization level for the pass manager.
+        num_qubits: Maximum number of qubits to use. If not provided, it
+            defaults to the number of qubits supported by the backend.
+        gradient: If ``True``, enables gradient computation for variational
+            algorithms. Defaults to ``False``.
+        optimization_level: The optimization level for the Qiskit pass manager.
+            Higher values apply more aggressive circuit optimizations.
+            Defaults to ``2``.
+        qiskit_compiler: If ``True`` (default), gates are passed to Qiskit's
+            pass manager for transpilation and optimization before execution.
+            If ``False``, Libket decomposes gates into U/CNOT primitives
+            before sending them to Qiskit.
     """
 
     def __init__(
@@ -136,7 +146,14 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
                 raise RuntimeError(f"Undefined gate '{gate}'")
 
     def _build_circuit(self, gates):
-        """Build a Qiskit QuantumCircuit from a NativeGate list."""
+        """Build a Qiskit QuantumCircuit from a gate instruction list.
+
+        Each element of ``gates`` is a dict with keys ``gate``, ``target``,
+        ``control``, and ``decomposed``.  When ``decomposed`` is not ``None``,
+        the gate has already been broken down by Libket into U/CNOT primitives
+        and those are applied directly; otherwise the gate is translated via
+        :meth:`_get_gate` and appended with any control qubits.
+        """
         circuit = QuantumCircuit(self.num_qubits)
 
         for gate_inst in gates:

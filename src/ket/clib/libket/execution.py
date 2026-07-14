@@ -158,7 +158,18 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
         native_gate_set: NativeGateSet | None = None,
         decompose: bool = False,
     ):
-        """Configure the batch execution and return a QuantumExecution pointer."""
+        """Configure the batch execution and return a QuantumExecution pointer.
+
+        Args:
+            num_qubits: Total number of qubits available in the execution target.
+            gradient: If ``True``, enables parameter-shift gradient computation.
+            coupling_graph: Optional list of ``(control, target)`` pairs defining
+                device connectivity.  ``None`` means all-to-all.
+            native_gate_set: Optional :class:`NativeGateSet` mapping abstract
+                gates to hardware primitives.
+            decompose: If ``True``, Libket decomposes gates into U/CNOT
+                primitives before passing them to the callbacks.
+        """
         return make_batch_configuration(
             num_qubits,
             execution=self,
@@ -374,7 +385,13 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
         """Call configure with the appropriated arguments to generate the object."""
 
     def configure(self, num_qubits: int, decompose: bool = False):
-        """Configure the live execution and return a QuantumExecution pointer."""
+        """Configure the live execution and return a QuantumExecution pointer.
+
+        Args:
+            num_qubits: Total number of qubits available in the execution target.
+            decompose: If ``True``, Libket decomposes multi-qubit gates into
+                U/CNOT primitives before invoking the callbacks.
+        """
         return make_live_configuration(num_qubits, execution=self, decompose=decompose)
 
 
@@ -490,10 +507,22 @@ def make_live_configuration(
     decompose: bool = False,
 ):
     """
-    Constructs a LiveConfiguration.
+    Construct a live :class:`QuantumExecution` configuration.
 
     Args:
-        execution (LiveExecution): The execution wrapper instance.
+        num_qubits: Total number of qubits available in the execution target.
+        execution: The :class:`LiveExecution` wrapper instance that implements
+            the gate callbacks.
+        native_gate_set: Optional :class:`NativeGateSet` describing how
+            abstract gates map to hardware-specific primitives.  Pass ``None``
+            to use the default gate set.
+        decompose: If ``True``, Libket decomposes multi-qubit gates into
+            U/CNOT primitives before invoking the callbacks. Defaults to
+            ``False``.
+
+    Returns:
+        An opaque C pointer representing the live quantum execution
+        configuration, suitable for passing to :class:`~ket.Process`.
     """
 
     if native_gate_set is not None:
@@ -519,10 +548,30 @@ def make_batch_configuration(  # pylint: disable=too-many-arguments,too-many-pos
     decompose: bool = False,
 ):
     """
-    Constructs a BatchConfiguration.
+    Construct a batch :class:`QuantumExecution` configuration.
 
     Args:
-        execution (BatchExecution): The execution wrapper instance.
+        num_qubits: Total number of qubits available in the execution target.
+        execution: The :class:`BatchExecution` wrapper instance that implements
+            the sampling, expectation-value, and gradient callbacks.
+        gradient: If ``True``, enables parameter-shift gradient computation.
+            Defaults to ``False``.
+        coupling_graph: Optional list of ``(control, target)`` qubit pairs
+            describing the device connectivity graph.  When supplied, the
+            compiler restricts two-qubit gate placement to connected pairs.
+            Pass ``None`` for an all-to-all topology.
+        exp_value_strategy: JSON-serialisable strategy hint for expectation
+            value evaluation.  Defaults to ``"Native"`` when ``None``.
+        native_gate_set: Optional :class:`NativeGateSet` instance that maps
+            abstract gates to hardware-specific primitives.  Pass ``None`` to
+            use the default gate set.
+        decompose: If ``True``, Libket decomposes multi-qubit gates into
+            U/CNOT primitives before passing them to the execution callbacks.
+            Defaults to ``False``.
+
+    Returns:
+        An opaque C pointer representing the batch quantum execution
+        configuration, suitable for passing to :class:`~ket.Process`.
     """
 
     coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")

@@ -121,7 +121,9 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             is used.
         num_qubits: Number of qubits for the KBW simulator.
             Defaults to 32 for sparse mode, or 12 for dense mode.
-        simulator: Simulation mode for the KBW simulator. Defaults to ``"sparse"``.
+        simulator: Simulation mode for the KBW simulator. Options are
+            ``"sparse"``, ``"dense"``, and ``"dense gpu"``.
+            Defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator, either ``"live"`` or ``"batch"``.
             Defaults to ``"live"``.
     """

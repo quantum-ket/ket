@@ -60,7 +60,36 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     gradient: bool = False,
     decompose: bool = False,
 ):
-    """Create a configuration"""
+    """Create a KBW simulator configuration.
+
+    Args:
+        num_qubits: Number of qubits to simulate.
+        execution: Execution mode — ``"live"`` for gate-by-gate simulation or
+            ``"batch"`` for deferred execution (required for gradient support).
+            Defaults to ``"live"``.
+        simulator: Simulator backend to use. Available options:
+
+            - ``"sparse"``: Sparse state-vector simulator.
+            - ``"sparse v2"``: Updated sparse simulator variant.
+            - ``"dense"``: Dense state-vector simulator with good multithreaded
+              performance. This is the default.
+            - ``"dense v1"``: Previous dense simulator variant.
+            - ``"dense v2"``: Dense simulator with a smaller memory footprint.
+            - ``"dense gpu"``: Dense simulator targeting most GPUs (Intel, AMD,
+              Apple, and NVIDIA). Recommended for large qubit counts.
+
+        coupling_graph: Optional list of ``(control, target)`` qubit pairs
+            describing the hardware connectivity. When provided, the compiler
+            restricts two-qubit gates to connected pairs.
+        gradient: If ``True``, forces batch execution mode and enables
+            parameter-shift gradient computation. Defaults to ``False``.
+        decompose: If ``True``, Libket decomposes gates into U/CNOT primitives
+            before passing them to the simulator. Defaults to ``False``.
+
+    Returns:
+        An opaque configuration pointer to be passed to the Ket
+        :class:`~ket.Process`.
+    """
     if gradient:
         execution = "batch"
 
