@@ -27,6 +27,7 @@ __all__ = [
 # SPIN RULE
 # ======================================================
 
+
 def _resolve_spin(orbital: int, spin: str | None):
     if spin is not None:
         if spin not in ("a", "b"):
@@ -39,6 +40,7 @@ def _resolve_spin(orbital: int, spin: str | None):
 # ======================================================
 # WORD (PRODUCT)
 # ======================================================
+
 
 class Fermion(dict):
     """Fermionic operator product.
@@ -97,7 +99,6 @@ class Fermion(dict):
     def __repr__(self):
         return f"Fermion({dict(self)})"
 
-
     def _repr_latex_(self) -> str:
         """Default Jupyter LaTeX representation (no spin)."""
         return f"${self._latex_core(spin=False)}$"
@@ -120,7 +121,6 @@ class Fermion(dict):
                 out.append(rf"a_{{{idx}}}")
 
         return " ".join(out)
-
 
     def show(self, spin=False):
         """Return a string representation of the operator.
@@ -200,7 +200,6 @@ class Fermion(dict):
 
         return NotImplemented
 
-
     def __radd__(self, other):
         if other == 0:
             return self
@@ -215,6 +214,7 @@ class Fermion(dict):
 # ======================================================
 # HIGH LEVEL API
 # ======================================================
+
 
 def CreateFermion(orbital: int, spin: str | None = None):
     """Create a fermionic creation operator.
@@ -242,6 +242,7 @@ def AnnihilateFermion(orbital: int, spin: str | None = None):
     """
     spin = _resolve_spin(orbital, spin)
     return Fermion({(0, orbital, spin): "-"})
+
 
 def number_operator(n_orbitals: int, orbital: int | None = None):
     """Construct a fermionic number operator.
@@ -273,9 +274,7 @@ def number_operator(n_orbitals: int, orbital: int | None = None):
 
         term = CreateFermion(orbital) * AnnihilateFermion(orbital)
 
-        return FermionSentence({
-            term: 1
-        })
+        return FermionSentence({term: 1})
 
     terms = {}
 
@@ -290,8 +289,10 @@ def number_operator(n_orbitals: int, orbital: int | None = None):
 # LINEAR COMBINATION
 # ======================================================
 
+
 class FermionSentence(dict):
     """Linear combination of fermionic operator products."""
+
     def __str__(self):
         if not self:
             return "0 * I"
@@ -338,7 +339,6 @@ class FermionSentence(dict):
             result[k] = result.get(k, 0) + v
 
         return FermionSentence(result)
-
 
     def __radd__(self, other):
         if other == 0:

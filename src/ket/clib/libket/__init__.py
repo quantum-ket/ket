@@ -19,7 +19,6 @@ from ctypes import (
     c_uint64,
     c_double,
     c_char_p,
-    byref,
 )
 import json
 from typing import Sequence
@@ -80,9 +79,8 @@ class BatchCExecution(Structure):  # pylint: disable=too-few-public-methods
                 c_int32,
                 c_char_p,  # gates_json
                 c_char_p,  # hamiltonian_json
-                c_char_p,  # parameters_json
                 POINTER(c_double),  # exp_result
-                POINTER(c_double),  # grad
+                POINTER(c_char_p),  # grad
             ),
         ),
     ]

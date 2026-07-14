@@ -137,7 +137,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         self.gradient = gradient
 
     @staticmethod
-    def _call_gate(circuit, gate, target):
+    def _call_gate(circuit, gate, target):  # pylint: disable=too-many-branches
         match gate:
             case "Hadamard":
                 circuit.h(target)
@@ -152,9 +152,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             case {
                 "RotationX": {
                     "Ref": {
-                        "index": _,
                         "multiplier": multiplier,
                         "value": value,
+                        "index": _,
                     }
                 }
             }:
@@ -164,9 +164,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             case {
                 "RotationY": {
                     "Ref": {
-                        "index": _,
                         "multiplier": multiplier,
                         "value": value,
+                        "index": _,
                     }
                 }
             }:
@@ -176,9 +176,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             case {
                 "RotationZ": {
                     "Ref": {
-                        "index": _,
                         "multiplier": multiplier,
                         "value": value,
+                        "index": _,
                     }
                 }
             }:
@@ -188,9 +188,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             case {
                 "Phase": {
                     "Ref": {
-                        "index": _,
                         "multiplier": multiplier,
                         "value": value,
+                        "index": _,
                     }
                 }
             }:
@@ -209,10 +209,10 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
             if decomposed is not None:
                 for gate in decomposed:
                     match gate:
-                        case {"U": (gate, target)}:
-                            self._call_gate(circuit, gate, target)
                         case {"CNOT": (control, target)}:
                             circuit.cnot(control, target)
+                        case {"U": (gate, target)}:
+                            self._call_gate(circuit, gate, target)
             else:
                 self._call_gate(circuit, gate, target)
 

@@ -9,15 +9,12 @@ from __future__ import annotations
 
 from ctypes import (
     CFUNCTYPE,
-    c_bool,
     c_char_p,
     c_int32,
     c_size_t,
     POINTER,
     c_uint64,
     c_double,
-    c_void_p,
-    byref,
 )
 import json
 from abc import ABC, abstractmethod
@@ -30,7 +27,7 @@ from . import (
 )
 
 
-class BatchExecution(ABC):
+class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
     """Base class for constructing batch target executions."""
 
     def __init__(self):
@@ -116,26 +113,27 @@ class BatchExecution(ABC):
                 result[i] = v
             return 0
 
+        self._grad_result = None
+
         @CFUNCTYPE(
             c_int32,
             c_char_p,  # gates_json
             c_char_p,  # hamiltonian_json
-            c_char_p,  # parameters_json
             POINTER(c_double),  # exp_result
-            POINTER(c_double),  # grad
+            POINTER(c_char_p),  # grad
         )
         def gradient(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             gates_json,
             hamiltonian_json,
             exp_result,
-            grad,
+            grad_json,
         ):
             gates = json.loads(gates_json)
             hamiltonian = json.loads(hamiltonian_json)
             exp_val, grad_vals = self.gradient(gates, hamiltonian)
             exp_result[0] = exp_val
-            for i, v in enumerate(grad_vals):
-                grad[i] = v
+            self._grad_result = json.dumps(grad_vals).encode("utf-8")
+            grad_json[0] = self._grad_result
             return 0
 
         self._cb_sample = sample
@@ -187,13 +185,28 @@ class BatchExecution(ABC):
         raise NotImplementedError("`exp_value` method not implemented")
 
     def sample_native(self, gates, qubits, shots):
-        raise NotImplementedError
+        """Execute the circuit with native gates and compute expectation values.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        raise NotImplementedError("`sample_native` method not implemented")
 
     def exp_value_native(self, gates, hamiltonians):
-        raise NotImplementedError
+        """Execute the circuit with native and compute expectation values.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        raise NotImplementedError("`exp_value_native` method not implemented")
 
     def gradient(self, gates, hamiltonian):
-        raise NotImplementedError
+        """Execute the circuit, compute expectation values and the parameters gradient.
+
+        .. warning::
+            This method is called by Libket and should not be called directly.
+        """
+        raise NotImplementedError("`gradient` method not implemented")
 
 
 class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
@@ -352,6 +365,10 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
         """Dump the state of the qubits."""
         raise NotImplementedError("`dump` method not implemented")
 
+    def compute_native_gates(self, gates) -> dict:
+        """Compute native gates."""
+        raise NotImplementedError("`compute_native_gates` method not implemented")
+
     @abstractmethod
     def connect(self):
         """Call configure with the appropriated arguments to generate the object."""
@@ -492,7 +509,7 @@ def make_live_configuration(
     )
 
 
-def make_batch_configuration(
+def make_batch_configuration(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
     execution: BatchExecution,
     gradient: bool = False,

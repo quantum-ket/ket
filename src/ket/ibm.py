@@ -74,7 +74,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         self.gradient = gradient
 
     @staticmethod
-    def _get_gate(gate):
+    def _get_gate(gate):  # pylint: disable=too-many-branches,too-many-return-statements
         match gate:
             case "Hadamard":
                 return library.HGate()
