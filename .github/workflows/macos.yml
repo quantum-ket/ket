@@ -17,19 +17,19 @@ jobs:
     runs-on: macos-14
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v7
     - name: Checkout Submodules
       run: git submodule update --init --recursive
     - name: Compile Rust Libs
       run: |
-        rustup default 1.94
+        rustup default 1.97
         rustup target add x86_64-apple-darwin
         rustup target add aarch64-apple-darwin
 
-        cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
+        cargo build -F c_api --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
         cargo build --release --target x86_64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
-        cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
+        cargo build -F c_api --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/libket/Cargo.toml
         cargo build --release --target aarch64-apple-darwin --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
         lipo -create -output src/ket/clib/libs/libket.dylib \
@@ -46,7 +46,7 @@ jobs:
     - name: Build Wheel
       run: python3 setup.py bdist_wheel -p macosx_14_0_universal2
     - name: Archive Wheel
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: macosx
         path: dist

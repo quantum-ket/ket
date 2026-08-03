@@ -114,7 +114,7 @@ To get started with Ket development, follow these steps:
    git clone --recursive https://gitlab.com/quantum-ket/ket.git
    cd ket
 
-   cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
+   cargo build -F c_api --manifest-path src/ket/clib/libs/libket/Cargo.toml
    cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
    # Create symlinks from within the libs directory
