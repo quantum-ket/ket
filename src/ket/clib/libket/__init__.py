@@ -310,6 +310,7 @@ api_argtypes = {
     "ket_block_set_as_diagonal": ([c_void_p], []),
     "ket_block_set_as_permutation": ([c_void_p], []),
     "ket_process_set_parameter": ([c_void_p, c_double], [c_size_t]),
+    "ket_parse_openqasm": ([POINTER(c_size_t), c_size_t, c_char_p], [c_void_p]),
 }
 
 

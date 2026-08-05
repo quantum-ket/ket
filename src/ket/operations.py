@@ -627,7 +627,7 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
         for target, op in proprieties.items():
             target = int(target)
             if op["propriety"] in ["Permutation", "Unitary"]:
-                if target in blocked_qubits:
+                if target in blocked_qubits or ket_process._is_aux(target):
                     raise RuntimeError("Operation violates uncomputation.")
                 if target in written_qubits:
                     allow_approximated_decomposition = False

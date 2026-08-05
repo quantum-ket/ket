@@ -323,7 +323,6 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
     Example:
 
         .. code-block:: python
-            :skip:
 
             from ket.qulib import draw
             from ket import H, CNOT
