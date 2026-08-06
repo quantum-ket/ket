@@ -234,7 +234,7 @@ api_argtypes = {
             POINTER(BatchCExecution),  # batch
             c_void_p,  # native_gate_set
             c_bool,  # decompose
-            c_bool,  # gradient
+            c_char_p,  # gradient_strategy_json
             c_char_p,  # coupling_graph_json
             c_char_p,  # exp_value_strategy_json
         ],

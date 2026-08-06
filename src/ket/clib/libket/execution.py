@@ -153,7 +153,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
     def configure(
         self,
         num_qubits: int,
-        gradient: bool = False,
+        gradient=False,
         coupling_graph: list[tuple[int, int]] | None = None,
         native_gate_set: NativeGateSet | None = None,
         decompose: bool = False,
@@ -586,12 +586,19 @@ def make_batch_configuration(  # pylint: disable=too-many-arguments,too-many-pos
     else:
         native_gate_set_ptr = None
 
+    if gradient is True:
+        gradient_strategy_json = json.dumps("ParameterShiftRule").encode("utf-8")
+    elif gradient is False or gradient is None:
+        gradient_strategy_json = json.dumps("None").encode("utf-8")
+    else:
+        gradient_strategy_json = json.dumps(gradient).encode("utf-8")
+
     return API["ket_quantum_execution_batch"](
         num_qubits,
         execution.c_struct,
         native_gate_set_ptr,
         decompose,
-        gradient,
+        gradient_strategy_json,
         coupling_graph_json,
         exp_value_strategy_json,
     )

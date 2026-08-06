@@ -13,8 +13,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
+      - name: Lint
+        run: |
+          uvx pylint src
+          uvx reuse[charset-normalizer] lint
+
   macOS:
     runs-on: macos-14
+    needs: lint
 
     steps:
     - uses: actions/checkout@v7
@@ -45,6 +57,10 @@ jobs:
       run: python3 -m pip install setuptools wheel twine --break-system-packages
     - name: Build Wheel
       run: python3 setup.py bdist_wheel -p macosx_14_0_universal2
+    - name: Run Tests
+      run: |
+        python3 -m pip install "$(ls dist/ket_lang*universal2.whl)[ibm,amazon]" pytest pytest-cov --break-system-packages
+        pytest
     - name: Archive Wheel
       uses: actions/upload-artifact@v7
       with:
