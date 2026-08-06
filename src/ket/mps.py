@@ -181,7 +181,11 @@ class MPS(BatchExecution):
 
     def connect(self):
         """Configure the connection to the MPS simulator."""
-        coupling_graph = [(i, i + 1) for i in range(self.num_qubits - 1)]
+        if self.max_bond is not None:
+            coupling_graph = [(i, i + 1) for i in range(self.num_qubits - 1)]
+        else:
+            coupling_graph = None
+
         return self.configure(
             self.num_qubits,
             gradient="Native",
