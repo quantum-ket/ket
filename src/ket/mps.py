@@ -161,8 +161,8 @@ class MPS(BatchExecution):
             shapes and disables JAX's ``jit`` compilation, which may result in slower evaluations.
             If ``None``, the network is built in 2D and contracted fully at the end,
             which is JIT-compatible but may scale poorly with depth. Defaults to ``None``.
-        double_precision: Whether to enable 64-bit floating point precision (double precision) in JAX.
-            Defaults to ``False``. Set to ``True`` for higher accuracy in deep circuits.
+        double_precision: Whether to enable 64-bit floating point precision (double precision) in
+            JAX. Defaults to ``False``. Set to ``True`` for higher accuracy in deep circuits.
     """
 
     def __init__(
