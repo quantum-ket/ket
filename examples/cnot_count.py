@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from ket import *
 from ket.qulib import GateCount
 
