@@ -14,9 +14,10 @@ from functools import reduce
 from operator import add
 import os
 import random
-from typing import Callable, Literal
+from typing import Callable
 from math import sqrt, exp
 from collections.abc import Iterable
+from collections import Counter
 from inspect import signature
 from itertools import starmap
 
@@ -28,7 +29,7 @@ except ImportError:
     _MULTIPROCESS_AVAILABLE = False
 
 
-from ..clib.libket.execution import BatchExecution, LiveExecution
+from ..clib.libket.execution import LiveExecution
 from ..base import Process, Quant
 from ..operations import dump, exp_value
 from ..gates import H, CNOT, X, Z, obs
@@ -678,3 +679,116 @@ def exact_solver(
         ),
         key=lambda se: se[1],
     )
+
+
+class GateCount(LiveExecution):
+    """Live Execution simulator that counts the quantum gates and CNOT depth.
+
+    Example:
+        .. code-block:: python
+
+
+            from ket import *
+            from ket.qulib import GateCount
+
+            gc = GateCount(3)
+            p = Process(gc)
+            q = p.alloc(3)
+            H(q[0])
+            CNOT(q[0], q[1])
+            X(q[2])
+            CNOT(q[1], q[2])
+            H(q)
+
+            # Trigger execution
+            m = measure(q)
+
+            print("Gate Counts:", gc.counts)
+            print("CNOT Depth:", gc.cnot_depth)
+
+
+    Args:
+        num_qubits: number of qubits.
+    """
+
+    def __init__(self, num_qubits: int):
+        super().__init__()
+        self.num_qubits = num_qubits
+        self.counts = Counter()
+        self.depths = [0] * num_qubits
+        self.cnot_depth = 0
+
+    def connect(self):
+        return self.configure(self.num_qubits, decompose=True)
+
+    def _update_cnot_depth(self, control: list[int], target: int):
+        new_depth = max(self.depths[target], *(self.depths[c] for c in control)) + 1
+        for c in control:
+            self.depths[c] = new_depth
+        self.depths[target] = new_depth
+        self.cnot_depth = max(self.cnot_depth, new_depth)
+
+    def pauli_x(self, target: int, control: list[int]):
+        if control:
+            if len(control) == 1:
+                self.counts["cnot"] += 1
+            else:
+                self.counts[f"c{len(control)}x"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["x"] += 1
+
+    def pauli_y(self, target: int, control: list[int]):
+        if control:
+            self.counts[f"c{len(control)}y"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["y"] += 1
+
+    def pauli_z(self, target: int, control: list[int]):
+        if control:
+            if len(control) == 1:
+                self.counts["cz"] += 1
+            else:
+                self.counts[f"c{len(control)}z"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["z"] += 1
+
+    def hadamard(self, target: int, control: list[int]):
+        if control:
+            self.counts[f"c{len(control)}h"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["h"] += 1
+
+    def rotation_x(self, target: int, control: list[int], angle: float):
+        if control:
+            self.counts[f"c{len(control)}rx"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["rx"] += 1
+
+    def rotation_y(self, target: int, control: list[int], angle: float):
+        if control:
+            self.counts[f"c{len(control)}ry"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["ry"] += 1
+
+    def rotation_z(self, target: int, control: list[int], angle: float):
+        if control:
+            self.counts[f"c{len(control)}rz"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["rz"] += 1
+
+    def phase(self, target: int, control: list[int], angle: float):
+        if control:
+            self.counts[f"c{len(control)}p"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["p"] += 1
+
+    def measure(self, qubits: list[int]) -> int:
+        return 0
