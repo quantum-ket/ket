@@ -31,7 +31,7 @@ except ImportError:
 
 from ..clib.libket.execution import LiveExecution
 from ..base import Process, Quant
-from ..operations import dump, exp_value
+from ..operations import dump, exp_value, measure
 from ..gates import H, CNOT, X, Z, obs
 from ..expv import Hamiltonian
 from . import gates, prepare, oracle, ham
@@ -68,6 +68,8 @@ __all__ = [
     "energy",
     "simulated_annealing",
     "exact_solver",
+    "GateCount",
+    "gate_count",
 ]
 
 
@@ -251,10 +253,10 @@ class _IBMDeviceForDraw(LiveExecution):
         self.last_gate = "P"
 
     def measure(self, qubits: list[int]) -> int:
-        measure = Gate(name="measure", num_qubits=len(qubits), params=[])
+        mea = Gate(name="measure", num_qubits=len(qubits), params=[])
         if self.keep_order and self.last_gate != "M":
             self.circuit.barrier()
-        self.circuit.append(measure, qubits)
+        self.circuit.append(mea, qubits)
         self.last_gate = "M"
         return 0
 
@@ -792,3 +794,78 @@ class GateCount(LiveExecution):
 
     def measure(self, qubits: list[int]) -> int:
         return 0
+
+
+def gate_count(
+    gate: Callable,
+    num_qubits: int | list[int] = 1,
+    args: tuple = (),
+    *,
+    qpu_size: int | None = None,
+) -> tuple[Counter, int]:
+    """Count the quantum gates and CNOT depth of a quantum gate function.
+
+    This function executes the provided quantum gate operation on a live
+    execution environment and tracks the number of times each fundamental
+    gate is called, as well as the CNOT depth (ignoring single-qubit gates).
+    Multi-qubit gates are decomposed before counting.
+
+    Args:
+        gate: Quantum gate function to analyze.
+        num_qubits: Number of qubits. Can be a single integer for one
+            quantum register or a list of integers for multiple registers.
+        args: Classical arguments to pass to the gate function.
+        qpu_size: Size of the quantum processing unit (QPU). Defaults
+            to ``sum(num_qubits)``.
+
+    Returns:
+        A tuple containing:
+          - A ``collections.Counter`` with the tally of each gate type.
+          - The CNOT depth of the quantum circuit.
+
+    Raises:
+        ValueError: If the total number of qubits exceeds the specified ``qpu_size``,
+            or if the ``qpu_size`` is not a positive integer.
+
+    Example:
+        .. code-block:: python
+
+            from ket import H, CNOT
+            from ket.qulib import gate_count
+
+            def my_gate(q):
+                H(q[0])
+                CNOT(q[0], q[1])
+                CNOT(q[1], q[2])
+
+            counts, depth = gate_count(my_gate, 3)
+            print(counts)
+            print(depth)
+    """
+
+    if not isinstance(num_qubits, Iterable):
+        num_qubits = [num_qubits]
+
+    total_qubits = sum(num_qubits)
+
+    if qpu_size is not None:
+        if total_qubits > qpu_size:
+            raise ValueError(
+                f"Total number of qubits {total_qubits} exceeds the QPU size {qpu_size}"
+            )
+    else:
+        qpu_size = total_qubits
+
+    if qpu_size <= 0:
+        raise ValueError(f"QPU size must be a positive integer, got {qpu_size}.")
+
+    gc = GateCount(qpu_size)
+    process = Process(gc)
+
+    qubits = [process.alloc(n) for n in num_qubits]
+
+    gate(*args, *qubits)
+
+    measure(qubits[0])
+
+    return gc.counts, gc.cnot_depth
