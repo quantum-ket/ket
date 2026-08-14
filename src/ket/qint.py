@@ -58,7 +58,7 @@ from math import pi
 from typing import Any
 from .base import Quant
 from .gates import X, QFT, P, is_permutation
-from .operations import C, control, ctrl, around, adj, undo
+from .operations import control, ctrl, around, adj, undo
 
 __all__ = ["Qreal", "Qint"]
 
@@ -207,6 +207,9 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         number = round(number * 2**exp)
         _set_int(qubits, number)
 
+    def copy(self, depends_on=None):
+        return Qreal(super().copy(depends_on), exp=self.exp)
+
     def __iadd__(self, other: Any):
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
@@ -222,31 +225,11 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
     __isub__ = adj(__iadd__)
 
-    def copy(self):
-        """Create a copy of this register in a fresh auxiliary register.
-
-        Allocates a new auxiliary qubit register of the same size and uses
-        CNOT gates to copy the state qubit-by-qubit. The copy is wrapped
-        in :func:`~ket.operations.undo` so that the auxiliary register is
-        automatically uncomputed when the returned object goes out of scope.
-
-        Returns:
-            A new :class:`~ket.qint.Qreal` wrapping
-            an auxiliary register that holds a copy of this register's state.
-        """
-        other = self.ket_process.alloc_aux(len(self))
-
-        def inner_copy(other):
-            for s, o in zip(self, other):
-                C(X)(s, o)
-
-        return Qreal(undo(inner_copy, other), exp=self.exp)
-
     def __add__(self, other: Any):
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
-        result = self.copy()
+        result = self.copy([other])
 
         def inner_add(result):
             result += other
@@ -257,7 +240,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
-        result = self.copy()
+        result = self.copy([other])
 
         def inner_sub(result):
             result -= other
@@ -294,7 +277,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
-        result_quant = self.ket_process.alloc_aux(len(self))
+        result_quant = self.ket_process.alloc_aux(len(self), depends_on=[self, other])
         new_exp = self.exp + other.exp if isinstance(other, Qreal) else self.exp
 
         raw_result = undo(partial(self.mul, other), result_quant)
@@ -304,7 +287,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
-        result_quant = self.ket_process.alloc_aux(len(self))
+        result_quant = self.ket_process.alloc_aux(len(self), depends_on=[self, other])
         new_exp = self.exp - other.exp if isinstance(other, Qreal) else self.exp
 
         raw_result = undo(partial(adj(self.mul), other), result_quant)
@@ -352,11 +335,11 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
-        cond = Quant.__eq__(self - other, 0)
-        result = self.ket_process.alloc_aux()
+        cond = self - other
+        result = self.ket_process.alloc_aux(depends_on=[cond])
 
         def eq(result):
-            with control(cond):
+            with control(Quant.__eq__(cond, 0)):
                 X(result)
 
         return undo(eq, result)

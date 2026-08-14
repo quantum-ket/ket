@@ -18,23 +18,21 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import contextmanager
-from ctypes import c_void_p, c_size_t
-from functools import partial
-from os import PathLike
+from ctypes import c_void_p
 import json
-from typing import Literal, Optional, Any
-import weakref
+from typing import Literal, Optional
 
-from .clib.libket import (
+from ..clib.libket import (
     Block,
     HasProcess,
     Process as LibketProcess,
     API as libket,
 )
 
-from .clib.libket.execution import LiveExecution, BatchExecution
-
-from .clib.kbw import get_simulator
+from ..clib.libket.execution import LiveExecution, BatchExecution
+from ..clib.kbw import get_simulator
+from .qasm import qasm
+from .quant import Quant
 
 __all__ = ["Process", "Quant", "Parameter", "qasm"]
 
@@ -242,7 +240,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         qubits_index = [self._alloc() for _ in range(num_qubits)]
         return Quant(qubits=qubits_index, process=self)
 
-    def alloc_aux(self, num_qubits: int = 1) -> Quant:
+    def alloc_aux(self, num_qubits: int = 1, depends_on: list | None = None) -> Quant:
         """Allocate auxiliary qubits managed by the process for uncomputation.
 
         Auxiliary (ancilla) qubits are temporary qubits used in intermediate
@@ -267,17 +265,24 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         Args:
             num_qubits: The number of auxiliary qubits to allocate.
                 Defaults to 1.
+            depends_on: A list of objects (such as other :class:`~ket.Quant` instances)
+                that the allocated auxiliary register depends on. This prevents early
+                uncomputation; for example, if ``b`` depends on ``a``, ``a`` cannot be
+                uncomputed before ``b``. Defaults to ``None``.
 
         Returns:
             A :class:`~ket.base.Quant` object containing
             the auxiliary qubits. It supports use as a context manager: on exit
-            the qubits are returned to the qubit pool.
+            the qubits are returned to the pool.
 
         Raises:
             ValueError: If ``num_qubits`` is less than 1.
         """
         if num_qubits < 1:
             raise ValueError("Cannot allocate less than 1 qubit")
+
+        if depends_on is not None:
+            depends_on = [q for q in depends_on if isinstance(q, Quant)]
 
         aux_index = [self._alloc() for _ in range(num_qubits)]
 
@@ -287,6 +292,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             qubits=aux_index,
             process=self,
             undo=lambda: self._free_aux(aux_index),
+            source=depends_on,
         )
 
     def _free_aux(self, qubits: list[int]):
@@ -488,268 +494,6 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 self.append_block(block)
 
 
-class Quant(HasProcess):
-    """List of qubits.
-
-    This class represents a list of qubit indices within a quantum process. Direct instantiation
-    of this class is not recommended. Instead, it should be created by calling the
-    :meth:`~ket.base.Process.alloc` method.
-
-    A :class:`~ket.base.Quant` serves as a fundamental quantum object where quantum operations
-    should be applied.
-
-    Example:
-
-        .. code-block:: python
-
-            from ket import *
-            # Create a quantum process
-            p = Process()
-            # Allocate 2 qubits
-            q1 = p.alloc(2)
-            # Apply a Hadamard gates on the first qubit of `q1`
-            H(q1[0])
-            # Allocate more 2 qubits
-            q2 = p.alloc(2)
-            # Concatenate two Quant objects
-            result_quant = q1 + q2
-            print(result_quant)
-            # <Ket 'Quant' [0, 1, 2, 3] pid=0x...>
-            # Use the fist qubit to control the application of
-            # a Pauli X gate on the other qubits
-            ctrl(result_quant[0], X)(result_quant[1:])
-            # Select qubits at specific indexes
-            selected_quant = result_quant.at([0, 1])
-            print(selected_quant)
-            # <Ket 'Quant' [0, 1] pid=0x...>
-
-    Supported operations:
-
-    - Addition (``+``): Concatenates two :class:`~ket.base.Quant` objects.
-      The processes must be the same.
-    - Indexing (``[index]``): Returns a new :class:`~ket.base.Quant` object with selected qubits
-      based on the provided index.
-    - Iteration (``for q in qubits``): Allows iterating over qubits in a :class:`~ket.base.Quant`
-      object.
-    - Reversal (``reversed(qubits)``): Returns a new :class:`~ket.base.Quant` object with reversed
-      qubits.
-    - Length (``len(qubits)``): Returns the number of qubits in the :class:`~ket.base.Quant` object.
-
-    """
-
-    def __init__(self, *, qubits: list[int], process: Process, undo=None, source=None):
-        super().__init__(ket_process=process)
-
-        self.qubits = qubits
-        self._finalizer = weakref.finalize(self, undo) if undo is not None else None
-        self.source = source
-
-    def __add__(self, other: Quant) -> Quant:
-        """Concatenate two :class:`~ket.base.Quant` objects into a single register.
-
-        Creates a new :class:`~ket.base.Quant` whose qubit list is the ordered
-        concatenation of ``self`` followed by ``other``. Both objects must belong
-        to the same :class:`~ket.base.Process` and must not share any qubit indices.
-
-        Example:
-            .. code-block:: python
-
-                from ket import Process
-                p = Process()
-                q1 = p.alloc(2)
-                q2 = p.alloc(2)
-                combined = q1 + q2
-                print(len(combined))
-                # 4
-
-        Args:
-            other: The qubit register to append.
-
-        Returns:
-            A new register containing all qubits from
-            ``self`` followed by all qubits from ``other``.
-
-        Raises:
-            ValueError: If ``other`` belongs to a different process, or if the
-                two registers share any qubit indices.
-        """
-        if not isinstance(other, Quant):
-            return NotImplemented
-        if self.ket_process is not other.ket_process:
-            raise ValueError("Cannot concatenate qubits from different processes")
-        if any(qubit in other.qubits for qubit in self.qubits):
-            raise ValueError("Cannot concatenate qubits with overlapping indices")
-        return Quant(
-            qubits=self.qubits + other.qubits,
-            process=self.ket_process,
-            source=[self, other],
-        )
-
-    def at(self, index: list[int]) -> Quant:
-        """Return a subset of qubits at specified indices.
-
-        Create a new :class:`~ket.base.Quant` object with qubit references at the positions defined
-        by the provided ``index`` list.
-
-        Example:
-
-            .. code-block:: python
-
-                from ket import *
-                # Create a quantum process
-                p = Process()
-                # Allocate 5 qubits
-                q = p.alloc(5)
-                # Select qubits at odd indices (1, 3)
-                odd_qubits = q.at([1, 3])
-
-        Args:
-            index: List of indices specifying the positions of qubits to be included in the
-                new :class:`~ket.base.Quant`.
-
-        Returns:
-            A new :class:`~ket.base.Quant` object containing the selected qubits.
-        """
-
-        return Quant(
-            qubits=[self.qubits[i] for i in index],
-            process=self.ket_process,
-            source=self,
-        )
-
-    def __reversed__(self):
-        return Quant(
-            qubits=list(reversed(self.qubits)),
-            process=self.ket_process,
-            source=self,
-        )
-
-    def __getitem__(self, key):
-        qubits = self.qubits.__getitem__(key)
-        return Quant(
-            qubits=qubits if isinstance(qubits, list) else [qubits],
-            process=self.ket_process,
-            source=self,
-        )
-
-    def __len__(self):
-        return len(self.qubits)
-
-    def __eq__(self, other: Any):
-        if not isinstance(other, int):
-            return NotImplemented
-
-        from .operations import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            undo,
-            _flip_to_control,
-        )
-
-        return undo(_flip_to_control(other), self)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self._finalizer is not None and self._finalizer.alive:
-            self._finalizer()
-
-    def as_int(self, number: int = 0):
-        """Interpret and initialize this quantum register as a quantum integer.
-
-        Wraps the register as a :class:`~ket.qint.Qint`, enabling quantum
-        arithmetic operations (addition, subtraction, comparison, etc.) on the
-        underlying qubits. The register is initialized to the given classical
-        integer value using :func:`~ket.gates.X` gates.
-
-        The :class:`~ket.qint.Qint` uses a two's-complement signed representation
-        internally.
-
-        Example:
-            .. code-block:: python
-
-                from ket import Process, measure
-                p = Process()
-                q = p.alloc(5)
-                qi = q.as_int(5)    # register initialized to |5⟩
-                qi += 3             # in-place addition: |5⟩ → |8⟩
-                print(measure(qi).value)
-                # 8
-
-        Args:
-            number: The initial classical integer value to encode into the
-                quantum register. Defaults to ``0``.
-
-        Returns:
-            A quantum integer wrapping this register,
-            initialized to ``number``.
-        """
-        from .qint import Qint  # pylint: disable=import-outside-toplevel,cyclic-import
-
-        return Qint(self, number)
-
-    def as_real(self, exp: int, number: float = 0.0):
-        r"""Interpret and initialize this quantum register as a fixed-point quantum real number.
-
-        Wraps the register as a :class:`~ket.qint.Qreal`, enabling quantum
-        arithmetic operations on floating-point values encoded in a fixed-point
-        binary representation.
-
-        The real number is stored internally as an integer scaled by
-        :math:`2^{\texttt{exp}}`:
-
-        - A **positive** ``exp`` increases fractional precision (smaller representable
-          step size of :math:`2^{-\texttt{exp}}`).
-        - A **negative** ``exp`` increases the representable magnitude at the cost of
-          precision.
-
-        Example:
-            .. code-block:: python
-
-                from ket import Process, measure
-                p = Process()
-                q = p.alloc(8)         # 8 qubits for fixed-point
-                qr = q.as_real(4, 1.5) # precision: 1/16, initialized to 1.5
-                qr += 0.25             # in-place addition
-                print(measure(qr).value)
-                # 1.75
-
-        Args:
-            exp: The exponent defining the fixed-point scale. The stored
-                integer ``n`` represents the real value ``n / 2**exp``.
-            number: The initial classical float value to encode into the
-                quantum register. Defaults to ``0.0``.
-
-        Returns:
-            A quantum real number wrapping this register,
-            initialized to ``number``.
-        """
-        from .qint import Qreal  # pylint: disable=import-outside-toplevel,cyclic-import
-
-        return Qreal(self, exp, number)
-
-    def dump_format(self):
-        """Return the state-formatting callable used by :func:`~ket.operations.dump`.
-
-        Provides a function that converts a raw integer basis-state index into a
-        zero-padded binary string of the correct width for this register. This is
-        used internally by :class:`~ket.quantumstate.QuantumState` to display
-        multi-register states with per-register labels.
-
-        Returns:
-            A function that accepts an integer basis-state
-            value and returns its binary string representation (zero-padded to
-            ``len(self)`` bits).
-        """
-
-        def dump_format(size, state):
-            return f"{state:0{size}b}"
-
-        return partial(dump_format, len(self))
-
-    def __repr__(self):
-        return f"<Ket 'Quant' {self.qubits} pid={hex(id(self.ket_process))}>"
-
-
 class Parameter(HasProcess):
     """A differentiable scalar parameter for variational quantum circuits.
 
@@ -878,90 +622,3 @@ class Parameter(HasProcess):
                         self._gradient = grads[self._index]
                 libket["ket_string_delete"](result_ptr)
         return self._gradient
-
-
-def qasm(
-    qubits: Quant,
-    source: str | None = None,
-    path: PathLike | None = None,
-) -> Quant:
-    """Apply an OpenQASM 2.0 circuit to a qubit register.
-
-    Parses the supplied OpenQASM 2.0 program and appends the resulting gate
-    sequence to the current quantum process.  The qubit register ``qubits``
-    is mapped, in order, to the first ``qreg`` declared inside the QASM
-    program.  Exactly one of ``source`` or ``path`` must be provided.
-
-    Example:
-
-        .. code-block:: python
-
-            from ket import *
-
-            p = Process()
-            q = p.alloc(2)
-
-            bell_qasm = \"\"\"
-            OPENQASM 2.0;
-            include "qelib1.inc";
-            qreg q[2];
-            h q[0];
-            cx q[0],q[1];
-            \"\"\"
-
-            qasm(q, source=bell_qasm)
-            print(dump(q).show())
-
-        A file path can be used instead:
-
-        .. code-block:: python
-
-            qasm(q, path="bell.qasm")
-
-    Args:
-        qubits: The qubit register to apply the circuit to.  Its length must
-            match the size of the first ``qreg`` declared in the QASM program.
-        source: A string containing the OpenQASM 2.0 source code.
-            Mutually exclusive with ``path``.
-        path: Path to a ``.qasm`` file containing the OpenQASM 2.0 source
-            code.  Mutually exclusive with ``source``.
-
-    Returns:
-        The input ``qubits`` register, unchanged, so that the call can be
-        chained with other gate functions.
-
-    Raises:
-        TypeError: If ``qubits`` is not a :class:`~ket.base.Quant` instance.
-        ValueError: If neither or both of ``source`` and ``path`` are given.
-        FileNotFoundError: If ``path`` is provided but the file does not exist.
-        OSError: If the file at ``path`` cannot be opened or read.
-    """
-    if not isinstance(qubits, Quant):
-        raise TypeError(
-            f"'qubits' must be a Quant instance, got {type(qubits).__name__!r}"
-        )
-
-    if source is None and path is None:
-        raise ValueError(
-            "one of 'source' or 'path' must be provided, but neither was given"
-        )
-
-    if source is not None and path is not None:
-        raise ValueError(
-            "only one of 'source' or 'path' may be provided, but both were given"
-        )
-
-    if source is not None:
-        encoded = source.encode("utf-8")
-    else:
-        with open(path, "rb") as file:
-            encoded = file.read()
-
-    process = qubits.ket_process
-    qubit_array = (c_size_t * len(qubits))(*qubits.qubits)
-    block = Block(
-        process,
-        libket["ket_parse_openqasm"](qubit_array, len(qubits), encoded),
-    )
-    process.append_block(block)
-    return qubits
