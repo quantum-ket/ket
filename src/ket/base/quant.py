@@ -9,6 +9,7 @@ list of qubit indices and serves as the fundamental quantum object in Ket.
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 
 from functools import partial
 from typing import Any
