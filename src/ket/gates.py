@@ -54,22 +54,17 @@ from __future__ import annotations
 # pylint: disable=protected-access
 
 from contextlib import contextmanager
+from ctypes import c_size_t
 from math import pi, prod
 from functools import reduce, wraps
 from typing import Any, Callable
 import functools
 import contextvars
 
-from ket.clib.libket import search_process
+from ket.clib.libket import search_process, API as libket, Block
 
 from .base import Process, Quant, Parameter
-from .operations import (
-    control,
-    ctrl,
-    cat,
-    kron,
-    around,
-)
+from .operations import ctrl, cat, kron, around
 
 from .expv import Pauli, Hamiltonian
 
@@ -786,22 +781,21 @@ def QFT(qubits, do_swap: bool = True):  # pylint: disable=invalid-name
         do_swap: If ``True`` (default), applies the qubit-reversal SWAP
             network at the end so the output is in standard bit order.
     """
-    if len(qubits) == 1:
-        H(qubits)
-    else:
-        *init, last = qubits
-        H(last)
 
-        for i, ctrl_qubit in enumerate(reversed(init)):
-            with control(ctrl_qubit):
-                P(pi / 2 ** (i + 1), last)
+    if not isinstance(qubits, Quant):
+        qubits = reduce(Quant.__add__, qubits)
 
-        QFT(init, do_swap=False)
+    block = Block(
+        qubits.ket_process,
+        libket["ket_qft"](
+            (c_size_t * len(qubits))(*qubits.qubits),
+            len(qubits),
+            do_swap,
+        ),
+    )
 
-    if do_swap:
-        size = len(qubits)
-        for i in range(size // 2):
-            SWAP(qubits[i], qubits[size - i - 1])
+    qubits.ket_process.append_block(block)
+    return qubits
 
 
 def B(qubit: Quant):  # pylint: disable=invalid-name

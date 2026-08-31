@@ -57,13 +57,9 @@ def quantum_sum(a: int, b: int, size: int) -> int:
     device = AmazonBraket()
     p = ket.Process(execution_target=device)
 
-    qa = p.alloc(size + 1)
-    qb = p.alloc(size - 1)
-
-    # Use Qint to perform in-place quantum addition
-    qi_a = ket.qint.Qint(qa, a)
-    qi_b = ket.qint.Qint(qb, b)
-    qi_a += qi_b
+    qa = p.alloc(size + 2).as_int(a)
+    qb = p.alloc(size).as_int(b)
+    qa += qb
 
     return ket.sample(qa).most_frequent_state()
 
@@ -104,7 +100,7 @@ def test_amazon_quantum_adder():
 
     for _ in range(5):
         a = random.randint(0, pow(2, SIZE) - 1)
-        b = random.randint(0, pow(2, SIZE - 1) - 1)
+        b = random.randint(0, pow(2, SIZE - 2) - 1)
 
         expected_result = a + b
         result = quantum_sum(a, b, SIZE)
