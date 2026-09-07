@@ -212,7 +212,7 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
                 if gate == "PauliX":
                     circuit.cnot(control, target)
                     continue
-                elif isinstance(gate, dict) and "Phase" in gate:
+                if isinstance(gate, dict) and "Phase" in gate:
                     circuit.cphaseshift(control, target, gate["Phase"]["Value"])
                     continue
 
