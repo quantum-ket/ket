@@ -204,15 +204,25 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         for gate_inst in gates:
             gate = gate_inst["gate"]
             target = gate_inst["target"]
-            decomposed = gate_inst["decomposed"]
+            controls = gate_inst.get("control", [])
+            decomposed = gate_inst.get("decomposed")
+
+            if len(controls) == 1:
+                control = controls[0]
+                if gate == "PauliX":
+                    circuit.cnot(control, target)
+                    continue
+                elif isinstance(gate, dict) and "Phase" in gate:
+                    circuit.cphaseshift(control, target, gate["Phase"]["Value"])
+                    continue
 
             if decomposed is not None:
-                for gate in decomposed:
-                    match gate:
+                for dec_gate in decomposed:
+                    match dec_gate:
                         case {"CNOT": (control, target)}:
                             circuit.cnot(control, target)
-                        case {"U": (gate, target)}:
-                            self._call_gate(circuit, gate, target)
+                        case {"U": (u_gate, target)}:
+                            self._call_gate(circuit, u_gate, target)
             else:
                 self._call_gate(circuit, gate, target)
 
