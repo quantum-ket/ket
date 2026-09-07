@@ -10,10 +10,10 @@ making it suitable for running parameterized quantum algorithms like VQE efficie
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Literal
+from typing import Literal, Optional
 from collections import Counter
 
-from ket.clib.libket.execution import BatchExecution
+from ket.clib.libket.execution import BatchExecution, LiveExecution
 
 try:
     import jax
@@ -96,7 +96,7 @@ def _build_psi(params_array, gates_tuple, num_qubits, max_bond, force_contract=F
         kwargs = {"inplace": False}
         if len(qbs) > 1:
             if max_bond is not None:
-                kwargs["contract"] = "split"
+                kwargs["contract"] = "swap+split"
                 kwargs["max_bond"] = max_bond
             elif force_contract:
                 kwargs["contract"] = "swap+split"
@@ -108,13 +108,13 @@ def _build_psi(params_array, gates_tuple, num_qubits, max_bond, force_contract=F
 
 
 def _build_and_evaluate(
+    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     params_array,
     gates_tuple,
     hamiltonian_tuple,
     num_qubits,
     max_bond,
 ):
-    # pylint: disable=too-many-locals
     psi = _build_psi(
         params_array,
         gates_tuple,
@@ -144,7 +144,7 @@ def _build_and_evaluate(
 _jitted_build_and_evaluate = jax.jit(_build_and_evaluate, static_argnums=(1, 2, 3, 4))
 
 
-class MPS(BatchExecution):
+class MPS(BatchExecution, LiveExecution):
     """Matrix Product State (MPS) backend simulator.
 
     The ``MPS`` backend is specialized for executing quantum circuits with 1D linear topologies.
@@ -171,8 +171,12 @@ class MPS(BatchExecution):
         backend: Literal["cpu", "gpu"] = "cpu",
         max_bond: int = None,
         double_precision: bool = False,
+        execution: Optional[Literal["live", "batch"]] = None,
     ):
-        super().__init__()
+        BatchExecution.__init__(self)
+        LiveExecution.__init__(self)
+        self.execution = execution or "batch"
+        self._live_psi = None
         self.num_qubits = num_qubits
         self.max_bond = max_bond
         if backend not in ["cpu", "gpu"]:
@@ -184,53 +188,109 @@ class MPS(BatchExecution):
 
     def connect(self):
         """Configure the connection to the MPS simulator."""
+        if self.execution == "live":
+            return LiveExecution.configure(
+                self,
+                self.num_qubits,
+                decompose=True,
+            )
+
         if self.max_bond is not None:
             coupling_graph = [(i, i + 1) for i in range(self.num_qubits - 1)]
         else:
             coupling_graph = None
 
-        return self.configure(
+        return BatchExecution.configure(
+            self,
             self.num_qubits,
             gradient="Native",
             coupling_graph=coupling_graph,
             decompose=True,
         )
 
-    def sample(self, gates, qubits_to_sample, shots):
-        # pylint: disable=too-many-locals
-        gates_tuple_list = []
-        for g in gates:
-            gate_info = g["gate"]
-            target = g.get("target", 0)
-            controls = g.get("control", [])
+    def _apply_live_gate(self, gate_type, v_val, target, control):
+        if self._live_psi is None:
+            self._live_psi = qtn.MPS_computational_state("0" * self.num_qubits)
 
-            if isinstance(gate_info, str):
-                gate_type = gate_info
-                v_val = 0.0
-            else:
-                gate_type = list(gate_info.keys())[0]
-                val_info = gate_info[gate_type]
-                v_val = val_info.get("Value", 0.0)
+        qbs = tuple(control) + (target,)
+        mat = _get_matrix(gate_type, v_val)
+        if len(qbs) > 1:
+            mat = _controlled_matrix(mat, len(qbs) - 1)
 
-            qbs = tuple(controls) + (target,)
+        mat = np.array(mat)
 
-            gates_tuple_list.append((gate_type, -1, 0.0, v_val, qbs))
+        kwargs = {"inplace": True}
+        if len(qbs) > 1:
+            kwargs["contract"] = "swap+split"
+            if self.max_bond is not None:
+                kwargs["max_bond"] = self.max_bond
+        else:
+            kwargs["contract"] = True
 
-        gates_tuple = tuple(gates_tuple_list)
+        self._live_psi.gate(mat, qbs, **kwargs)
 
-        psi = _build_psi(
-            jnp.array([0.0]),
-            gates_tuple,
-            self.num_qubits,
-            self.max_bond,
-            force_contract=True,
-        )
+    def pauli_x(self, target, control):
+        self._apply_live_gate("PauliX", 0.0, target, control)
+
+    def pauli_y(self, target, control):
+        self._apply_live_gate("PauliY", 0.0, target, control)
+
+    def pauli_z(self, target, control):
+        self._apply_live_gate("PauliZ", 0.0, target, control)
+
+    def hadamard(self, target, control):
+        self._apply_live_gate("Hadamard", 0.0, target, control)
+
+    def rotation_x(self, target, control, angle):
+        self._apply_live_gate("RotationX", angle, target, control)
+
+    def rotation_y(self, target, control, angle):
+        self._apply_live_gate("RotationY", angle, target, control)
+
+    def rotation_z(self, target, control, angle):
+        self._apply_live_gate("RotationZ", angle, target, control)
+
+    def phase(self, target, control, angle):
+        self._apply_live_gate("Phase", angle, target, control)
+
+    def sample(self, *args):
+        # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+        if len(args) == 3:
+            gates, qubits_to_sample, shots = args
+            gates_tuple_list = []
+            for g in gates:
+                gate_info = g["gate"]
+                target = g.get("target", 0)
+                controls = g.get("control", [])
+
+                if isinstance(gate_info, str):
+                    gate_type = gate_info
+                    v_val = 0.0
+                else:
+                    gate_type = list(gate_info.keys())[0]
+                    val_info = gate_info[gate_type]
+                    v_val = val_info.get("Value", 0.0)
+
+                qbs = tuple(controls) + (target,)
+                gates_tuple_list.append((gate_type, -1, 0.0, v_val, qbs))
+
+            gates_tuple = tuple(gates_tuple_list)
+            psi = _build_psi(
+                jnp.array([0.0]),
+                gates_tuple,
+                self.num_qubits,
+                self.max_bond,
+                force_contract=True,
+            )
+        else:
+            qubits_to_sample, shots = args
+            if self._live_psi is None:
+                self._live_psi = qtn.MPS_computational_state("0" * self.num_qubits)
+            psi = self._live_psi
 
         samples = list(psi.sample(shots))
-
         counts = Counter()
         for sample_res in samples:
-            # sample_res is like ([0, 1, 0, 1], prob)
             sample_state = (
                 sample_res[0]
                 if isinstance(sample_res, tuple)
@@ -238,9 +298,7 @@ class MPS(BatchExecution):
                 and isinstance(sample_res[0], list)
                 else sample_res
             )
-
             bits = list(sample_state)
-
             val = 0
             for i, q in enumerate(qubits_to_sample):
                 if bits[q]:
@@ -248,6 +306,75 @@ class MPS(BatchExecution):
             counts[val] += 1
 
         return [[int(k)] for k in counts.keys()], [int(v) for v in counts.values()]
+
+    def exp_value(self, *args):
+        # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+        if len(args) == 2:
+            gates, hamiltonian_list = args
+            gates_tuple_list = []
+            for g in gates:
+                gate_info = g["gate"]
+                target = g.get("target", 0)
+                controls = g.get("control", [])
+
+                if isinstance(gate_info, str):
+                    gate_type = gate_info
+                    v_val = 0.0
+                else:
+                    gate_type = list(gate_info.keys())[0]
+                    val_info = gate_info[gate_type]
+                    v_val = val_info.get("Value", 0.0)
+
+                qbs = tuple(controls) + (target,)
+                gates_tuple_list.append((gate_type, -1, 0.0, v_val, qbs))
+
+            gates_tuple = tuple(gates_tuple_list)
+
+            h_tuple_list = []
+            for h in hamiltonian_list:
+                coeffs = tuple(h["coefficients"])
+                strings = tuple(
+                    tuple((p["pauli"], p["qubit"]) for p in s)
+                    for s in h["pauli_strings"]
+                )
+                h_tuple_list.append((coeffs, strings))
+            h_tuple = tuple(h_tuple_list)
+
+            eval_fn = (
+                _build_and_evaluate
+                if self.max_bond is not None
+                else _jitted_build_and_evaluate
+            )
+
+            results = []
+            for h in h_tuple:
+                exp_val = eval_fn(
+                    jnp.array([0.0]), gates_tuple, (h,), self.num_qubits, self.max_bond
+                )
+                results.append(float(exp_val))
+            return results
+
+        hamiltonian = args[0]
+        if self._live_psi is None:
+            self._live_psi = qtn.MPS_computational_state("0" * self.num_qubits)
+
+        coeffs = tuple(hamiltonian["coefficients"])
+        strings = tuple(
+            tuple((p["pauli"], p["qubit"]) for p in s)
+            for s in hamiltonian["pauli_strings"]
+        )
+
+        total_exp = 0.0
+        for coeff, p_string in zip(coeffs, strings):
+            psi_h = self._live_psi
+            for p_type, p_qubit in p_string:
+                p_mat = np.array(_get_matrix(p_type))
+                psi_h = psi_h.gate(p_mat, (p_qubit,), contract=True, inplace=False)
+
+            exp_val = (self._live_psi.H @ psi_h).real
+            total_exp += coeff * exp_val
+
+        return float(total_exp)
 
     def gradient(self, gates, hamiltonian):
         # pylint: disable=too-many-locals, too-many-branches, too-many-statements
