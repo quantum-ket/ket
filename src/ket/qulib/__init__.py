@@ -29,7 +29,7 @@ except ImportError:
     _MULTIPROCESS_AVAILABLE = False
 
 
-from ..clib.libket.execution import LiveExecution
+from ..clib.libket.execution import LiveExecution, BatchExecution
 from ..base import Process, Quant
 from ..operations import dump, exp_value, measure
 from ..gates import H, CNOT, X, Z, obs
@@ -52,6 +52,7 @@ except ImportError:
 try:
     from qiskit import QuantumCircuit, QuantumRegister
     from qiskit.circuit import library, Gate
+    from qiskit.circuit.gate import Gate as QiskitGate
 
     QISKIT_AVAILABLE = True
 except ImportError:
@@ -162,131 +163,228 @@ DRAW_STYLE = {
 }
 
 
-class _IBMDeviceForDraw(LiveExecution):
+class _IBMDeviceForDraw(BatchExecution):
     """IBMDevice use for qulib.draw"""
 
     def __init__(
+        # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         num_qubits: list[int],
         names: list[str],
         decompose: bool = False,
         keep_order: bool = True,
+        coupling_graph: list[tuple[int, int]] | None = None,
+        native_gate_set=None,
     ):
         super().__init__()
-        qubits = [QuantumRegister(n, l) for n, l in zip(num_qubits, names)]
+        if coupling_graph is not None:
+            qubits = [QuantumRegister(sum(num_qubits), "q")]
+        else:
+            qubits = [QuantumRegister(n, l) for n, l in zip(num_qubits, names)]
         self.circuit = QuantumCircuit(*qubits)
         self.num_qubits = sum(num_qubits)
         self.decompose = decompose
         self.keep_order = keep_order
+        self.coupling_graph = coupling_graph
+        self.native_gate_set = native_gate_set
         self.last_gate = None
 
-    def pauli_x(self, target, control):
-        if self.keep_order and self.last_gate != "X":
-            self.circuit.barrier()
-        gate = library.XGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "X"
+    def _add_gate(self, gate_name, target, control, value):
+        # pylint: disable=too-many-branches, too-many-statements
+        if gate_name == "PauliX":
+            if self.keep_order and self.last_gate != "X":
+                self.circuit.barrier()
+            gate = library.XGate()
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "X"
+        elif gate_name == "PauliY":
+            if self.keep_order and self.last_gate != "Y":
+                self.circuit.barrier()
+            gate = library.YGate()
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "Y"
+        elif gate_name == "PauliZ":
+            if self.keep_order and self.last_gate != "Z":
+                self.circuit.barrier()
+            gate = library.ZGate()
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "Z"
+        elif gate_name == "Hadamard":
+            if self.keep_order and self.last_gate != "H":
+                self.circuit.barrier()
+            gate = library.HGate()
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "H"
+        elif gate_name == "RotationX":
+            if self.keep_order and self.last_gate != "RX":
+                self.circuit.barrier()
+            gate = library.RXGate(value)
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "RX"
+        elif gate_name == "RotationY":
+            if self.keep_order and self.last_gate != "RY":
+                self.circuit.barrier()
+            gate = library.RYGate(value)
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "RY"
+        elif gate_name == "RotationZ":
+            if self.keep_order and self.last_gate != "RZ":
+                self.circuit.barrier()
+            gate = library.RZGate(value)
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "RZ"
+        elif gate_name == "Phase":
+            if self.keep_order and self.last_gate != "P":
+                self.circuit.barrier()
+            gate = library.PhaseGate(value)
+            if len(control) >= 1:
+                gate = gate.control(len(control))
+            self.circuit.append(gate, control + [target])
+            self.last_gate = "P"
 
-    def pauli_y(self, target, control):
-        if self.keep_order and self.last_gate != "Y":
-            self.circuit.barrier()
-        gate = library.YGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "Y"
+    def _build_circuit(self, gate_list):
+        # pylint: disable=too-many-branches, too-many-statements, too-many-nested-blocks
+        # pylint: disable=too-many-branches, too-many-statements
+        for g in gate_list:
+            if g.get("decomposed"):
+                for dec_g in g["decomposed"]:
+                    if "U" in dec_g:
+                        u_info = dec_g["U"]
+                        gate_info = u_info[0]
+                        target = u_info[1]
+                        control = []
+                        if isinstance(gate_info, str):
+                            gate_name = gate_info
+                            value = 0.0
+                        else:
+                            gate_name = list(gate_info.keys())[0]
+                            val_info = gate_info[gate_name]
+                            if isinstance(val_info, dict) and "Ref" in val_info:
+                                value = val_info["Ref"]["value"]
+                            else:
+                                value = val_info.get("Value", 0.0)
+                        self._add_gate(gate_name, target, control, value)
+                    elif "CNOT" in dec_g:
+                        cnot_info = dec_g["CNOT"]
+                        target = cnot_info[1]
+                        control = [cnot_info[0]]
+                        self._add_gate("PauliX", target, control, 0.0)
+            else:
+                gate_info = g["gate"]
+                target = g.get("target", 0)
+                control = sorted(g.get("control", []))
 
-    def pauli_z(self, target, control):
-        if self.keep_order and self.last_gate != "Z":
-            self.circuit.barrier()
-        gate = library.ZGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "Z"
+                if isinstance(gate_info, str):
+                    gate_name = gate_info
+                    value = 0.0
+                else:
+                    gate_name = list(gate_info.keys())[0]
+                    val_info = gate_info[gate_name]
+                    if isinstance(val_info, dict) and "Ref" in val_info:
+                        value = val_info["Ref"]["value"]
+                    else:
+                        value = val_info.get("Value", 0.0)
 
-    def hadamard(self, target, control):
-        if self.keep_order and self.last_gate != "H":
-            self.circuit.barrier()
-        gate = library.HGate()
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "H"
+                self._add_gate(gate_name, target, control, value)
 
-    def rotation_x(self, target, control, angle):
-        if self.keep_order and self.last_gate != "RX":
-            self.circuit.barrier()
-        gate = library.RXGate(angle)
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "RX"
+        # pylint: disable=too-many-branches, too-many-statements
 
-    def rotation_y(self, target, control, angle):
-        if self.keep_order and self.last_gate != "RY":
-            self.circuit.barrier()
-        gate = library.RYGate(angle)
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "RY"
+    def exp_value_native(
+        self, gate_list, hamiltonians
+    ):  # pylint: disable=arguments-renamed, redefined-outer-name
+        for g in gate_list:
+            gate_name = g[0]
+            params = g[1]
+            qubits = g[2]
 
-    def rotation_z(self, target, control, angle):
-        if self.keep_order and self.last_gate != "RZ":
-            self.circuit.barrier()
-        gate = library.RZGate(angle)
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "RZ"
+            if gate_name.lower() in ("x", "paulix"):
+                gate = library.XGate()
+            elif gate_name.lower() in ("y", "pauliy"):
+                gate = library.YGate()
+            elif gate_name.lower() in ("z", "pauliz"):
+                gate = library.ZGate()
+            elif gate_name.lower() in ("h", "hadamard"):
+                gate = library.HGate()
+            elif gate_name.lower() in ("rx", "rotationx"):
+                gate = library.RXGate(params[0])
+            elif gate_name.lower() in ("ry", "rotationy"):
+                gate = library.RYGate(params[0])
+            elif gate_name.lower() in ("rz", "rotationz"):
+                gate = library.RZGate(params[0])
+            elif gate_name.lower() in ("p", "phase"):
+                gate = library.PhaseGate(params[0])
+            elif gate_name.lower() == "sx":
+                gate = library.SXGate()
+            elif gate_name.lower() == "sxdg":
+                gate = library.SXdgGate()
+            elif gate_name.lower() == "cz":
+                gate = library.CZGate()
+            elif gate_name.lower() == "rzz":
+                gate = library.RZZGate(params[0])
+            elif gate_name.lower() == "ecr":
+                gate = library.ECRGate()
+            elif gate_name.lower() == "iswap":
+                gate = library.iSwapGate()
+            elif gate_name.lower() == "ms":
 
-    def phase(self, target, control, angle):
-        if self.keep_order and self.last_gate != "P":
-            self.circuit.barrier()
-        gate = library.PhaseGate(angle)
-        if len(control) >= 1:
-            gate = gate.control(len(control))
-        self.circuit.append(gate, control + [target])
-        self.last_gate = "P"
+                gate = (
+                    library.XXMinusYYGate(params[0])
+                    if len(params) > 0
+                    else QiskitGate("MS", 2, [])
+                )
+            elif gate_name.lower() == "cnot":
+                gate = library.CXGate()
+            else:
+                gate = QiskitGate(gate_name, len(qubits), params)
 
-    def measure(self, qubits: list[int]) -> int:
-        mea = Gate(name="measure", num_qubits=len(qubits), params=[])
+            if self.keep_order and self.last_gate != gate_name:
+                self.circuit.barrier()
+            self.circuit.append(gate, qubits)
+            self.last_gate = gate_name
+
+        return [0.0] * len(hamiltonians)
+
+    def exp_value(
+        self, gate_list, hamiltonian_list
+    ):  # pylint: disable=arguments-renamed, redefined-outer-name
+        self._build_circuit(gate_list)
+        return [0.0] * len(hamiltonian_list)
+
+    def sample(
+        self, gate_list, qubits_to_sample, shots: int
+    ):  # pylint: disable=arguments-renamed, redefined-outer-name
+        self._build_circuit(gate_list)
+        sample = Gate(
+            name=f"sample({shots=})", num_qubits=len(qubits_to_sample), params=[]
+        )
         if self.keep_order and self.last_gate != "M":
             self.circuit.barrier()
-        self.circuit.append(mea, qubits)
-        self.last_gate = "M"
-        return 0
-
-    def exp_value(self, _):
-        """Compute the expectation value of the given Hamiltonian."""
-        return 0
-
-    def sample(self, qubits: list[int], shots: int):
-        sample = Gate(name=f"sample({shots=})", num_qubits=len(qubits), params=[])
-        if self.keep_order and self.last_gate != "M":
-            self.circuit.barrier()
-        self.circuit.append(sample, qubits)
+        self.circuit.append(sample, qubits_to_sample)
         self.last_gate = "M"
         return ([[0]], [0])
 
-    def dump(self, qubits: list[int]) -> dict:
-        dump_gate = Gate(name="dump", num_qubits=len(qubits), params=[])
-        if self.keep_order and self.last_gate != "M":
-            self.circuit.barrier()
-        self.circuit.append(dump_gate, qubits)
-        self.last_gate = "M"
-        return {
-            "basis_states": [[0]],
-            "amplitudes_real": [0.0],
-            "amplitudes_imag": [0.0],
-        }
-
     def connect(self):
         """Configure process"""
-        return super().configure(self.num_qubits, self.decompose)
+        return super().configure(
+            self.num_qubits,
+            decompose=self.decompose,
+            coupling_graph=self.coupling_graph,
+            native_gate_set=self.native_gate_set,
+        )
 
 
 def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
@@ -297,6 +395,8 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
     qubits: int | list[int] | None = None,
     qpu_size: int | None = None,
     decompose: bool = False,
+    coupling_graph: list[tuple[int, int]] | None = None,
+    native_gate_set=None,
     title: str | None = None,
     keep_order: bool = True,
     **kwargs,
@@ -371,14 +471,16 @@ def draw(  # pylint: disable=too-many-arguments, too-many-locals, too-many-branc
         num_qubits.append(qpu_size - total)
         names.append("AUX")
 
-    device = _IBMDeviceForDraw(num_qubits, names, decompose, keep_order)
+    device = _IBMDeviceForDraw(
+        num_qubits, names, decompose, keep_order, coupling_graph, native_gate_set
+    )
 
     p = Process(device)
     q = [p.alloc(n) for n in (num_qubits if qpu_size is None else num_qubits[:-1])]
     gate(*args, *q)
 
     with obs():
-        exp_value(Z(q[0]))
+        exp_value(Z(q[0])).get()
 
     if "output" not in kwargs and _IN_NOTEBOOK:
         kwargs["output"] = "mpl"

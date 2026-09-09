@@ -15,6 +15,7 @@ from ctypes import (
     POINTER,
     c_uint64,
     c_double,
+    pointer,
 )
 import json
 from abc import ABC, abstractmethod
@@ -426,6 +427,13 @@ class NativeGateSet(ABC):
     """
 
     def __init__(self):
+        # Accumulate every JSON result buffer in a list so that raw C pointers
+        # returned by the callbacks remain valid for the lifetime of this object.
+        # Using a single overwritten instance variable causes a use-after-free
+        # segfault because the old bytes object is GC'd while Rust still holds
+        # a pointer into it.
+        self._result_buffers: list[bytes] = []
+
         @CFUNCTYPE(
             c_int32,
             c_char_p,  # gate_json
@@ -439,11 +447,10 @@ class NativeGateSet(ABC):
                 for row in flat
             ]
             result = self.translate(matrix, target)
-            self._translate_result = json.dumps(result).encode("utf-8")
-            native_gate_json[0] = self._translate_result
+            buf = json.dumps(result).encode("utf-8")
+            self._result_buffers.append(buf)
+            native_gate_json[0] = buf
             return 0
-
-        self._translate_result = None
 
         @CFUNCTYPE(
             c_int32,
@@ -453,11 +460,10 @@ class NativeGateSet(ABC):
         )
         def cnot(control, target, native_gate_json):
             result = self.cnot(control, target)
-            self._cnot_result = json.dumps(result).encode("utf-8")
-            native_gate_json[0] = self._cnot_result
+            buf = json.dumps(result).encode("utf-8")
+            self._result_buffers.append(buf)
+            native_gate_json[0] = buf
             return 0
-
-        self._cnot_result = None
 
         # Keep references alive for the duration of the object's lifetime.
         self._cb_translate = translate
@@ -526,7 +532,7 @@ def make_live_configuration(
     """
 
     if native_gate_set is not None:
-        native_gate_set_ptr = native_gate_set.c_struct
+        native_gate_set_ptr = pointer(native_gate_set.c_struct)
     else:
         native_gate_set_ptr = None
 
@@ -582,7 +588,7 @@ def make_batch_configuration(  # pylint: disable=too-many-arguments,too-many-pos
         exp_value_strategy_json = json.dumps("Native").encode("utf-8")
 
     if native_gate_set is not None:
-        native_gate_set_ptr = native_gate_set.c_struct
+        native_gate_set_ptr = pointer(native_gate_set.c_struct)
     else:
         native_gate_set_ptr = None
 
