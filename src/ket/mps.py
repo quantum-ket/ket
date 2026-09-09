@@ -153,8 +153,6 @@ class MPS(BatchExecution, LiveExecution):
 
     Args:
         num_qubits: Total number of qubits to simulate.
-        backend: Target hardware for execution, either ``"cpu"`` or ``"gpu"``.
-            Defaults to ``"cpu"``.
         max_bond: Maximum bond dimension for SVD truncations during the simulation.
             If specified, it restricts entanglement and keeps the MPS strictly 1D, enabling
             the simulation of large numbers of qubits. However, this dynamically changes tensor
@@ -168,7 +166,6 @@ class MPS(BatchExecution, LiveExecution):
     def __init__(
         self,
         num_qubits: int,
-        backend: Literal["cpu", "gpu"] = "cpu",
         max_bond: int = None,
         double_precision: bool = False,
         execution: Optional[Literal["live", "batch"]] = None,
@@ -179,10 +176,7 @@ class MPS(BatchExecution, LiveExecution):
         self._live_psi = None
         self.num_qubits = num_qubits
         self.max_bond = max_bond
-        if backend not in ["cpu", "gpu"]:
-            raise ValueError("backend must be 'cpu' or 'gpu'")
         jax.config.update("jax_enable_x64", double_precision)
-        jax.config.update("jax_platform_name", backend)
 
         self.last_grad = None
 
