@@ -374,8 +374,12 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 print(type(circuit))
                 # <class 'list'>
         """
-        block_str = self.gates_json()
-        block = json.loads(block_str.value)
+        return json.loads(self.gates_json())
+
+    def gates_json(self) -> str:
+        """Return the JSON representation of the quantum gates in the main block."""
+        block_str = libket["ket_process_gates_json"](self)
+        block = block_str.value.decode("utf-8")
         libket["ket_string_delete"](block_str)
         return block
 

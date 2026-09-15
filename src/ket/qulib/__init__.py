@@ -5,6 +5,8 @@ Utilities for preparing quantum states and building quantum algorithms.
 
 from __future__ import annotations
 
+# pylint: disable=too-many-lines
+
 # SPDX-FileCopyrightText: 2020 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
 # SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
 #
@@ -785,7 +787,115 @@ def exact_solver(
     )
 
 
-class GateCount(LiveExecution):
+class _GateCountBase:
+    """Base class for counting quantum gates and tracking CNOT depth."""
+
+    def __init__(self, num_qubits: int):
+        self.num_qubits = num_qubits
+        self.counts = Counter()
+        self.depths = [0] * num_qubits
+        self.cnot_depth = 0
+
+    def _update_cnot_depth(self, control: list[int], target: int):
+        """Update CNOT depth for the given control and target qubits."""
+        new_depth = max(self.depths[target], *(self.depths[c] for c in control)) + 1
+        for c in control:
+            self.depths[c] = new_depth
+        self.depths[target] = new_depth
+        self.cnot_depth = max(self.cnot_depth, new_depth)
+
+    def pauli_x(self, target: int, control: list[int]):
+        """Count Pauli-X or CNOT / multi-controlled X gate."""
+        if control:
+            if len(control) == 1:
+                self.counts["cnot"] += 1
+            else:
+                self.counts[f"c{len(control)}x"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["x"] += 1
+
+    def pauli_y(self, target: int, control: list[int]):
+        """Count Pauli-Y or multi-controlled Y gate."""
+        if control:
+            self.counts[f"c{len(control)}y"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["y"] += 1
+
+    def pauli_z(self, target: int, control: list[int]):
+        """Count Pauli-Z or multi-controlled Z gate."""
+        if control:
+            if len(control) == 1:
+                self.counts["cz"] += 1
+            else:
+                self.counts[f"c{len(control)}z"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["z"] += 1
+
+    def hadamard(self, target: int, control: list[int]):
+        """Count Hadamard or multi-controlled H gate."""
+        if control:
+            self.counts[f"c{len(control)}h"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["h"] += 1
+
+    def rotation_x(
+        self,
+        target: int,
+        control: list[int],
+        angle: float,  # pylint: disable=unused-argument
+    ):
+        """Count Rotation-X gate."""
+        if control:
+            self.counts[f"c{len(control)}rx"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["rx"] += 1
+
+    def rotation_y(
+        self,
+        target: int,
+        control: list[int],
+        angle: float,  # pylint: disable=unused-argument
+    ):
+        """Count Rotation-Y gate."""
+        if control:
+            self.counts[f"c{len(control)}ry"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["ry"] += 1
+
+    def rotation_z(
+        self,
+        target: int,
+        control: list[int],
+        angle: float,  # pylint: disable=unused-argument
+    ):
+        """Count Rotation-Z gate."""
+        if control:
+            self.counts[f"c{len(control)}rz"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["rz"] += 1
+
+    def phase(
+        self,
+        target: int,
+        control: list[int],
+        angle: float,  # pylint: disable=unused-argument
+    ):
+        """Count Phase gate."""
+        if control:
+            self.counts[f"c{len(control)}p"] += 1
+            self._update_cnot_depth(control, target)
+        else:
+            self.counts["p"] += 1
+
+
+class GateCount(_GateCountBase, LiveExecution):
     """Live Execution simulator that counts the quantum gates and CNOT depth.
 
     Example:
@@ -816,86 +926,118 @@ class GateCount(LiveExecution):
     """
 
     def __init__(self, num_qubits: int):
-        super().__init__()
-        self.num_qubits = num_qubits
-        self.counts = Counter()
-        self.depths = [0] * num_qubits
-        self.cnot_depth = 0
+        _GateCountBase.__init__(self, num_qubits)
+        LiveExecution.__init__(self)
 
     def connect(self):
+        """Connect to the execution target."""
         return self.configure(self.num_qubits, decompose=True)
 
-    def _update_cnot_depth(self, control: list[int], target: int):
-        new_depth = max(self.depths[target], *(self.depths[c] for c in control)) + 1
-        for c in control:
-            self.depths[c] = new_depth
-        self.depths[target] = new_depth
-        self.cnot_depth = max(self.cnot_depth, new_depth)
-
-    def pauli_x(self, target: int, control: list[int]):
-        if control:
-            if len(control) == 1:
-                self.counts["cnot"] += 1
-            else:
-                self.counts[f"c{len(control)}x"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["x"] += 1
-
-    def pauli_y(self, target: int, control: list[int]):
-        if control:
-            self.counts[f"c{len(control)}y"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["y"] += 1
-
-    def pauli_z(self, target: int, control: list[int]):
-        if control:
-            if len(control) == 1:
-                self.counts["cz"] += 1
-            else:
-                self.counts[f"c{len(control)}z"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["z"] += 1
-
-    def hadamard(self, target: int, control: list[int]):
-        if control:
-            self.counts[f"c{len(control)}h"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["h"] += 1
-
-    def rotation_x(self, target: int, control: list[int], angle: float):
-        if control:
-            self.counts[f"c{len(control)}rx"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["rx"] += 1
-
-    def rotation_y(self, target: int, control: list[int], angle: float):
-        if control:
-            self.counts[f"c{len(control)}ry"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["ry"] += 1
-
-    def rotation_z(self, target: int, control: list[int], angle: float):
-        if control:
-            self.counts[f"c{len(control)}rz"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["rz"] += 1
-
-    def phase(self, target: int, control: list[int], angle: float):
-        if control:
-            self.counts[f"c{len(control)}p"] += 1
-            self._update_cnot_depth(control, target)
-        else:
-            self.counts["p"] += 1
-
     def measure(self, qubits: list[int]) -> int:
+        """Measure callback for LiveExecution."""
         return 0
+
+
+class BatchGateCount(_GateCountBase, BatchExecution):
+    """Batch Execution simulator that counts the quantum gates and CNOT depth.
+
+    Similar to :class:`GateCount`, but uses batch execution mode.
+    Note that measurement results will not be available until the process is evaluated
+    (e.g. by requesting an expectation value or sampling).
+
+    Args:
+        num_qubits: number of qubits.
+    """
+
+    def __init__(self, num_qubits: int):
+        _GateCountBase.__init__(self, num_qubits)
+        BatchExecution.__init__(self)
+
+    def connect(self):
+        """Connect to the execution target."""
+        return self.configure(self.num_qubits, decompose=True)
+
+    def _count_gates(self, gate_list):
+        for gate_dict in gate_list:
+            if gate_dict.get("decomposed") is not None:
+                self._count_gates(
+                    [
+                        (
+                            {
+                                "gate": "PauliX",
+                                "target": dec["CNOT"][1],
+                                "control": [dec["CNOT"][0]],
+                            }
+                            if "CNOT" in dec
+                            else {
+                                "gate": dec["U"][0],
+                                "target": dec["U"][1],
+                                "control": [],
+                            }
+                        )
+                        for dec in gate_dict["decomposed"]
+                    ]
+                )
+                continue
+
+            gate_name = gate_dict.get("gate")
+            if gate_name is None:
+                continue
+            target = gate_dict.get("target")
+            ctrl = sorted(gate_dict.get("control", []))
+            val = None
+
+            if isinstance(gate_name, dict):
+                gate_name, val_dict = next(iter(gate_name.items()))
+                val = val_dict.get("Value")
+
+            self._dispatch_gate(gate_name, target, ctrl, val)
+
+    def _dispatch_gate(self, gate_name, target, ctrl, val):
+        """Dispatch a single gate instruction to its counting method."""
+        if gate_name == "Hadamard":
+            self.hadamard(target, ctrl)
+        elif gate_name == "PauliX":
+            self.pauli_x(target, ctrl)
+        elif gate_name == "PauliY":
+            self.pauli_y(target, ctrl)
+        elif gate_name == "PauliZ":
+            self.pauli_z(target, ctrl)
+        elif gate_name == "RotationX":
+            self.rotation_x(target, ctrl, val)
+        elif gate_name == "RotationY":
+            self.rotation_y(target, ctrl, val)
+        elif gate_name == "RotationZ":
+            self.rotation_z(target, ctrl, val)
+        elif gate_name == "Phase":
+            self.phase(target, ctrl, val)
+
+    def sample(
+        self, gates, qubits_to_sample, shots  # pylint: disable=redefined-outer-name
+    ):
+        self._count_gates(gates)
+        return [], []
+
+    def exp_value(
+        self, gates, hamiltonian_list  # pylint: disable=redefined-outer-name
+    ):
+        self._count_gates(gates)
+        return [0.0] * len(hamiltonian_list)
+
+    def sample_native(
+        self, gates, qubits, shots  # pylint: disable=redefined-outer-name
+    ):
+        raise NotImplementedError("BatchGateCount does not support native gates")
+
+    def exp_value_native(
+        self, gates, hamiltonians  # pylint: disable=redefined-outer-name
+    ):
+        raise NotImplementedError("BatchGateCount does not support native gates")
+
+    def gradient(self, gates, hamiltonian):  # pylint: disable=redefined-outer-name
+        raise NotImplementedError(
+            "BatchGateCount does not support gradient calculation"
+        )
 
 
 def gate_count(
@@ -904,11 +1046,12 @@ def gate_count(
     args: tuple = (),
     *,
     qpu_size: int | None = None,
+    batch: bool = False,
 ) -> tuple[Counter, int]:
     """Count the quantum gates and CNOT depth of a quantum gate function.
 
     This function executes the provided quantum gate operation on a live
-    execution environment and tracks the number of times each fundamental
+    or batch execution environment and tracks the number of times each fundamental
     gate is called, as well as the CNOT depth (ignoring single-qubit gates).
     Multi-qubit gates are decomposed before counting.
 
@@ -919,6 +1062,7 @@ def gate_count(
         args: Classical arguments to pass to the gate function.
         qpu_size: Size of the quantum processing unit (QPU). Defaults
             to ``sum(num_qubits)``.
+        batch: If ``True``, use batch execution mode instead of live execution.
 
     Returns:
         A tuple containing:
@@ -961,13 +1105,21 @@ def gate_count(
     if qpu_size <= 0:
         raise ValueError(f"QPU size must be a positive integer, got {qpu_size}.")
 
-    gc = GateCount(qpu_size)
+    if batch:
+        gc = BatchGateCount(qpu_size)
+    else:
+        gc = GateCount(qpu_size)
+
     process = Process(gc)
 
     qubits = [process.alloc(n) for n in num_qubits]
 
     gate(*args, *qubits)
 
-    measure(qubits[0])
+    if batch:
+        with obs():
+            exp_value(Z(qubits[0][0])).get()
+    else:
+        measure(qubits[0][0])
 
     return gc.counts, gc.cnot_depth
