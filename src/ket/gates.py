@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Quantum gate definitions.
 
 All quantum gates accept one or more :class:`~ket.base.Quant` objects as input
@@ -55,7 +56,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from ctypes import c_size_t
-from math import pi, prod
+from math import pi, prod, isclose
 from functools import reduce, wraps
 from typing import Any, Callable
 import functools
@@ -894,7 +895,11 @@ def evolve(hamiltonian: Hamiltonian):
             simulate. The coefficient of each term serves as the rotation
             angle.
     """
+
     process = hamiltonian.ket_process
+    if isinstance(hamiltonian, Pauli):
+        hamiltonian = Hamiltonian([hamiltonian], process)
+
     for term in hamiltonian.terms:
         gates_qubits = [
             (gate, qubit) for qubit, gate in term.map.items() if gate != "I"
@@ -907,11 +912,17 @@ def evolve(hamiltonian: Hamiltonian):
 
         qubits = Quant(qubits=list(qubits), process=process)
 
+        coef = term.coef
+        if isinstance(coef, complex):
+            if not isclose(coef.imag, 0.0):
+                raise ValueError("Cannot evolve with complex coefficient.")
+            coef = coef.real
+
         if len(gates) == 1:
-            _RGATE[gates[0]](2 * term.coef, qubits)
+            _RGATE[gates[0]](2 * coef, qubits)
         else:
             with around(_rot, gates, qubits):
-                _rzg(2 * term.coef, qubits)
+                _rzg(2 * coef, qubits)
 
 
 def is_diagonal(gate: Callable) -> Callable:

@@ -144,7 +144,9 @@ def _build_and_evaluate(
 _jitted_build_and_evaluate = jax.jit(_build_and_evaluate, static_argnums=(1, 2, 3, 4))
 
 
-class MPS(BatchExecution, LiveExecution):
+class MPS(
+    BatchExecution, LiveExecution
+):  # pylint: disable=too-many-instance-attributes
     """Matrix Product State (MPS) backend simulator.
 
     The ``MPS`` backend is specialized for executing quantum circuits with 1D linear topologies.
@@ -169,10 +171,15 @@ class MPS(BatchExecution, LiveExecution):
         max_bond: int = None,
         double_precision: bool = False,
         execution: Optional[Literal["live", "batch"]] = None,
+        gradient: bool = False,
     ):
         BatchExecution.__init__(self)
+        self._batch_c_struct = self.c_struct
         LiveExecution.__init__(self)
+        self._live_c_struct = self.c_struct
+
         self.execution = execution or "batch"
+        self.gradient = gradient
         self._live_psi = None
         self.num_qubits = num_qubits
         self.max_bond = max_bond
@@ -183,6 +190,7 @@ class MPS(BatchExecution, LiveExecution):
     def connect(self):
         """Configure the connection to the MPS simulator."""
         if self.execution == "live":
+            self.c_struct = self._live_c_struct
             return LiveExecution.configure(
                 self,
                 self.num_qubits,
@@ -194,10 +202,11 @@ class MPS(BatchExecution, LiveExecution):
         else:
             coupling_graph = None
 
+        self.c_struct = self._batch_c_struct
         return BatchExecution.configure(
             self,
             self.num_qubits,
-            gradient="Native",
+            gradient="Native" if self.gradient else False,
             coupling_graph=coupling_graph,
             decompose=True,
         )
