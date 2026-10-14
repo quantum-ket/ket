@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import contextmanager
-from ctypes import c_void_p
+from ctypes import c_size_t, c_void_p
 import json
 from typing import Literal, Optional
 
@@ -169,6 +169,12 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
         self._qubit_pool = []
         self._aux = set()
+        # Auxiliary qubits used to share multi-qubit controls (see
+        # ``ket.operations.control``). They are never returned to
+        # ``_qubit_pool``: they are only used by the compute, action, and
+        # uncompute steps of a shared control, which are appended together.
+        self._control_aux = set()
+        self._control_aux_free = []
         self._blocked_qubits = defaultdict(int)
 
         self._blocks = []
@@ -206,6 +212,30 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         if self._qubit_pool:
             return self._qubit_pool.pop(0)
         return super().__getattr__("alloc")().value
+
+    def _alloc_control_aux(self) -> Quant:
+        """Allocate an auxiliary qubit to share a multi-qubit control."""
+        if self._control_aux_free:
+            index = self._control_aux_free.pop()
+        else:
+            index = self._alloc()
+            self._control_aux.add(index)
+        return Quant(qubits=[index], process=self)
+
+    def _free_control_aux(self, aux: Quant):
+        self._control_aux_free.extend(aux.qubits)
+
+    def _set_unknown_state(self, qubits: Quant):
+        """Declare that the initial state of ``qubits`` is unknown.
+
+        Libket skips controlled gates that act as the identity on qubits known
+        to be in |0> (every qubit starts in |0>). Functions that analyze a gate
+        for arbitrary inputs, such as :func:`~ket.qulib.gate_count`, declare
+        the input qubits as unknown. Must be called before any gate is applied
+        to ``qubits``.
+        """
+        array = (c_size_t * len(qubits.qubits))(*qubits.qubits)
+        super().__getattr__("set_unknown_state")(array, len(qubits.qubits))
 
     def _is_aux(self, index):
         return index in self._aux

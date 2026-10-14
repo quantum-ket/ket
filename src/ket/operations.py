@@ -26,6 +26,7 @@ from ket.clib.libket import search_process
 
 
 from .base import Process, Quant
+from ._shared_control import append_controlled
 from ._verification import (
     _analyze_compute,
     _block_proprieties,
@@ -195,12 +196,16 @@ def control(control_qubits: Quant, state: int | list[int] | None = None):
                     yield
                 finally:
                     pass
-    else:
+    elif len(control_qubits) < 2:
         with process.block_builder(control=control_qubits.qubits):
             try:
                 yield
             finally:
                 pass
+    else:
+        with process.block_builder(append=False) as body:
+            yield
+        append_controlled(process, body, control_qubits)
 
 
 def ctrl(
@@ -592,15 +597,16 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
         compute_proprieties, ket_process
     )
 
-    compute_support = _touched_qubits(compute_proprieties)
+    compute_support = _touched_qubits(compute_proprieties) - ket_process._control_aux
     allow_approximated_decomposition = compute_is_permutation
 
     try:
         with ket_process.block_builder(append=False) as action:
             yield
 
-
-        qubits_of_interest = blocked_qubits | compute_support | ket_process._aux
+        qubits_of_interest = (
+            blocked_qubits | compute_support | ket_process._aux
+        ) - ket_process._control_aux
         for target, op in _block_proprieties_subset(action, qubits_of_interest).items():
             if op["propriety"] in ["Permutation", "Unitary"]:
                 if target in blocked_qubits or ket_process._is_aux(target):

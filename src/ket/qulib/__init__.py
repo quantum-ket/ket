@@ -1113,6 +1113,9 @@ def gate_count(
     process = Process(gc)
 
     qubits = [process.alloc(n) for n in num_qubits]
+    for qubit in qubits:
+        # The gate is counted for arbitrary inputs, not only for |0...0>.
+        process._set_unknown_state(qubit)  # pylint: disable=protected-access
 
     gate(*args, *qubits)
 

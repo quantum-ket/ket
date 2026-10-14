@@ -207,6 +207,10 @@ api_argtypes = {
         [c_void_p],  # block
         [],
     ),
+    "ket_block_num_controllable_gates": (
+        [c_void_p],  # block
+        [c_size_t],  # num_gates
+    ),
     "ket_block_append_block": (
         [c_void_p, c_void_p],  # block, other
         [],
@@ -262,6 +266,10 @@ api_argtypes = {
     ),
     "ket_process_append_block": (
         [c_void_p, c_void_p],  # process, block
+        [],
+    ),
+    "ket_process_set_unknown_state": (
+        [c_void_p, POINTER(c_size_t), c_size_t],  # process, qubits, qubits_len
         [],
     ),
     "ket_process_measure": (

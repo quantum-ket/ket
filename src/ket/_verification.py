@@ -48,6 +48,41 @@ def _block_proprieties_subset(block, qubits) -> dict[int, dict]:
     return {int(target): op for target, op in proprieties.items()}
 
 
+def _without_control_aux(
+    proprieties: dict[int, dict], control_aux: set[int]
+) -> dict[int, dict]:
+    """Remove the shared-control auxiliary qubits from block properties.
+
+    A shared-control auxiliary qubit (see ``ket.operations.control``) holds the
+    AND of a set of control qubits only between its compute and uncompute
+    steps, which are always appended together, so it is |0> outside them. It
+    is removed from the properties, and a qubit that reads it reads, instead,
+    the qubits it was computed from (transitively).
+    """
+
+    def sources(qubit, seen):
+        result = set()
+        for read in proprieties.get(qubit, {}).get("read_qubits", ()):
+            if read in control_aux:
+                if read not in seen:
+                    seen.add(read)
+                    result |= sources(read, seen)
+            else:
+                result.add(read)
+        return result
+
+    filtered = {}
+    for target, op in proprieties.items():
+        if target in control_aux:
+            continue
+        read_qubits = set(op["read_qubits"])
+        if read_qubits & control_aux:
+            read_qubits = (read_qubits - control_aux) | sources(target, set())
+            op = {**op, "read_qubits": sorted(read_qubits)}
+        filtered[target] = op
+    return filtered
+
+
 def _analyze_compute(proprieties: dict[int, dict], ket_process: Process):
     """Check the compute block of a compute-action-uncompute pattern.
 
@@ -65,6 +100,9 @@ def _analyze_compute(proprieties: dict[int, dict], ket_process: Process):
             auxiliary qubit is subject to a non-permutation operation in the
             compute block.
     """
+
+    if ket_process._control_aux:
+        proprieties = _without_control_aux(proprieties, ket_process._control_aux)
 
     blocked_qubits = set()
     for target, op in proprieties.items():
