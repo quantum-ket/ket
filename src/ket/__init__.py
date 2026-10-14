@@ -83,7 +83,7 @@ from .fermion import *
 from .fermion import __all__ as all_fermion
 from . import qulib
 
-__version__ = "0.10.4.1"
+__version__ = "0.10.5.dev0"
 
 __all__ = (
     all_base

@@ -4,11 +4,54 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "ket-lang"
+dynamic = ["version"]
+description = "Ket quantum programming language interpreter and library"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+keywords = ["quantum computer", "quantum programming", "quantum simulator"]
+authors = [
+    { name = "Evandro Chagas Ribeiro da Rosa", email = "evandro@quantuloop.com" },
+]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Quantum Computing",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+]
+
+[project.urls]
+Homepage = "https://quantumket.org"
+Source = "https://gitlab.com/quantum-ket/ket"
+
+[project.optional-dependencies]
+amazon = ["amazon-braket-sdk"]
+ibm = ["qiskit>=2.0.0,<3.0", "qiskit-aer", "qiskit-ibm-runtime"]
+plot = [
+    "numpy",
+    "plotly",
+    "pandas",
+    "nbformat",
+    "kaleido",
+    "qiskit[visualization]>=2.0.0,<3.0",
+]
+remote = ["requests", "PyJWT[crypto]", "bcrypt"]
+mps = ["quimb", "jax", "jaxlib", "cotengra"]
+
+[tool.setuptools.dynamic]
+version = { attr = "ket.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ket*"]
 
 [tool.pytest.ini_options]
 addopts = ["--cov=ket", "--cov-report=html"]
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]
