@@ -478,22 +478,23 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         try:
             yield block
         finally:
-            if inverse:
-                block.set(block.inverse())
-            if control is not None:
-                block.set(block.control(control))
+            try:
+                if inverse:
+                    block.set(block.inverse())
+                if control is not None:
+                    block.set(block.control(control))
 
-            if self._is_diagonal > 0:
-                block.set_as_diagonal()
-            elif self._is_permutation > 0:
-                block.set_as_permutation()
+                if self._is_diagonal > 0:
+                    block.set_as_diagonal()
+                elif self._is_permutation > 0:
+                    block.set_as_permutation()
+            finally:
+                if diagonal:
+                    self._is_diagonal -= 1
+                elif permutation:
+                    self._is_permutation -= 1
 
-            if diagonal:
-                self._is_diagonal -= 1
-            elif permutation:
-                self._is_permutation -= 1
-
-            self._blocks.pop()
+                self._blocks.pop()
             if append:
                 self.append_block(block)
 

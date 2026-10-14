@@ -17,16 +17,21 @@ from __future__ import annotations
 from collections.abc import Sized
 from contextlib import contextmanager
 from functools import reduce, wraps
-import json
 from operator import add
 from typing import Any, Callable
 from inspect import signature
 import warnings
 
-from ket.clib.libket import search_process, API as libket
+from ket.clib.libket import search_process
 
 
 from .base import Process, Quant
+from ._verification import (
+    _analyze_compute,
+    _block_proprieties,
+    _block_proprieties_subset,
+    _touched_qubits,
+)
 
 from .measurement import Measurement, Samples
 from .quantumstate import QuantumState
@@ -505,18 +510,7 @@ def undo(
         gate(qubits)
         compute.lock_control()
 
-    proprieties_ptr = compute.proprieties_json()
-    proprieties = json.loads(proprieties_ptr.value)
-    libket["ket_string_delete"](proprieties_ptr)
-
-    blocked_qubits = set()
-
-    for target, op in proprieties.items():
-        target = int(target)
-        if (op["propriety"] == "Permutation") and ket_process._is_aux(target):
-            blocked_qubits.update(op["read_qubits"])
-        elif (op["propriety"] == "Unitary") and ket_process._is_aux(target):
-            raise RuntimeError("Operation not allowed on axillary qubit.")
+    blocked_qubits, _ = _analyze_compute(_block_proprieties(compute), ket_process)
 
     uncompute = compute.inverse()
     ket_process.append_block(compute, check_qubits=False)
@@ -593,43 +587,25 @@ def around(gate: Callable, *args, ket_process: Process | None = None, **kwargs):
         gate(*args, **kwargs)
         compute.lock_control()
 
-    proprieties_ptr = compute.proprieties_json()
-    proprieties = json.loads(proprieties_ptr.value)
-    libket["ket_string_delete"](proprieties_ptr)
+    compute_proprieties = _block_proprieties(compute)
+    blocked_qubits, compute_is_permutation = _analyze_compute(
+        compute_proprieties, ket_process
+    )
 
-    blocked_qubits = set()
-    written_qubits = set()
-
-    for target, op in proprieties.items():
-        target = int(target)
-        match op["propriety"]:
-            case "Identity" | "Diagonal":
-                pass
-            case "Permutation":
-                if ket_process._is_aux(target):
-                    blocked_qubits.update(op["read_qubits"])
-                written_qubits.add(target)
-            case "Unitary":
-                if ket_process._is_aux(target):
-                    raise RuntimeError("Operation not allowed on axillary qubit.")
-                written_qubits.add(target)
-
-    allow_approximated_decomposition = True
+    compute_support = _touched_qubits(compute_proprieties)
+    allow_approximated_decomposition = compute_is_permutation
 
     try:
         with ket_process.block_builder(append=False) as action:
             yield
 
-        proprieties_ptr = action.proprieties_json()
-        proprieties = json.loads(proprieties_ptr.value)
-        libket["ket_string_delete"](proprieties_ptr)
 
-        for target, op in proprieties.items():
-            target = int(target)
+        qubits_of_interest = blocked_qubits | compute_support | ket_process._aux
+        for target, op in _block_proprieties_subset(action, qubits_of_interest).items():
             if op["propriety"] in ["Permutation", "Unitary"]:
                 if target in blocked_qubits or ket_process._is_aux(target):
                     raise RuntimeError("Operation violates uncomputation.")
-                if target in written_qubits:
+                if target in compute_support:
                     allow_approximated_decomposition = False
 
     finally:
@@ -838,6 +814,12 @@ def using_aux(unsafe: bool = False, **names):
         auxiliary qubit allocation.
     """
 
+    size_parameters = {
+        name: tuple(signature(num_qubits).parameters)
+        for name, num_qubits in names.items()
+        if callable(num_qubits)
+    }
+
     def inner(func):
         param = signature(func).parameters
 
@@ -853,9 +835,7 @@ def using_aux(unsafe: bool = False, **names):
 
                 if callable(num_qubits):
                     try:
-                        nq_args = {
-                            p: kwargs_ex[p] for p in signature(num_qubits).parameters
-                        }
+                        nq_args = {p: kwargs_ex[p] for p in size_parameters[name]}
                         num_qubits = num_qubits(**nq_args)
                     except KeyError as e:
                         raise ValueError(
@@ -927,6 +907,12 @@ def kernel(*p_args, **p_kwargs):
     """
 
     def make_process(**names):
+        size_parameters = {
+            name: tuple(signature(num_qubits).parameters)
+            for name, num_qubits in names.items()
+            if callable(num_qubits)
+        }
+
         def make_kernel(func):
             param = signature(func).parameters
 
@@ -942,10 +928,7 @@ def kernel(*p_args, **p_kwargs):
 
                     if callable(num_qubits):
                         try:
-                            nq_args = {
-                                p: kwargs_ex[p]
-                                for p in signature(num_qubits).parameters
-                            }
+                            nq_args = {p: kwargs_ex[p] for p in size_parameters[name]}
                             num_qubits = num_qubits(**nq_args)
                         except KeyError as e:
                             raise ValueError(

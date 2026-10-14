@@ -958,26 +958,23 @@ class BatchGateCount(_GateCountBase, BatchExecution):
         return self.configure(self.num_qubits, decompose=True)
 
     def _count_gates(self, gate_list):
+        """Count the gates of a batch execution (decomposed when available)."""
+        dispatch = self._dispatch_gate
+        pauli_x = self.pauli_x
         for gate_dict in gate_list:
-            if gate_dict.get("decomposed") is not None:
-                self._count_gates(
-                    [
-                        (
-                            {
-                                "gate": "PauliX",
-                                "target": dec["CNOT"][1],
-                                "control": [dec["CNOT"][0]],
-                            }
-                            if "CNOT" in dec
-                            else {
-                                "gate": dec["U"][0],
-                                "target": dec["U"][1],
-                                "control": [],
-                            }
-                        )
-                        for dec in gate_dict["decomposed"]
-                    ]
-                )
+            decomposed = gate_dict.get("decomposed")
+            if decomposed is not None:
+                for dec in decomposed:
+                    cnot = dec.get("CNOT")
+                    if cnot is not None:
+                        pauli_x(cnot[1], [cnot[0]])
+                        continue
+                    gate_name, target = dec["U"]
+                    val = None
+                    if isinstance(gate_name, dict):
+                        gate_name, val_dict = next(iter(gate_name.items()))
+                        val = val_dict.get("Value")
+                    dispatch(gate_name, target, [], val)
                 continue
 
             gate_name = gate_dict.get("gate")
@@ -991,7 +988,7 @@ class BatchGateCount(_GateCountBase, BatchExecution):
                 gate_name, val_dict = next(iter(gate_name.items()))
                 val = val_dict.get("Value")
 
-            self._dispatch_gate(gate_name, target, ctrl, val)
+            dispatch(gate_name, target, ctrl, val)
 
     def _dispatch_gate(self, gate_name, target, ctrl, val):
         """Dispatch a single gate instruction to its counting method."""
@@ -1046,7 +1043,7 @@ def gate_count(
     args: tuple = (),
     *,
     qpu_size: int | None = None,
-    batch: bool = False,
+    batch: bool = True,
 ) -> tuple[Counter, int]:
     """Count the quantum gates and CNOT depth of a quantum gate function.
 
@@ -1062,7 +1059,10 @@ def gate_count(
         args: Classical arguments to pass to the gate function.
         qpu_size: Size of the quantum processing unit (QPU). Defaults
             to ``sum(num_qubits)``.
-        batch: If ``True``, use batch execution mode instead of live execution.
+        batch: If ``True`` (default), use batch execution: Libket passes the
+            whole decomposed circuit in a single call. If ``False``, use live
+            execution, with one callback per decomposed gate (slower for large
+            circuits). Both modes give the same counts.
 
     Returns:
         A tuple containing:

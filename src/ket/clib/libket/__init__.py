@@ -219,6 +219,14 @@ api_argtypes = {
         [c_void_p],  # block
         [c_char_p],  # proprieties
     ),
+    "ket_block_proprieties_uncached_json": (
+        [c_void_p],  # block
+        [c_char_p],  # proprieties
+    ),
+    "ket_block_proprieties_subset_json": (
+        [c_void_p, POINTER(c_size_t), c_size_t],  # block, qubits, qubits_size
+        [c_char_p],  # proprieties
+    ),
     "ket_quantum_execution_live": (
         [
             c_size_t,  # num_qubits
@@ -385,6 +393,19 @@ class Process(HasProcess):
         return f"<Libket 'process', pid={hex(id(self.ket_process))}>"
 
 
+_ENCODED_GATES: dict[str, bytes] = {}
+
+
+def _encode_gate(gate) -> bytes:
+    """JSON-encode a gate for Libket; gates without parameters (strings) are cached."""
+    if isinstance(gate, str):
+        encoded = _ENCODED_GATES.get(gate)
+        if encoded is None:
+            encoded = _ENCODED_GATES[gate] = json.dumps(gate).encode("utf-8")
+        return encoded
+    return json.dumps(gate).encode("utf-8")
+
+
 class Block(HasProcess):
     """Libket block wrapper from C API."""
 
@@ -398,7 +419,7 @@ class Block(HasProcess):
 
     def append_gate(self, gate, target):
         """Append a gate to the block."""
-        gate = json.dumps(gate).encode("utf-8")
+        gate = _encode_gate(gate)
         self.__getattr__("append_gate")(  # pylint: disable=unnecessary-dunder-call
             gate, target
         )

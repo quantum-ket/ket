@@ -26,7 +26,6 @@ import ket
 from ket import Process, RX, RY, RZ, exp_value
 from ket.gates import obs
 
-
 # ─── Reference implementations ──────────────────────────────────────────────
 
 
@@ -250,17 +249,13 @@ class TestScaledParameter:
             h = ket.Z(q)
         return exp_value(h).get()
 
-    @pytest.mark.parametrize(
-        "theta,scale", [(pi / 4, 2.0), (pi / 6, 0.5), (1.0, 3.0)]
-    )
+    @pytest.mark.parametrize("theta,scale", [(pi / 4, 2.0), (pi / 6, 0.5), (1.0, 3.0)])
     def test_scaled_gradient_chain_rule(self, theta, scale):
         """d⟨Z⟩/dθ = -sin(scale·θ) · scale (chain rule)."""
         grad = self._ket_grad(theta, scale)
         assert grad == pytest.approx(-sin(scale * theta) * scale, abs=1e-6)
 
-    @pytest.mark.parametrize(
-        "theta,scale", [(pi / 4, 2.0), (pi / 6, 0.5), (1.0, 3.0)]
-    )
+    @pytest.mark.parametrize("theta,scale", [(pi / 4, 2.0), (pi / 6, 0.5), (1.0, 3.0)])
     def test_scaled_gradient_matches_ps(self, theta, scale):
         """Gradient w.r.t. raw θ equals the PS estimate accounting for the multiplier."""
         grad = self._ket_grad(theta, scale)
