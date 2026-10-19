@@ -73,6 +73,37 @@ Package Windows x86_64 Wheels:
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
 
+Package macOS universal2 Wheels:
+  image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
+  stage: build
+  variables:
+    KBW_PROJ_ID: "16627872"
+    LIBKET_PROJ_ID: "16638729"
+    KBW_PATH: "src/ket/clib/libs/kbw"
+    LIBKET_PATH: "src/ket/clib/libs/libket"
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
+    - rm -rf /var/lib/apt/lists/*
+    - uv pip install --system build
+  script:
+    - KBW_HASH=$(git rev-parse --short=8 HEAD:${KBW_PATH})
+    - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
+    - |
+      curl --fail --location \
+      "https://gitlab.com/api/v4/projects/${KBW_PROJ_ID}/packages/generic/kbw/${KBW_HASH}/libkbw.dylib" \
+      --create-dirs --output src/ket/clib/libs/libkbw.dylib
+    - |
+      curl --fail --location \
+      "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/libket.dylib" \
+      --create-dirs --output src/ket/clib/libs/libket.dylib
+
+    - python setup.py bdist_wheel -p macosx-13.0-universal2
+  artifacts:
+    paths:
+      - dist/*.whl
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
 Package Source Code:
   image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: build
