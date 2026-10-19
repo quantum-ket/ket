@@ -28,8 +28,18 @@ from . import (
 )
 
 
+class CallbackNotImplementedError(NotImplementedError):
+    """Raised by an optional execution callback that a target does not support.
+
+    Subclasses override only the callbacks their target supports, so these
+    methods are not abstract.
+    """
+
+
 class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
     """Base class for constructing batch target executions."""
+
+    # pylint: disable=unused-argument
 
     def __init__(self):
         @CFUNCTYPE(
@@ -186,7 +196,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("`sample` method not implemented")
+        raise CallbackNotImplementedError("`sample` method not implemented")
 
     def exp_value(self, gates, hamiltonian_list):
         """Execute the circuit and compute expectation values.
@@ -194,7 +204,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("`exp_value` method not implemented")
+        raise CallbackNotImplementedError("`exp_value` method not implemented")
 
     def sample_native(self, gates, qubits, shots):
         """Execute the circuit with native gates and compute expectation values.
@@ -202,7 +212,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("`sample_native` method not implemented")
+        raise CallbackNotImplementedError("`sample_native` method not implemented")
 
     def exp_value_native(self, gates, hamiltonians):
         """Execute the circuit with native and compute expectation values.
@@ -210,7 +220,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("`exp_value_native` method not implemented")
+        raise CallbackNotImplementedError("`exp_value_native` method not implemented")
 
     def gradient(self, gates, hamiltonian):
         """Execute the circuit, compute expectation values and the parameters gradient.
@@ -218,11 +228,14 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
         .. warning::
             This method is called by Libket and should not be called directly.
         """
-        raise NotImplementedError("`gradient` method not implemented")
+        raise CallbackNotImplementedError("`gradient` method not implemented")
 
 
 class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
     """Base class for constructing live target executions."""
+
+    # Optional callbacks below ignore their arguments.
+    # pylint: disable=unused-argument
 
     def __init__(self):  # pylint: disable=too-many-statements
         @CFUNCTYPE(
@@ -331,55 +344,57 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
 
     def pauli_x(self, target, control):
         """Apply a Pauli-X gate to the target qubit."""
-        raise NotImplementedError("Pauli-X gate not implemented")
+        raise CallbackNotImplementedError("Pauli-X gate not implemented")
 
     def pauli_y(self, target, control):
         """Apply a Pauli-Y gate to the target qubit."""
-        raise NotImplementedError("Pauli-Y gate not implemented")
+        raise CallbackNotImplementedError("Pauli-Y gate not implemented")
 
     def pauli_z(self, target, control):
         """Apply a Pauli-Z gate to the target qubit."""
-        raise NotImplementedError("Pauli-Z gate not implemented")
+        raise CallbackNotImplementedError("Pauli-Z gate not implemented")
 
     def hadamard(self, target, control):
         """Apply a Hadamard gate to the target qubit."""
-        raise NotImplementedError("Hadamard gate not implemented")
+        raise CallbackNotImplementedError("Hadamard gate not implemented")
 
     def rotation_x(self, target, control, angle):
         """Apply a X-Rotation gate to the target qubit."""
-        raise NotImplementedError("X-Rotation gate not implemented")
+        raise CallbackNotImplementedError("X-Rotation gate not implemented")
 
     def rotation_y(self, target, control, angle):
         """Apply a Y-Rotation gate to the target qubit."""
-        raise NotImplementedError("Y-Rotation gate not implemented")
+        raise CallbackNotImplementedError("Y-Rotation gate not implemented")
 
     def rotation_z(self, target, control, angle):
         """Apply a Z-Rotation gate to the target qubit."""
-        raise NotImplementedError("Z-Rotation gate not implemented")
+        raise CallbackNotImplementedError("Z-Rotation gate not implemented")
 
     def phase(self, target, control, angle):
         """Apply a Phase gate to the target qubit."""
-        raise NotImplementedError("Phase gate not implemented")
+        raise CallbackNotImplementedError("Phase gate not implemented")
 
     def measure(self, qubits: list[int]) -> int:
         """Measure the qubits and return the result as an integer."""
-        raise NotImplementedError("`measure` method not implemented")
+        raise CallbackNotImplementedError("`measure` method not implemented")
 
     def exp_value(self, hamiltonian: dict):
         """Compute the expectation value of the given Hamiltonian."""
-        raise NotImplementedError("`exp_value` method not implemented")
+        raise CallbackNotImplementedError("`exp_value` method not implemented")
 
     def sample(self, qubits: list[int], shots: int):
         """Sample the state of the qubits."""
-        raise NotImplementedError("`sample` method not implemented")
+        raise CallbackNotImplementedError("`sample` method not implemented")
 
     def dump(self, qubits: list[int]) -> dict:
         """Dump the state of the qubits."""
-        raise NotImplementedError("`dump` method not implemented")
+        raise CallbackNotImplementedError("`dump` method not implemented")
 
     def compute_native_gates(self, gates) -> dict:
         """Compute native gates."""
-        raise NotImplementedError("`compute_native_gates` method not implemented")
+        raise CallbackNotImplementedError(
+            "`compute_native_gates` method not implemented"
+        )
 
     @abstractmethod
     def connect(self):
