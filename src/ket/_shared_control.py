@@ -21,6 +21,9 @@ from ._verification import _block_proprieties, _touched_qubits
 if TYPE_CHECKING:
     from .base import Process, Quant
 
+MAX_SHARED_CONTROLS = 3
+"""Largest number of controls shared through an auxiliary qubit."""
+
 
 def _mark(process: Process, block: Block):
     """Apply the diagonal/permutation annotation of the enclosing builders."""
@@ -46,8 +49,16 @@ def append_controlled(process: Process, body: Block, control_qubits: Quant):
     qubits, so ``aux`` returns to |0> and the approximated decomposition of the
     compute step is exact (Theorems 1 to 3). Each gate of the body then needs a
     single control instead of the whole control set. Otherwise (a single gate,
-    a body that acts on a control qubit, or no qubit left for the auxiliary),
-    the controls are added to every gate of ``body``.
+    more than ``MAX_SHARED_CONTROLS`` controls, a body that acts on a control
+    qubit, or no qubit left for the auxiliary), the controls are added to every
+    gate of ``body``.
+
+    With two or three controls, the relative-phase AND costs 3 or 6 CNOTs
+    (each way), and every base gate saves at least 5 or 12 CNOTs when its
+    controls are replaced by one, so two gates always reduce the CNOT count.
+    Libket has no relative-phase decomposition with four controls (36 CNOTs
+    each way), and with more controls the cost of the AND depends on the free
+    qubits, so the controls are not shared in these cases.
 
     The auxiliary qubit comes from a pool reserved for shared controls (see
     :meth:`~ket.base.Process._alloc_control_aux`), which the verification of
@@ -55,7 +66,10 @@ def append_controlled(process: Process, body: Block, control_qubits: Quant):
     above, which are always appended together.
     """
     aux = None
-    if body.num_controllable_gates().value >= 2 and not (
+    if (
+        len(control_qubits) <= MAX_SHARED_CONTROLS
+        and body.num_controllable_gates().value >= 2
+    ) and not (
         _touched_qubits(_block_proprieties(body)) & set(control_qubits.qubits)
     ):
         try:

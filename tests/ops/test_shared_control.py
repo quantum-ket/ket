@@ -17,7 +17,7 @@ and compared with KBW (no decomposition).
 
 import pytest
 
-from ket import H, P, Process, Qint, QuantumState, RX, RY, X, Z, around, control, ctrl
+from ket import H, P, Process, Qint, QuantumState, RX, RY, RZ, X, Z, around, control, ctrl
 from ket.qulib import gate_count
 
 np = pytest.importorskip("numpy")
@@ -70,6 +70,40 @@ def test_shared_control_reduces_cnots():
     shared, _ = gate_count(add, [2, 8], qpu_size=11)
     independent, _ = gate_count(add, [2, 8])  # no free qubit for the AND
     assert shared["cnot"] < independent["cnot"]
+
+
+@pytest.mark.parametrize("num_controls", [2, 3])
+@pytest.mark.parametrize("gates", [(X, X), (Z, P(0.4)), (H, RX(0.3)), (RY(0.2), RZ(0.7))])
+def test_shared_control_two_gates_reduce_cnots(num_controls, gates):
+    """With two or three controls, any two base gates share the controls with
+    fewer CNOTs (Theorem 4 and its corollary)."""
+
+    def body(c, t):
+        with control(c):
+            for gate, qubit in zip(gates, t):
+                gate(qubit)
+
+    free = num_controls + 2 + 2
+    shared, _ = gate_count(body, [num_controls, 2], qpu_size=free)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("ket._shared_control.MAX_SHARED_CONTROLS", 0)
+        independent, _ = gate_count(body, [num_controls, 2], qpu_size=free)
+    assert shared["cnot"] < independent["cnot"]
+
+
+def test_four_controls_are_not_shared():
+    """Libket has no relative-phase C4X: the controls are added to each gate."""
+
+    def body(c, t):
+        with control(c):
+            P(0.4, t[0])
+            P(0.4, t[1])
+
+    counts, _ = gate_count(body, [4, 2], qpu_size=10)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("ket._shared_control.MAX_SHARED_CONTROLS", 0)
+        independent, _ = gate_count(body, [4, 2], qpu_size=10)
+    assert counts["cnot"] == independent["cnot"]
 
 
 def test_shared_control_inside_around_compute():
