@@ -12,7 +12,7 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-Package Linux x86_64 Wheels:
+.package-linux-wheel:
   image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: build
   variables:
@@ -29,7 +29,7 @@ Package Linux x86_64 Wheels:
     - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
     - |
       curl --fail --location \
-      "https://gitlab.com/api/v4/projects/${KBW_PROJ_ID}/packages/generic/kbw/${KBW_HASH}/libkbw.so" \
+      "https://gitlab.com/api/v4/projects/${KBW_PROJ_ID}/packages/generic/kbw/${KBW_HASH}/${KBW_LIB}" \
       --create-dirs --output src/ket/clib/libs/libkbw.so
     - |
       curl --fail --location \
@@ -37,10 +37,24 @@ Package Linux x86_64 Wheels:
       --create-dirs --output src/ket/clib/libs/libket.so
 
     - python -m build -w
-    - python -m auditwheel repair --plat manylinux_2_28_x86_64 dist/ket_lang*.whl
+    - python -m auditwheel repair --plat ${MANYLINUX_PLAT} dist/ket_lang*.whl
   artifacts:
     paths:
       - wheelhouse/*.whl
+
+# CPU-only simulator (dense + sparse), glibc >= 2.28.
+Package Linux x86_64 Wheels:
+  extends: .package-linux-wheel
+  variables:
+    KBW_LIB: "libkbw.so"
+    MANYLINUX_PLAT: "manylinux_2_28_x86_64"
+
+# GPU-accelerated simulator (adds "dense gpu"), glibc >= 2.34.
+Package Linux x86_64 GPU Wheels:
+  extends: .package-linux-wheel
+  variables:
+    KBW_LIB: "libkbw.gpu.so"
+    MANYLINUX_PLAT: "manylinux_2_34_x86_64"
 
 Package Windows x86_64 Wheels:
   image: ghcr.io/astral-sh/uv:python3.10-trixie-slim

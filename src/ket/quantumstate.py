@@ -106,6 +106,7 @@ class QuantumState(HasProcess):
 
     def __init__(self, *qubits: Quant):
         super().__init__(ket_process=qubits[0].ket_process)
+        self.ket_process._check_not_in_block("dump")
 
         self.qubits = []
         self.qubits_info: list[tuple[int, Callable[[int], str]]] = []
