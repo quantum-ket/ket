@@ -191,6 +191,21 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             if self._blocked_qubits[q] == 0:
                 del self._blocked_qubits[q]
 
+    def _check_not_in_block(self, operation: str):
+        """Raise if ``operation`` is called inside a gate-building block.
+
+        Blocks (``with around``, ``with control``, ``with inverse``, gate
+        functions) are only added to the circuit when they close. Measuring
+        or inspecting the state inside one would run before the block's
+        gates, giving silently wrong results.
+        """
+        if self._blocks:
+            raise RuntimeError(
+                f"Cannot call {operation} inside a gate-building block "
+                "(e.g., 'with around', 'with control', 'with inverse', or a "
+                "function used as a gate). Call it outside the block."
+            )
+
     def _get_exp_value_index(self) -> int:
         index = self._exp_value_count
         self._exp_value_count += 1

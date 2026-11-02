@@ -15,6 +15,8 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections import Counter
+
 from .clib.libket.execution import BatchExecution
 
 try:
@@ -178,7 +180,7 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
 
         return circuit
 
-    def sample(self, gates, qubits_to_sample, shots):
+    def sample(self, gates, qubits_to_sample, shots):  # pylint: disable=too-many-locals
         """Execute the circuit and sample the given qubits.
 
         .. warning::
@@ -193,10 +195,9 @@ class IBMDevice(BatchExecution):  # pylint: disable=too-many-instance-attributes
         job = sampler.run([isa_circuit], shots=shots)
         raw_counts = job.result()[0].data["meas"].get_counts()
 
-        parsed_counts = {
-            int("".join(s[-q - 1] for q in qubits_to_sample), 2): c
-            for s, c in raw_counts.items()
-        }
+        parsed_counts = Counter()
+        for s, c in raw_counts.items():
+            parsed_counts[int("".join(s[-q - 1] for q in qubits_to_sample), 2)] += c
 
         mask_64bit = (1 << 64) - 1
         num_chunks = (len(qubits_to_sample) + 63) // 64

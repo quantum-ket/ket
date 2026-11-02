@@ -4,7 +4,7 @@
 
 import pytest
 import cmath
-from ket import Process, obs, commutator, exp_value, X, Y, Z
+from ket import CNOT, H, Process, obs, commutator, exp_value, X, Y, Z
 
 
 def test_pauli_algebra_multiplication():
@@ -98,3 +98,16 @@ def test_exp_value_unsupported_complex():
 
     with pytest.raises(ValueError, match="Complex coefficients are not supported"):
         _ = exp_value(complex_h)
+
+
+def test_exp_value_is_none_before_batch_execution():
+    """In batch mode, ``value`` is ``None`` until ``get`` runs the process."""
+    p = Process(execution="batch")
+    a, b = p.alloc(2)
+    CNOT(H(a), b)
+    with obs():
+        result = exp_value(Z(a) * Z(b) + 1)
+
+    assert result.value is None
+    assert result.get() == pytest.approx(2.0, abs=1e-5)
+    assert result.value == pytest.approx(2.0, abs=1e-5)

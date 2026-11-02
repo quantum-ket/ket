@@ -106,3 +106,15 @@ def test_amazon_quantum_adder():
         result = quantum_sum(a, b, SIZE)
 
         assert result == expected_result
+
+
+def test_amazon_sample_counts_add_up():
+    """All shots must be counted when sampling only part of the qubits."""
+    shots = 1000
+    ket_process = ket.Process(execution_target=AmazonBraket())
+
+    q = ket_process.alloc(3)
+    ket.H(q)
+    result = ket.sample(q[:2], shots)
+
+    assert sum(result.get().values()) == shots

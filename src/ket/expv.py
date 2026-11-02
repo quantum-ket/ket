@@ -578,6 +578,7 @@ class ExpValue(HasProcess):
             products_count += 1
 
         if products_count > 0:
+            self.ket_process._check_not_in_block("exp_value")
             self.index = self.ket_process._get_exp_value_index()
             result, some_result = self.ket_process.exp_value(
                 json.dumps(h_json).encode("utf-8")
@@ -591,9 +592,9 @@ class ExpValue(HasProcess):
 
     def _check(self, execute=False):
         if self._value is None:
-            self._value = (
-                self.ket_process._get_exp_value(self.index, execute) + self._i_coef
-            )
+            result = self.ket_process._get_exp_value(self.index, execute)
+            if result is not None:
+                self._value = result + self._i_coef
 
     @property
     def value(self) -> float | None:

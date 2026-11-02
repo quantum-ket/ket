@@ -142,3 +142,51 @@ def test_v_chain_dirty_decomposition():
         ),
     )
     assert validate_decomposition(dumped, GATES["X"][1])
+
+
+def _measure_op(q):
+    return ket.measure(q)
+
+
+def _sample_op(q):
+    return ket.sample(q)
+
+
+def _dump_op(q):
+    return ket.dump(q)
+
+
+def _exp_value_op(q):
+    with ket.obs():
+        h = ket.Z(q)
+    return ket.exp_value(h)
+
+
+@pytest.mark.parametrize("op", [_measure_op, _sample_op, _dump_op, _exp_value_op])
+@pytest.mark.parametrize("block", ["around", "control", "inverse"])
+def test_state_access_inside_block_raises(op, block):
+    """Blocks are appended only when they close, so reading the state inside
+    one would run before the block's gates. It must raise instead."""
+    p = Process(execution="live")
+    q, c = p.alloc(2)
+
+    contexts = {
+        "around": lambda: around(H, q),
+        "control": lambda: ket.control(c),
+        "inverse": lambda: ket.inverse(p),
+    }
+
+    with pytest.raises(RuntimeError, match="gate-building block"):
+        with contexts[block]():
+            op(q)
+
+
+def test_measure_after_around_sees_compute():
+    """Measuring after the block closes sees the full U V U† circuit."""
+    for _ in range(20):
+        p = Process(execution="live")
+        q = p.alloc()
+        H(q)  # |+>
+        with around(H, q):
+            pass
+        assert ket.measure(H(q)).get() == 0

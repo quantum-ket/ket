@@ -62,6 +62,7 @@ from __future__ import annotations
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections import Counter
 from functools import reduce
 from json import loads
 from operator import add
@@ -256,10 +257,9 @@ class AmazonBraket(BatchExecution):  # pylint: disable=too-many-instance-attribu
         result = self.device.run(circuit, shots=shots).result()
         aws_map = {q: i for i, q in enumerate(result.measured_qubits)}
 
-        counts = {
-            self._from_braket_to_ket(k, qubits_to_sample, aws_map): v
-            for k, v in result.measurement_counts.items()
-        }
+        counts = Counter()
+        for k, v in result.measurement_counts.items():
+            counts[self._from_braket_to_ket(k, qubits_to_sample, aws_map)] += v
 
         mask_64bit = (1 << 64) - 1
         num_chunks = (len(qubits_to_sample) + 63) // 64

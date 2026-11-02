@@ -81,6 +81,8 @@ class Measurement(HasProcess):
         if any(self.ket_process._is_aux(q) for q in qubits.qubits):
             raise ValueError("Auxiliary qubits cannot be measured")
 
+        self.ket_process._check_not_in_block("measure")
+
         self.qubits = [qubits.qubits[i : i + 64] for i in range(0, len(qubits), 64)]
         self.size = len(qubits)
         result_values = [
@@ -208,6 +210,8 @@ class Samples(HasProcess):
 
         if any(self.ket_process._is_aux(q) for q in self.qubits):
             raise ValueError("Auxiliary qubits cannot be measured")
+
+        self.ket_process._check_not_in_block("sample")
 
         result_ptr = self.ket_process.sample(
             (c_size_t * len(self.qubits))(*self.qubits),
