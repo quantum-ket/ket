@@ -34,10 +34,10 @@ def _mark(process: Process, block: Block):
 
 
 def append_controlled(process: Process, body: Block, control_qubits: Quant):
-    """Append ``body`` controlled by two or more ``control_qubits``.
+    r"""Append ``body`` controlled by two or more ``control_qubits``.
 
-    If at least two gates of ``body`` receive the controls, the controls are
-    shared through a clean auxiliary qubit:
+    If sharing reduces the CNOT count (estimated by Libket, see below), the
+    controls are shared through a clean auxiliary qubit:
 
     .. code-block:: text
 
@@ -48,14 +48,23 @@ def append_controlled(process: Process, body: Block, control_qubits: Quant):
     The action only reads ``aux`` (as a control) and does not touch the control
     qubits, so ``aux`` returns to |0> and the approximated decomposition of the
     compute step is exact (Theorems 1 to 3). Each gate of the body then needs a
-    single control instead of the whole control set. Otherwise (a single gate,
+    single control instead of the whole control set. Otherwise (no CNOT saved,
     more than ``MAX_SHARED_CONTROLS`` controls, a body that acts on a control
     qubit, or no qubit left for the auxiliary), the controls are added to every
     gate of ``body``.
 
-    With two or three controls, the relative-phase AND costs 3 or 6 CNOTs
-    (each way), and every base gate saves at least 5 or 12 CNOTs when its
-    controls are replaced by one, so two gates always reduce the CNOT count.
+    The estimate (``Block::shared_control_gain`` in Libket) follows Proposition
+    1 of the thesis. Sharing costs the compute and the uncompute of the
+    relative-phase AND, 3 or 6 CNOTs each way for two or three controls. It
+    saves, for each gate of the body, the difference between its cost with all
+    the controls and with one: 5 or 13 CNOTs for a Pauli gate, 6 or 12 for a
+    Hadamard or phase gate, and only 2 or 8 for a rotation, which needs no
+    auxiliary qubit with two or three controls. A non-zero global phase of the
+    body also saves its correction, a :math:`C^{n-1}P` gate on the controls (2
+    or 8 CNOTs), which becomes a :math:`P` gate on ``aux``. For instance,
+    :math:`\sqrt{X} = e^{i\pi/4}R_X(\pi/2)` shares three controls (14 CNOTs
+    instead of 18) but not two (6 instead of 8), and two rotations do not
+    share two controls (8 instead of 10).
     Libket has no relative-phase decomposition with four controls (36 CNOTs
     each way), and with more controls the cost of the AND depends on the free
     qubits, so the controls are not shared in these cases.
@@ -66,11 +75,14 @@ def append_controlled(process: Process, body: Block, control_qubits: Quant):
     above, which are always appended together.
     """
     aux = None
-    if (
-        len(control_qubits) <= MAX_SHARED_CONTROLS
-        and body.num_controllable_gates().value >= 2
-    ) and not (
+    num_controls = len(control_qubits)
+    touches_controls = bool(
         _touched_qubits(_block_proprieties(body)) & set(control_qubits.qubits)
+    )
+    if (
+        num_controls <= MAX_SHARED_CONTROLS
+        and body.shared_control_gain(num_controls).value > 0
+        and not touches_controls
     ):
         try:
             aux = process._alloc_control_aux()

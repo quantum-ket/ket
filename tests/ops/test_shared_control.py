@@ -15,9 +15,27 @@ Each circuit is simulated with ``NPSim`` (Libket decomposition, live mode)
 and compared with KBW (no decomposition).
 """
 
+# ``_equal_up_to_phase(*_states(...))`` receives both arguments from the
+# unpacked list, which pylint does not see.
+# pylint: disable=no-value-for-parameter
+
 import pytest
 
-from ket import H, P, Process, Qint, QuantumState, RX, RY, RZ, X, Z, around, control, ctrl
+from ket import (
+    H,
+    P,
+    Process,
+    Qint,
+    QuantumState,
+    RX,
+    RY,
+    RZ,
+    X,
+    Z,
+    around,
+    control,
+    ctrl,
+)
 from ket.qulib import gate_count
 
 np = pytest.importorskip("numpy")
@@ -53,6 +71,8 @@ def _equal_up_to_phase(a, b):
 
 @pytest.mark.parametrize("num_controls", [2, 3])
 def test_shared_control_is_exact(num_controls):
+    """Sharing the controls of a block does not change its unitary."""
+
     def circuit(q):
         with control(q[:num_controls]):
             RX(0.4, q[num_controls])
@@ -63,9 +83,12 @@ def test_shared_control_is_exact(num_controls):
 
 
 def test_shared_control_reduces_cnots():
+    """A controlled addition uses fewer CNOTs when the controls are shared."""
+
     def add(c, e):
         with control(c):
-            Qint(e).__iadd__(5)
+            value = Qint(e)
+            value += 5
 
     shared, _ = gate_count(add, [2, 8], qpu_size=11)
     independent, _ = gate_count(add, [2, 8])  # no free qubit for the AND
@@ -73,10 +96,20 @@ def test_shared_control_reduces_cnots():
 
 
 @pytest.mark.parametrize("num_controls", [2, 3])
-@pytest.mark.parametrize("gates", [(X, X), (Z, P(0.4)), (H, RX(0.3)), (RY(0.2), RZ(0.7))])
-def test_shared_control_two_gates_reduce_cnots(num_controls, gates):
-    """With two or three controls, any two base gates share the controls with
-    fewer CNOTs (Theorem 4 and its corollary)."""
+@pytest.mark.parametrize(
+    "gates, two_rotations",
+    [
+        ((X, X), False),
+        ((Z, P(0.4)), False),
+        ((H, RX(0.3)), False),
+        ((RY(0.2), RZ(0.7)), True),
+    ],
+)
+def test_shared_control_two_gates_reduce_cnots(num_controls, gates, two_rotations):
+    """With two or three controls, two base gates share the controls with
+    fewer CNOTs (Theorem 4), except two rotations with two controls: a
+    rotation with two controls costs 4 CNOTs, so the two gates save only 4,
+    less than the 6 of the AND, and the controls are not shared."""
 
     def body(c, t):
         with control(c):
@@ -88,7 +121,10 @@ def test_shared_control_two_gates_reduce_cnots(num_controls, gates):
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr("ket._shared_control.MAX_SHARED_CONTROLS", 0)
         independent, _ = gate_count(body, [num_controls, 2], qpu_size=free)
-    assert shared["cnot"] < independent["cnot"]
+    if num_controls == 2 and two_rotations:
+        assert shared["cnot"] == independent["cnot"]
+    else:
+        assert shared["cnot"] < independent["cnot"]
 
 
 def test_four_controls_are_not_shared():
@@ -168,5 +204,37 @@ def test_identity_on_zero_is_exact():
 
 
 def test_gate_count_inputs_are_unknown():
+    """The inputs of ``gate_count`` are not assumed to be in |0>."""
     counts, _ = gate_count(lambda c, t: ctrl(c, X)(t), [2, 1])
     assert counts["cnot"] == 6
+
+
+@pytest.mark.parametrize("num_controls, shares", [(2, False), (3, True)])
+def test_global_phase_shares_controls(num_controls, shares):
+    """A global phase counts in the decision to share the controls: with three
+    controls, the C^2P correction becomes a P gate on the auxiliary qubit."""
+    from math import pi  # pylint: disable=import-outside-toplevel
+
+    from ket import global_phase  # pylint: disable=import-outside-toplevel
+
+    @global_phase(pi / 4)
+    def sqrt_x(qubit):
+        RX(pi / 2, qubit)
+
+    def body(c, t):
+        ctrl(c, sqrt_x)(t)
+
+    free = num_controls + 1 + 2
+    shared, _ = gate_count(body, [num_controls, 1], qpu_size=free)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("ket._shared_control.MAX_SHARED_CONTROLS", 0)
+        independent, _ = gate_count(body, [num_controls, 1], qpu_size=free)
+    if shares:
+        assert shared["cnot"] < independent["cnot"]
+    else:
+        assert shared["cnot"] == independent["cnot"]
+
+    def circuit(q):
+        ctrl(q[:num_controls], sqrt_x)(q[num_controls])
+
+    assert _equal_up_to_phase(*_states(circuit, num_controls + 1))

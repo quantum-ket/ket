@@ -17,6 +17,7 @@ from ctypes import (
     c_bool,
     c_int32,
     c_uint64,
+    c_int64,
     c_double,
     c_char_p,
 )
@@ -210,6 +211,10 @@ api_argtypes = {
     "ket_block_num_controllable_gates": (
         [c_void_p],  # block
         [c_size_t],  # num_gates
+    ),
+    "ket_block_shared_control_gain": (
+        [c_void_p, c_size_t],  # block, num_controls
+        [c_int64],  # gain
     ),
     "ket_block_append_block": (
         [c_void_p, c_void_p],  # block, other
