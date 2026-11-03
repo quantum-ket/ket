@@ -142,7 +142,7 @@ def test_approximated_decomposition_with_action_on_control(num_controls, action)
     "num_controls,free_qubits", [(2, 0), (3, 0), (4, 0), (5, 2), (7, 2)]
 )
 def test_approximated_decomposition_uncompute_is_adjoint(num_controls, free_qubits):
-    """With a diagonal action (Theorem 2), the result must be exact."""
+    """With a diagonal action, the result must be exact."""
 
     def build(use_around):
         p = Process(NPSim(num_controls + 1 + free_qubits))
