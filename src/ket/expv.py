@@ -22,7 +22,25 @@ Example:
             # Heisenberg XX + YY + ZZ Hamiltonian
             h = X(q[0])*X(q[1]) + Y(q[0])*Y(q[1]) + Z(q[0])*Z(q[1])
         ev = exp_value(h)
-        print(ev.get())          # -3.0 for the singlet Bell state
+        print(ev.get())          # 1.0 for the Bell state |Φ+⟩
+
+Hamiltonians can also be built without a process. ``with obs(n) as q:``
+yields ``n`` placeholder qubits (:class:`~ket.expv.ObsQubits`). The result is
+an *unbound* Hamiltonian that you bind to real qubits later, either with
+:meth:`~ket.expv.Hamiltonian.bind` (or the call shorthand ``h(qubits)``) or by
+passing the qubits to :func:`~ket.operations.exp_value` or
+:func:`~ket.gates.evolve`:
+
+    .. code-block:: python
+
+        from ket import *
+        with obs(2) as q:
+            h = X(q[0])*X(q[1]) + Y(q[0])*Y(q[1]) + Z(q[0])*Z(q[1])
+
+        p = Process()
+        r = p.alloc(2)
+        CNOT(H(r[0]), r[1])
+        print(exp_value(h, r).get())   # same as exp_value(h(r))
 """
 
 from __future__ import annotations
@@ -34,6 +52,7 @@ from __future__ import annotations
 
 # pylint: disable=duplicate-code,protected-access
 import json
+import operator
 from numbers import Number
 from itertools import product
 from functools import reduce
@@ -44,11 +63,101 @@ from .base import Parameter, Process, Quant
 from .clib.libket import HasProcess
 
 __all__ = [
+    "ObsQubits",
     "Pauli",
     "Hamiltonian",
     "commutator",
     "ExpValue",
 ]
+
+
+class ObsQubits:
+    """Placeholder qubits for building Hamiltonians without a process.
+
+    Placeholder qubits are numbered ``0`` to ``n - 1``. A Hamiltonian built on
+    them is *unbound*: it supports all the usual algebra, but it must be bound
+    to qubits from a :class:`~ket.base.Process` before computing an
+    expectation value or evolving a state. Binding maps placeholder ``i`` to
+    the ``i``-th qubit of the given register.
+
+    .. note::
+        You usually get these from ``with obs(n) as q:`` rather than by
+        instantiating this class directly.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+            with obs(3) as q:
+                h = sum(Z(q[i]) * Z(q[i + 1]) for i in range(2))
+
+            p = Process()
+            r = p.alloc(3)
+            ev = exp_value(h, r)
+
+    Args:
+        num_qubits: Number of placeholder qubits.
+    """
+
+    def __init__(self, num_qubits: int = 0, *, _qubits: list[int] | None = None):
+        self.qubits = list(range(num_qubits)) if _qubits is None else _qubits
+
+    @property
+    def ket_process(self) -> None:
+        """Always ``None``: placeholder qubits do not belong to a process."""
+        return None
+
+    def __getitem__(self, key) -> ObsQubits:
+        qubits = self.qubits.__getitem__(key)
+        return ObsQubits(_qubits=qubits if isinstance(qubits, list) else [qubits])
+
+    def __iter__(self):
+        for qubit in self.qubits:
+            yield ObsQubits(_qubits=[qubit])
+
+    def __reversed__(self) -> ObsQubits:
+        return ObsQubits(_qubits=list(reversed(self.qubits)))
+
+    def __len__(self) -> int:
+        return len(self.qubits)
+
+    def __add__(self, other: ObsQubits) -> ObsQubits:
+        if not isinstance(other, ObsQubits):
+            return NotImplemented
+        if any(qubit in other.qubits for qubit in self.qubits):
+            raise ValueError("Cannot concatenate qubits with overlapping indices")
+        return ObsQubits(_qubits=self.qubits + other.qubits)
+
+    def at(self, index: list[int]) -> ObsQubits:
+        """Return the placeholder qubits at the given positions."""
+        return ObsQubits(_qubits=[self.qubits[i] for i in index])
+
+    def __repr__(self) -> str:
+        return f"<Ket 'ObsQubits' {self.qubits}>"
+
+
+def _check_same_process(lhs: HasProcess, rhs: HasProcess):
+    if lhs.ket_process is rhs.ket_process:
+        return
+    if lhs.ket_process is None or rhs.ket_process is None:
+        raise ValueError(
+            "Cannot combine bound and unbound operators; "
+            "bind the unbound one to qubits first"
+        )
+    raise ValueError("different Ket processes")
+
+
+def _as_quant(qubits) -> Quant:
+    if not isinstance(qubits, Quant):
+        qubits = reduce(operator.add, qubits)
+    if not isinstance(qubits, Quant):
+        raise TypeError("Can only bind to qubits allocated from a Process")
+    return qubits
+
+
+def _pid(process) -> str:
+    return "unbound" if process is None else f"pid={hex(id(process))}"
 
 
 class Pauli(HasProcess):
@@ -66,7 +175,9 @@ class Pauli(HasProcess):
 
     Args:
         pauli: Pauli operator type.
-        qubits: Qubits to apply the Pauli operator to.
+        qubits: Qubits to apply the Pauli operator to. Either qubits from a
+            :class:`~ket.base.Process` or placeholder :class:`~ket.expv.ObsQubits`;
+            the latter creates an unbound operator (see :meth:`bind`).
         process: *For internal usage*. Quantum process, default is the process of the given qubits.
         pauli_list: *For internal usage*. List of Pauli operators.
         qubits_list: *For internal usage*. List of Qubit.
@@ -77,24 +188,23 @@ class Pauli(HasProcess):
     def __init__(  # pylint: disable=too-many-arguments
         self,
         pauli: Literal["X", "Y", "Z", "I"] | None,
-        qubits: Quant | None,
+        qubits: Quant | ObsQubits | None,
         *,
         _process: Process | None = None,
         _map: dict[int, str] | None = None,
         _coef: float | complex | None = None,
     ):
-        if qubits is not None and not isinstance(qubits, Quant):
-            qubits = reduce(Quant.__add__, qubits)
+        if qubits is not None and not isinstance(qubits, (Quant, ObsQubits)):
+            qubits = reduce(operator.add, qubits)
 
         if pauli is not None and qubits is not None:
             super().__init__(ket_process=qubits.ket_process)
             self.map = {q: pauli for q in qubits.qubits}
             self.coef = 1.0
         else:
-            assert _process is not None and _map is not None and _coef is not None, (
-                "If pauli and qubits are not provided, "
-                "process, map, and coef must be provided."
-            )
+            assert (
+                _map is not None and _coef is not None
+            ), "If pauli and qubits are not provided, map and coef must be provided."
             super().__init__(ket_process=_process)
             self.map = _map
             self.coef = _coef
@@ -118,8 +228,7 @@ class Pauli(HasProcess):
         if isinstance(other, Hamiltonian):
             return other.__mul__(self)
 
-        if self.ket_process is not other.ket_process:
-            raise ValueError("different Ket processes")
+        _check_same_process(self, other)
 
         if not set(self.map.keys()).isdisjoint(other.map.keys()):
             raise ValueError("Pauli operators act on the same qubits")
@@ -138,8 +247,7 @@ class Pauli(HasProcess):
         if isinstance(rhs, Hamiltonian):
             return Hamiltonian([self], self.ket_process) @ rhs
 
-        if self.ket_process is not rhs.ket_process:
-            raise ValueError("different Ket processes")
+        _check_same_process(self, rhs)
 
         qubits = {*self.map.keys(), *rhs.map.keys()}
         result_map = {}
@@ -195,8 +303,7 @@ class Pauli(HasProcess):
         if isinstance(other, Number):
             other = Pauli(None, None, _process=self.ket_process, _map={}, _coef=other)
 
-        if self.ket_process is not other.ket_process:
-            raise ValueError("different Ket processes")
+        _check_same_process(self, other)
 
         if isinstance(other, Hamiltonian):
             result = Hamiltonian([self], process=self.ket_process) + other
@@ -217,8 +324,57 @@ class Pauli(HasProcess):
     def __truediv__(self, other: float) -> Pauli:
         return self.__mul__(1.0 / other)
 
+    @property
+    def is_bound(self) -> bool:
+        """``True`` if the operator acts on qubits from a process."""
+        return self.ket_process is not None
+
+    @property
+    def num_qubits(self) -> int:
+        """Number of qubits needed to bind the operator.
+
+        For an unbound operator this is the highest placeholder index plus
+        one. For a bound operator it is the number of qubits it acts on.
+        """
+        if self.is_bound:
+            return len(self.map)
+        return max(self.map, default=-1) + 1
+
+    def bind(self, qubits: Quant) -> Pauli:
+        """Bind an unbound operator to qubits from a process.
+
+        Placeholder qubit ``i`` becomes ``qubits[i]``. Calling the operator,
+        ``pauli(qubits)``, is a shorthand for this method.
+
+        Args:
+            qubits: Qubits allocated from a :class:`~ket.base.Process`. Must
+                have at least :attr:`num_qubits` qubits.
+
+        Returns:
+            A new operator bound to the process of ``qubits``.
+
+        Raises:
+            ValueError: If the operator is already bound or ``qubits`` is too short.
+        """
+        if self.is_bound:
+            raise ValueError("Operator is already bound to a process")
+        qubits = _as_quant(qubits)
+        if len(qubits) < self.num_qubits:
+            raise ValueError(
+                f"Operator needs {self.num_qubits} qubits, but got {len(qubits)}"
+            )
+        return Pauli(
+            None,
+            None,
+            _process=qubits.ket_process,
+            _map={qubits.qubits[i]: p for i, p in self.map.items()},
+            _coef=self.coef,
+        )
+
+    __call__ = bind
+
     @staticmethod
-    def x(qubits: Quant) -> Pauli:
+    def x(qubits: Quant | ObsQubits) -> Pauli:
         """Pauli X operator.
 
         Args:
@@ -227,7 +383,7 @@ class Pauli(HasProcess):
         return Pauli("X", qubits)
 
     @staticmethod
-    def y(qubits: Quant) -> Pauli:
+    def y(qubits: Quant | ObsQubits) -> Pauli:
         """Pauli Y operator.
 
         Args:
@@ -236,7 +392,7 @@ class Pauli(HasProcess):
         return Pauli("Y", qubits)
 
     @staticmethod
-    def z(qubits: Quant) -> Pauli:
+    def z(qubits: Quant | ObsQubits) -> Pauli:
         """Pauli Z operator.
 
         Args:
@@ -245,7 +401,7 @@ class Pauli(HasProcess):
         return Pauli("Z", qubits)
 
     @staticmethod
-    def i(qubits: Quant) -> Pauli:
+    def i(qubits: Quant | ObsQubits) -> Pauli:
         """Pauli I operator.
 
         Args:
@@ -263,7 +419,7 @@ class Pauli(HasProcess):
         return f"{self.coef}" + ("*" + self._str_no_coef() if len(self.map) > 0 else "")
 
     def __repr__(self) -> str:
-        return f"<Ket 'Pauli' {str(self)}, pid={hex(id(self.ket_process))}>"
+        return f"<Ket 'Pauli' {str(self)}, {_pid(self.ket_process)}>"
 
     def _repr_latex_no_math_(self) -> str:  # pylint: disable=too-many-branches
         coef = self.coef
@@ -352,6 +508,20 @@ class Hamiltonian(HasProcess):
                 xx = sum(-h * X(q[i]) for i in range(3))
                 H = zz + xx
 
+    To build a Hamiltonian before allocating qubits, use ``with obs(n) as q:``.
+    The result is *unbound*; bind it with :meth:`bind`, the call shorthand
+    ``H(qubits)``, or by passing the qubits to
+    :func:`~ket.operations.exp_value` or :func:`~ket.gates.evolve`:
+
+    .. code-block:: python
+
+        with obs(3) as q:
+            H = sum(-Z(q[i]) * Z(q[i+1]) for i in range(2))
+
+        p = Process()
+        r = p.alloc(3)
+        exp_value(H, r)      # same as exp_value(H(r))
+
     Supported arithmetic operators:
 
     - **Addition** (``+``): Combine two Hamiltonians or add a scalar constant.
@@ -376,8 +546,7 @@ class Hamiltonian(HasProcess):
         if isinstance(other, Pauli):
             other = Hamiltonian([other], self.ket_process)
 
-        if self.ket_process is not other.ket_process:
-            raise ValueError("different Ket processes")
+        _check_same_process(self, other)
 
         result = Hamiltonian(self.terms + other.terms, self.ket_process)
         result._filter()
@@ -390,13 +559,20 @@ class Hamiltonian(HasProcess):
     __radd__ = __add__
 
     def _filter(self):
+        # Merge like terms into copies, so the operands' terms are never modified.
         new_terms = {}
         for term in self.terms:
             str_term = term._str_no_coef()
             if all(c not in str_term for c in "XYZ"):
                 str_term = ""
             if str_term not in new_terms:
-                new_terms[str_term] = term
+                new_terms[str_term] = Pauli(
+                    None,
+                    None,
+                    _process=term.ket_process,
+                    _map=dict(term.map),
+                    _coef=term.coef,
+                )
             else:
                 new_terms[str_term].coef += term.coef
 
@@ -405,6 +581,8 @@ class Hamiltonian(HasProcess):
     def __matmul__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Pauli):
             other = Hamiltonian([other], self.ket_process)
+
+        _check_same_process(self, other)
 
         result = Hamiltonian(
             [a @ b for a, b in product(self.terms, other.terms)],
@@ -427,6 +605,7 @@ class Hamiltonian(HasProcess):
             )
 
         if isinstance(other, Hamiltonian):
+            _check_same_process(self, other)
             return Hamiltonian(
                 [p * q for p, q in product(self.terms, other.terms)],
                 process=self.ket_process,
@@ -461,10 +640,57 @@ class Hamiltonian(HasProcess):
     def __len__(self) -> int:
         return len(self.terms)
 
+    @property
+    def is_bound(self) -> bool:
+        """``True`` if the Hamiltonian acts on qubits from a process."""
+        return self.ket_process is not None
+
+    @property
+    def num_qubits(self) -> int:
+        """Number of qubits needed to bind the Hamiltonian.
+
+        For an unbound Hamiltonian this is the highest placeholder index plus
+        one. For a bound Hamiltonian it is the number of qubits it acts on.
+        """
+        if self.is_bound:
+            return len({q for term in self.terms for q in term.map})
+        return max((term.num_qubits for term in self.terms), default=0)
+
+    def bind(self, qubits: Quant) -> Hamiltonian:
+        """Bind an unbound Hamiltonian to qubits from a process.
+
+        Placeholder qubit ``i`` becomes ``qubits[i]``. Calling the Hamiltonian,
+        ``h(qubits)``, is a shorthand for this method, so an unbound
+        Hamiltonian can be passed anywhere a ``Callable[[Quant], Hamiltonian]``
+        is expected.
+
+        Args:
+            qubits: Qubits allocated from a :class:`~ket.base.Process`. Must
+                have at least :attr:`num_qubits` qubits.
+
+        Returns:
+            A new Hamiltonian bound to the process of ``qubits``.
+
+        Raises:
+            ValueError: If the Hamiltonian is already bound or ``qubits`` is too short.
+        """
+        if self.is_bound:
+            raise ValueError("Hamiltonian is already bound to a process")
+        qubits = _as_quant(qubits)
+        if len(qubits) < self.num_qubits:
+            raise ValueError(
+                f"Hamiltonian needs {self.num_qubits} qubits, but got {len(qubits)}"
+            )
+        return Hamiltonian(
+            [term.bind(qubits) for term in self.terms], qubits.ket_process
+        )
+
+    __call__ = bind
+
     def __repr__(self) -> str:
         return (
             f"<Ket 'Hamiltonian' {' + '.join(str(p) for p in self.terms)}, "
-            f"pid={hex(id(self.ket_process))}>"
+            f"{_pid(self.ket_process)}>"
         )
 
     def _repr_latex_(self) -> str:
@@ -535,7 +761,14 @@ class ExpValue(HasProcess):
 
     pauli_map = {"X": "PauliX", "Y": "PauliY", "Z": "PauliZ"}
 
-    def __init__(self, hamiltonian: Hamiltonian | Pauli):
+    def __init__(self, hamiltonian: Hamiltonian | Pauli, qubits: Quant | None = None):
+        if qubits is not None:
+            hamiltonian = hamiltonian.bind(qubits)
+        elif not hamiltonian.is_bound:
+            raise ValueError(
+                "Cannot compute the expectation value of an unbound Hamiltonian; "
+                "pass the qubits to exp_value or bind it first"
+            )
         super().__init__(ket_process=hamiltonian.ket_process)
         if isinstance(hamiltonian, Pauli):
             hamiltonian = Hamiltonian([hamiltonian], process=hamiltonian.ket_process)

@@ -754,7 +754,9 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
     return Samples(qubits, int(shots), postprocessing)
 
 
-def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
+def exp_value(
+    hamiltonian: Hamiltonian | Pauli, qubits: Quant | None = None
+) -> ExpValue:
     """Calculate the expectation value of a Hamiltonian for the current quantum state.
 
     Registers an expectation-value computation for the given Hamiltonian or
@@ -778,16 +780,29 @@ def exp_value(hamiltonian: Hamiltonian | Pauli) -> ExpValue:
             ev = exp_value(h)
             print(ev.get())    # ⟨Bell|XX|Bell⟩ = 1.0
 
+    An unbound Hamiltonian, built with ``with obs(n) as q:``, needs the
+    qubits to evaluate it on:
+
+        .. code-block:: python
+
+            with obs(2) as q:
+                h = X(q[0]) * X(q[1])
+            ev = exp_value(h, r)    # same as exp_value(h(r))
+
     Args:
         hamiltonian:
             The observable to evaluate.
+        qubits:
+            Qubits to bind an unbound observable to: placeholder ``i``
+            becomes ``qubits[i]``. Required for an unbound observable and not
+            allowed for a bound one.
 
     Returns:
         A handle to the expectation value result.
         Access :attr:`~ket.expv.ExpValue.value` or call ``.get()`` to retrieve
         the result as a ``float``.
     """
-    return ExpValue(hamiltonian)
+    return ExpValue(hamiltonian, qubits)
 
 
 def using_aux(unsafe: bool = False, **names):
