@@ -4,11 +4,56 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["setuptools>=42.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.13.5,<0.14"]
+build-backend = "uv_build"
+
+[project]
+name = "ket-lang"
+version = "0.10.4.3.dev1"
+description = "Ket quantum programming language interpreter and library"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["quantum computer", "quantum programming", "quantum simulator"]
+authors = [
+    { name = "Evandro Chagas Ribeiro da Rosa", email = "evandro@quantuloop.com" },
+]
+classifiers = [
+    "Topic :: Scientific/Engineering :: Quantum Computing",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+]
+
+[project.urls]
+Homepage = "https://quantumket.org"
+Source = "https://gitlab.com/quantum-ket/ket"
+
+[project.optional-dependencies]
+amazon = ["amazon-braket-sdk"]
+ibm = ["qiskit>=2.0.0,<3.0", "qiskit-aer", "qiskit-ibm-runtime"]
+plot = [
+    "numpy",
+    "plotly",
+    "pandas",
+    "nbformat",
+    "kaleido",
+    "qiskit[visualization]>=2.0.0,<3.0",
+]
+remote = ["requests", "PyJWT[crypto]", "bcrypt"]
+mps = ["quimb", "jax", "jaxlib", "cotengra"]
+
+[tool.uv.build-backend]
+module-name = "ket"
+module-root = "src"
+# The libkbw/libket binaries in src/ket/clib/libs are shipped; the Rust
+# submodules next to them are build inputs only.
+wheel-exclude = ["ket/clib/libs/kbw", "ket/clib/libs/libket"]
+source-exclude = ["target"]
 
 [tool.pytest.ini_options]
 addopts = ["--cov=ket", "--cov-report=html"]
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]

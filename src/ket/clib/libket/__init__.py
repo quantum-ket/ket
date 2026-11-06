@@ -312,6 +312,41 @@ api_argtypes = {
     "ket_process_set_parameter": ([c_void_p, c_double], [c_size_t]),
     "ket_parse_openqasm": ([POINTER(c_size_t), c_size_t, c_char_p], [c_void_p]),
     "ket_qft": ([POINTER(c_size_t), c_size_t, c_bool], [c_void_p]),
+    "ket_diagonal_hamiltonian_new": (
+        [c_char_p, c_size_t],  # hamiltonian_json, num_qubits
+        [c_void_p],  # hamiltonian
+    ),
+    "ket_diagonal_hamiltonian_delete": ([c_void_p], []),
+    "ket_diagonal_hamiltonian_energy": (
+        [c_void_p, POINTER(c_uint8), c_size_t],  # hamiltonian, state, state_len
+        [c_double],  # energy
+    ),
+    "ket_parallel_tempering": (
+        [
+            c_void_p,  # hamiltonian
+            c_size_t,  # num_replicas
+            c_size_t,  # num_sweeps
+            c_double,  # min_temp (<= 0: automatic)
+            c_double,  # max_temp (<= 0: automatic)
+            c_uint64,  # seed
+            c_size_t,  # num_threads (0: all cores)
+            c_bool,  # adaptive_temps
+            c_size_t,  # patience (0: disabled)
+            c_size_t,  # num_restarts
+            POINTER(c_uint8),  # state (output buffer)
+            c_size_t,  # state_len
+        ],
+        [c_double],  # energy
+    ),
+    "ket_exact_ground_state": (
+        [
+            c_void_p,  # hamiltonian
+            c_size_t,  # num_threads (0: all cores)
+            POINTER(c_uint8),  # state (output buffer)
+            c_size_t,  # state_len
+        ],
+        [c_double],  # energy
+    ),
 }
 
 

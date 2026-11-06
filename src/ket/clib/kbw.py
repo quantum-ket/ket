@@ -28,7 +28,14 @@ api_argtypes = {
         ],
         [c_void_p],  # qpu_config
     ),
+    "kbw_gpu_tune": (
+        [c_bool],  # force
+        [c_size_t, c_bool],  # block_size, cached
+    ),
 }
+
+NO_BLOCKING = 64
+"""Block size meaning that the ``"dense gpu"`` simulator never splits the state."""
 
 
 def kbw_path():
@@ -76,7 +83,10 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
             - ``"dense v1"``: Previous dense simulator variant.
             - ``"dense v2"``: Dense simulator with a smaller memory footprint.
             - ``"dense gpu"``: Dense simulator targeting most GPUs (Intel, AMD,
-              Apple, and NVIDIA). Recommended for large qubit counts.
+              Apple, and NVIDIA). Recommended for large qubit counts. Large
+              states are split into blocks to keep gates inside the GPU
+              caches; the block size is tuned for the device on first use
+              (about two seconds) and stored, see :func:`tune_gpu_block_size`.
 
         coupling_graph: Optional list of ``(control, target)`` qubit pairs
             describing the hardware connectivity. When provided, the compiler
@@ -103,3 +113,35 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
         gradient,  # gradient
         coupling_graph_json,  # coupling_graph
     )
+
+
+def tune_gpu_block_size(force: bool = False) -> int:
+    """Tune the block size of the ``"dense gpu"`` simulator for this device.
+
+    The ``"dense gpu"`` simulator splits states with many qubits into blocks
+    of ``2**block_size`` amplitudes so that gates stay inside the GPU caches.
+    The best size depends on the GPU, so it is measured with a short benchmark
+    (about one to two seconds) the first time the simulator is used, then
+    stored in ``gpu_tuning.json`` in the user cache directory, per device and
+    KBW version. Call this function to run the tuning ahead of time, or with
+    ``force=True`` to measure again (for example, after a driver update).
+
+    Environment variables:
+
+    - ``KBW_BLOCK_SIZE``: use this block size and skip tuning.
+    - ``KBW_GPU_TUNE=0``: skip tuning and use the default block size, 20.
+    - ``KBW_GPU_RETUNE=1``: measure again on first use.
+    - ``KBW_CACHE_DIR``: directory of ``gpu_tuning.json``.
+
+    Args:
+        force: Measure even if a stored result exists.
+
+    Returns:
+        The chosen block size. :data:`NO_BLOCKING` (64) means that the state is
+        never split.
+
+    Raises:
+        LibketError: If no GPU is available or KBW was built without GPU support.
+    """
+    block_size, _cached = API["kbw_gpu_tune"](force)
+    return block_size.value

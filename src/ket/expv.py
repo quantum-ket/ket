@@ -208,6 +208,7 @@ class Pauli(HasProcess):
             super().__init__(ket_process=_process)
             self.map = _map
             self.coef = _coef
+        self._key_cache = None
 
     def __neg__(self) -> Pauli:
         return -1.0 * self
@@ -409,6 +410,17 @@ class Pauli(HasProcess):
         """
         return Pauli("I", qubits)
 
+    def _key(self) -> tuple:
+        """Identity of the Pauli product, ignoring the coefficient and ``I`` factors.
+
+        Terms with the same key are the same operator up to the coefficient.
+        """
+        if self._key_cache is None:
+            self._key_cache = tuple(
+                sorted((q, p) for q, p in self.map.items() if p != "I")
+            )
+        return self._key_cache
+
     def _str_no_coef(self) -> str:
         return "".join(f"{pauli}{qubit}" for qubit, pauli in sorted(self.map.items()))
 
@@ -477,6 +489,39 @@ class Pauli(HasProcess):
         return f"${self._repr_latex_no_math_()}$"
 
 
+def _merge_terms(
+    terms: list[Pauli], index: dict[tuple, int], new_terms: list[Pauli]
+) -> tuple[list[Pauli], dict[tuple, int]]:
+    """Merge ``new_terms`` into ``terms``/``index`` (both modified and returned).
+
+    Like terms add their coefficients into a new :class:`Pauli`, so the
+    operands' terms are never modified. Terms whose coefficient becomes
+    (nearly) zero are dropped.
+    """
+    check_zero = False
+    for term in new_terms:
+        key = term._key()
+        position = index.get(key)
+        if position is None:
+            index[key] = len(terms)
+            terms.append(term)
+            check_zero = check_zero or abs(term.coef) <= 1e-10
+        else:
+            old = terms[position]
+            terms[position] = Pauli(
+                None,
+                None,
+                _process=old.ket_process,
+                _map=old.map,
+                _coef=old.coef + term.coef,
+            )
+            check_zero = check_zero or abs(terms[position].coef) <= 1e-10
+    if check_zero:
+        terms = [term for term in terms if abs(term.coef) > 1e-10]
+        index = {term._key(): i for i, term in enumerate(terms)}
+    return terms, index
+
+
 class Hamiltonian(HasProcess):
     """A sum of weighted Pauli operator products representing a quantum observable.
 
@@ -535,10 +580,18 @@ class Hamiltonian(HasProcess):
 
     """
 
-    def __init__(self, terms: list[Pauli], process: Process):
+    def __init__(
+        self,
+        terms: list[Pauli],
+        process: Process,
+        *,
+        _index: dict[tuple, int] | None = None,
+    ):
         super().__init__(ket_process=process)
         self.terms = terms
-        assert all(isinstance(p, Pauli) for p in terms)
+        self._index = _index
+        if _index is None:
+            assert all(isinstance(p, Pauli) for p in terms)
 
     def __add__(self, other: Hamiltonian | Pauli | Number) -> Hamiltonian:
         if isinstance(other, Number):
@@ -548,35 +601,23 @@ class Hamiltonian(HasProcess):
 
         _check_same_process(self, other)
 
-        result = Hamiltonian(self.terms + other.terms, self.ket_process)
-        result._filter()
-
-        return result
+        terms, index = self._merged()
+        terms, index = _merge_terms(list(terms), dict(index), other.terms)
+        return Hamiltonian(terms, self.ket_process, _index=index)
 
     def __sub__(self, other: Hamiltonian | Pauli | Number) -> Hamiltonian:
         return self + -other
 
     __radd__ = __add__
 
-    def _filter(self):
-        # Merge like terms into copies, so the operands' terms are never modified.
-        new_terms = {}
-        for term in self.terms:
-            str_term = term._str_no_coef()
-            if all(c not in str_term for c in "XYZ"):
-                str_term = ""
-            if str_term not in new_terms:
-                new_terms[str_term] = Pauli(
-                    None,
-                    None,
-                    _process=term.ket_process,
-                    _map=dict(term.map),
-                    _coef=term.coef,
-                )
-            else:
-                new_terms[str_term].coef += term.coef
+    def _merged(self) -> tuple[list[Pauli], dict[tuple, int]]:
+        """Terms with like terms merged, and their index. Does not modify ``self``."""
+        if self._index is not None:
+            return self.terms, self._index
+        return _merge_terms([], {}, self.terms)
 
-        self.terms = [term for term in new_terms.values() if abs(term.coef) > 1e-10]
+    def _filter(self):
+        self.terms, self._index = _merge_terms([], {}, self.terms)
 
     def __matmul__(self, other: Hamiltonian | Pauli) -> Hamiltonian:
         if isinstance(other, Pauli):
@@ -600,8 +641,12 @@ class Hamiltonian(HasProcess):
         self, other: float | complex | Hamiltonian | Pauli | Parameter
     ) -> Hamiltonian:
         if isinstance(other, (Number, Pauli, Parameter)):
+            # Scaling by a non-zero number keeps the terms merged.
+            keep_index = isinstance(other, Number) and other != 0
             return Hamiltonian(
-                [p * other for p in self.terms], process=self.ket_process
+                [p * other for p in self.terms],
+                process=self.ket_process,
+                _index=self._index if keep_index else None,
             )
 
         if isinstance(other, Hamiltonian):

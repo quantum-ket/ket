@@ -310,3 +310,66 @@ def test_pauli_string_accepts_single_pauli():
             return 0.5 * Z(r[0]) * X(r[2])
 
     assert pauli_string(single_term, 3) == [("ZIX", 0.5)]
+
+
+# --- Merging like terms ---
+
+
+def _coefs(h):
+    return {t._key(): complex(t.coef) for t in h.terms}
+
+
+def test_identity_factors_do_not_split_terms():
+    from ket import I
+
+    with obs(2) as q:
+        h = Z(q[0]) * I(q[1]) + Z(q[0])
+    assert len(h) == 1
+    assert _coefs(h) == {((0, "Z"),): 2}
+
+
+def test_addition_does_not_modify_operands():
+    with obs(2) as q:
+        a = Z(q[0]) + X(q[1])
+        before = [(t, t.coef) for t in a.terms]
+        b = a + 2 * Z(q[0])
+    assert [(t, t.coef) for t in a.terms] == before
+    assert _coefs(b)[((0, "Z"),)] == 3
+
+
+def test_cancelled_terms_are_dropped():
+    with obs(2) as q:
+        h = Z(q[0]) + X(q[1]) - Z(q[0])
+        assert _coefs(h) == {((1, "X"),): 1}
+        # The merged index stays valid after the removal.
+        h = h + Z(q[0]) + X(q[1])
+    assert _coefs(h) == {((1, "X"),): 2, ((0, "Z"),): 1}
+
+
+def test_scaling_keeps_terms_merged():
+    with obs(2) as q:
+        h = -0.5 * (Z(q[0]) + X(q[1]))
+        h = h + Z(q[0])
+    assert _coefs(h) == {((0, "Z"),): 0.5, ((1, "X"),): -0.5}
+    with obs(1) as q:
+        assert len(0 * Z(q[0]) + Z(q[0])) == 1
+
+
+def test_unmerged_product_is_merged_on_addition():
+    with obs(2) as q:
+        # Hamiltonian * Hamiltonian does not merge like terms by itself.
+        h = (Z(q[0]) + Z(q[0])) * X(q[1])
+        h = h + 0
+    assert _coefs(h) == {((0, "Z"), (1, "X")): 2}
+
+
+def test_large_sum_is_fast():
+    import time
+
+    n = 60
+    with obs(n) as q:
+        start = time.perf_counter()
+        h = sum(Z(q[i]) * Z(q[j]) for i in range(n) for j in range(i + 1, n))
+        elapsed = time.perf_counter() - start
+    assert len(h) == n * (n - 1) // 2
+    assert elapsed < 0.5  # was ~1.3 s with quadratic merging
