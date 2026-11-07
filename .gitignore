@@ -20,3 +20,4 @@ venv
 src/ket/clib/libs/kbw/
 src/ket/clib/libs/libket/
 /gcl-builds/
+uv.lock
