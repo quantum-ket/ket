@@ -35,7 +35,7 @@ from ..clib.libket.execution import LiveExecution, BatchExecution
 from ..base import Process, Quant
 from ..operations import dump, exp_value, measure
 from ..gates import H, CNOT, X, Z, obs
-from ..expv import Hamiltonian
+from ..expv import Hamiltonian, Pauli
 from . import gates, prepare, oracle, ham
 
 try:
@@ -510,7 +510,7 @@ def pauli_string(
 
     Args:
         hamiltonian: A callable that takes a collection of qubits
-            (``Quant``) and returns a ``Hamiltonian`` object.
+            (``Quant``) and returns a ``Hamiltonian`` or ``Pauli`` object.
         num_qubits: The total number of qubits the Hamiltonian acts on.
         reversed_qubits: If True, the order of the allocated qubits is reversed
             before being passed to the `hamiltonian` function. Defaults to False.
@@ -526,6 +526,8 @@ def pauli_string(
     if reversed_qubits:
         qubits = reversed(qubits)
     h = hamiltonian(qubits)
+    if isinstance(h, Pauli):
+        h = Hamiltonian([h], h.ket_process)
 
     coef = []
     pauli_str = []
