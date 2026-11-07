@@ -4,16 +4,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.13.5,<0.14"]
+build-backend = "uv_build"
 
 [project]
 name = "ket-lang"
-dynamic = ["version"]
+version = "0.10.4.3.dev2"
 description = "Ket quantum programming language interpreter and library"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 keywords = ["quantum computer", "quantum programming", "quantum simulator"]
 authors = [
     { name = "Evandro Chagas Ribeiro da Rosa", email = "evandro@quantuloop.com" },
@@ -45,12 +46,13 @@ plot = [
 remote = ["requests", "PyJWT[crypto]", "bcrypt"]
 mps = ["quimb", "jax", "jaxlib", "cotengra"]
 
-[tool.setuptools.dynamic]
-version = { attr = "ket.__version__" }
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["ket*"]
+[tool.uv.build-backend]
+module-name = "ket"
+module-root = "src"
+# The libkbw/libket binaries in src/ket/clib/libs are shipped; the Rust
+# submodules next to them are build inputs only.
+wheel-exclude = ["ket/clib/libs/kbw", "ket/clib/libs/libket"]
+source-exclude = ["target"]
 
 [tool.pytest.ini_options]
 addopts = ["--cov=ket", "--cov-report=html"]

@@ -23,7 +23,6 @@ variables:
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
     - rm -rf /var/lib/apt/lists/*
-    - uv pip install --system build auditwheel patchelf
   script:
     - KBW_HASH=$(git rev-parse --short=8 HEAD:${KBW_PATH})
     - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
@@ -36,8 +35,8 @@ variables:
       "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/libket.so" \
       --create-dirs --output src/ket/clib/libs/libket.so
 
-    - python -m build -w
-    - python -m auditwheel repair --plat ${MANYLINUX_PLAT} dist/ket_lang*.whl
+    - uv build --wheel
+    - uvx --with patchelf auditwheel repair --plat ${MANYLINUX_PLAT} dist/ket_lang*.whl
   artifacts:
     paths:
       - wheelhouse/*.whl
@@ -67,7 +66,6 @@ Package Windows x86_64 Wheels:
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
     - rm -rf /var/lib/apt/lists/*
-    - uv pip install --system build
   script:
     - KBW_HASH=$(git rev-parse --short=8 HEAD:${KBW_PATH})
     - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
@@ -80,7 +78,8 @@ Package Windows x86_64 Wheels:
       "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/ket.dll" \
       --create-dirs --output src/ket/clib/libs/ket.dll
 
-    - python setup.py bdist_wheel -p win-amd64
+    - uv build --wheel
+    - uvx wheel tags --platform-tag win_amd64 --remove dist/ket_lang*.whl
   artifacts:
     paths:
       - dist/*.whl
@@ -98,7 +97,6 @@ Package macOS universal2 Wheels:
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates
     - rm -rf /var/lib/apt/lists/*
-    - uv pip install --system build
   script:
     - KBW_HASH=$(git rev-parse --short=8 HEAD:${KBW_PATH})
     - LIBKET_HASH=$(git rev-parse --short=8 HEAD:${LIBKET_PATH})
@@ -111,7 +109,8 @@ Package macOS universal2 Wheels:
       "https://gitlab.com/api/v4/projects/${LIBKET_PROJ_ID}/packages/generic/libket/${LIBKET_HASH}/libket.dylib" \
       --create-dirs --output src/ket/clib/libs/libket.dylib
 
-    - python setup.py bdist_wheel -p macosx-13.0-universal2
+    - uv build --wheel
+    - uvx wheel tags --platform-tag macosx_13_0_universal2 --remove dist/ket_lang*.whl
   artifacts:
     paths:
       - dist/*.whl
@@ -121,10 +120,8 @@ Package macOS universal2 Wheels:
 Package Source Code:
   image: ghcr.io/astral-sh/uv:python3.10-trixie-slim
   stage: build
-  before_script:
-    - uv pip install --system build
   script:
-    - python -m build -s
+    - uv build --sdist
   artifacts:
     paths:
       - dist/ket_lang*.tar.gz

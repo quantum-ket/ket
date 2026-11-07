@@ -63,6 +63,8 @@ Examples:
 
 """
 
+from importlib import metadata as _metadata
+
 from .clib import libs
 from .base import *
 from .base import __all__ as all_base
@@ -83,7 +85,10 @@ from .fermion import *
 from .fermion import __all__ as all_fermion
 from . import qulib
 
-__version__ = "0.10.5.dev0"
+try:
+    __version__ = _metadata.version("ket-lang")
+except _metadata.PackageNotFoundError:  # running from a source checkout
+    __version__ = "unknown"
 
 __all__ = (
     all_base
