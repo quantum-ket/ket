@@ -988,9 +988,7 @@ class QUBO:  # pylint: disable=too-many-public-methods
         matching value.
         """
         bits = self._bits(state)
-        return [
-            c.name for c in self._constraints if _evaluate(c.penalty, bits) > _TOL
-        ]
+        return [c.name for c in self._constraints if _evaluate(c.penalty, bits) > _TOL]
 
     def is_feasible(self, state: int | str | Iterable[int]) -> bool:
         """``True`` if the basis state satisfies every constraint."""

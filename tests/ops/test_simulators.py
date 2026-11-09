@@ -22,10 +22,16 @@ def _available(simulator, num_qubits):
 SIMULATORS = [
     pytest.param("dense", id="dense"),
     pytest.param("sparse", id="sparse"),
+    pytest.param("sparse v1", id="sparse v1"),
     pytest.param(
         "dense gpu",
         id="dense gpu",
         marks=pytest.mark.skipif(not _available("dense gpu", 2), reason="no GPU simulator"),
+    ),
+    pytest.param(
+        "sparse gpu",
+        id="sparse gpu",
+        marks=pytest.mark.skipif(not _available("sparse gpu", 2), reason="no GPU simulator"),
     ),
 ]
 

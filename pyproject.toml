@@ -9,7 +9,7 @@ build-backend = "uv_build"
 
 [project]
 name = "ket-lang"
-version = "0.10.4.3.dev2"
+version = "0.10.4.3.dev3"
 description = "Ket quantum programming language interpreter and library"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -49,9 +49,10 @@ mps = ["quimb", "jax", "jaxlib", "cotengra"]
 [tool.uv.build-backend]
 module-name = "ket"
 module-root = "src"
-# The libkbw/libket binaries in src/ket/clib/libs are shipped; the Rust
-# submodules next to them are build inputs only.
-wheel-exclude = ["ket/clib/libs/kbw", "ket/clib/libs/libket"]
+# The Rust sources in src/ket/clib/libs are shipped too: a wheel built from
+# the sdist has no binaries, and `ket.clib.libs.make_libs` compiles them on
+# the first import. Build outputs are left out.
+wheel-exclude = ["target"]
 source-exclude = ["target"]
 
 [tool.pytest.ini_options]

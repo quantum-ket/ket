@@ -555,7 +555,9 @@ class _DiagonalHamiltonian:
     ):
         self._ptr = None
         if not isinstance(num_qubits, int) or num_qubits <= 0:
-            raise ValueError(f"num_qubits must be a positive integer, got {num_qubits}.")
+            raise ValueError(
+                f"num_qubits must be a positive integer, got {num_qubits}."
+            )
 
         if isinstance(hamiltonian, (Hamiltonian, Pauli)) and not hamiltonian.is_bound:
             # Built with `with obs(n) as q:`; placeholder i is already bit i.
@@ -800,9 +802,13 @@ def parallel_tempering(  # pylint: disable=too-many-arguments,too-many-positiona
         bit), and its energy.
     """
     if not isinstance(num_replicas, int) or num_replicas <= 0:
-        raise ValueError(f"num_replicas must be a positive integer, got {num_replicas}.")
+        raise ValueError(
+            f"num_replicas must be a positive integer, got {num_replicas}."
+        )
     if not isinstance(num_sweeps, int) or num_sweeps < 0:
-        raise ValueError(f"num_sweeps must be a non-negative integer, got {num_sweeps}.")
+        raise ValueError(
+            f"num_sweeps must be a non-negative integer, got {num_sweeps}."
+        )
     for name, temp in (("min_temp", min_temp), ("max_temp", max_temp)):
         if temp is not None and not temp > 0.0:
             raise ValueError(f"{name} must be strictly positive, got {temp}.")
@@ -810,12 +816,16 @@ def parallel_tempering(  # pylint: disable=too-many-arguments,too-many-positiona
         raise ValueError(
             f"min_temp ({min_temp}) must not be greater than max_temp ({max_temp})."
         )
-    if num_threads is not None and (not isinstance(num_threads, int) or num_threads <= 0):
+    if num_threads is not None and (
+        not isinstance(num_threads, int) or num_threads <= 0
+    ):
         raise ValueError(f"num_threads must be a positive integer, got {num_threads}.")
     if patience is not None and (not isinstance(patience, int) or patience <= 0):
         raise ValueError(f"patience must be a positive integer, got {patience}.")
     if not isinstance(num_restarts, int) or num_restarts <= 0:
-        raise ValueError(f"num_restarts must be a positive integer, got {num_restarts}.")
+        raise ValueError(
+            f"num_restarts must be a positive integer, got {num_restarts}."
+        )
 
     h = _DiagonalHamiltonian(hamiltonian, num_qubits)
     return h.parallel_tempering(
@@ -941,7 +951,9 @@ def exact_solver(
         raise ValueError(
             f"exact_solver supports at most {_EXACT_MAX_QUBITS} qubits, got {num_qubits}."
         )
-    if num_threads is not None and (not isinstance(num_threads, int) or num_threads <= 0):
+    if num_threads is not None and (
+        not isinstance(num_threads, int) or num_threads <= 0
+    ):
         raise ValueError(f"num_threads must be a positive integer, got {num_threads}.")
 
     h = _DiagonalHamiltonian(hamiltonian, num_qubits)

@@ -57,11 +57,15 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     execution: Literal["live", "batch"] = "live",
     simulator: Literal[
         "sparse",
+        "sparse v1",
         "sparse v2",
+        "sparse gpu",
+        "sparse cuda",
         "dense",
         "dense v1",
         "dense v2",
         "dense gpu",
+        "dense cuda",
     ] = "dense",
     coupling_graph: list[tuple[int, int]] | None = None,
     gradient: bool = False,
@@ -76,8 +80,16 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
             Defaults to ``"live"``.
         simulator: Simulator backend to use. Available options:
 
-            - ``"sparse"``: Sparse state-vector simulator.
-            - ``"sparse v2"``: Updated sparse simulator variant.
+            - ``"sparse"``: Sparse state-vector simulator: stores only the
+              basis states with nonzero amplitude, in a sorted array. Same as
+              ``"sparse v2"``.
+            - ``"sparse v1"``: Previous sparse simulator (sharded hash map).
+            - ``"sparse gpu"``: The ``"sparse"`` algorithm on most GPUs.
+              Needs a build of KBW with GPU support.
+            - ``"sparse cuda"``: The ``"sparse"`` algorithm on NVIDIA GPUs,
+              using CUDA. Needs a build of KBW with CUDA support; the
+              ``KBW_CUDA_DEVICE`` environment variable selects the GPU
+              (default ``0``).
             - ``"dense"``: Dense state-vector simulator with good multithreaded
               performance. This is the default.
             - ``"dense v1"``: Previous dense simulator variant.
@@ -87,6 +99,9 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
               states are split into blocks to keep gates inside the GPU
               caches; the block size is tuned for the device on first use
               (about two seconds) and stored, see :func:`tune_gpu_block_size`.
+            - ``"dense cuda"``: Dense simulator on NVIDIA GPUs, using CUDA.
+              Needs a build of KBW with CUDA support; the ``KBW_CUDA_DEVICE``
+              environment variable selects the GPU (default ``0``).
 
         coupling_graph: Optional list of ``(control, target)`` qubit pairs
             describing the hardware connectivity. When provided, the compiler

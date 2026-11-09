@@ -114,13 +114,28 @@ To get started with Ket development, follow these steps:
    git clone --recursive https://gitlab.com/quantum-ket/ket.git
    cd ket
 
-   cargo build -F c_api --manifest-path src/ket/clib/libs/libket/Cargo.toml
+   cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
    cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml
 
-   # Create symlinks from within the libs directory
+   # Link the libraries into the libs directory (paths are relative to it)
    ln -s libket/target/debug/libket.so src/ket/clib/libs/libket.so
    ln -s kbw/target/debug/libkbw.so src/ket/clib/libs/libkbw.so
    ```
+
+   The GPU simulators (`"dense gpu"`, `"sparse gpu"`) and the CUDA simulators (`"dense cuda"`, `"sparse cuda"`) need KBW built with the `gpu` and `cuda` features (Linux with glibc 2.34 or newer):
+
+   ```shell
+   cargo build -F gpu,cuda --manifest-path src/ket/clib/libs/kbw/Cargo.toml
+   ```
+
+   If the libraries are missing, importing `ket` compiles them in release mode (see `ket.clib.libs.make_libs`). On Linux with glibc 2.34 or newer, KBW is then built with the `gpu` and `cuda` features. Set these environment variables to change that:
+
+   | Variable         | Effect                                                  |
+   | ---------------- | ------------------------------------------------------- |
+   | `KET_BUILD_GPU`  | `1` builds KBW with the `gpu` feature, `0` without it.  |
+   | `KET_BUILD_CUDA` | `1` builds KBW with the `cuda` feature, `0` without it. |
+
+   For example, with `KET_BUILD_CUDA=0` set, the first `import ket` builds the GPU simulators but not the CUDA ones. The variables only take effect when the libraries are built: delete `libket.so` and `libkbw.so` from `src/ket/clib/libs/` to rebuild them.
 
 3. **Set Up Virtual Environment**
 

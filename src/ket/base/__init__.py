@@ -103,16 +103,21 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
 
     :Simulators:
 
-    KBW provides four simulators with different performance characteristics.
+    KBW provides several simulators with different performance characteristics.
     The best simulator to use depends on the number of qubits being simulated
     and on the specific quantum algorithm. Benchmarking is recommended to
     determine the most suitable simulator for a given workload.
 
-    - ``"sparse"``: Sparse simulator with limited multithreading capabilities.
+    - ``"sparse"``: Sparse simulator: stores only the basis states with nonzero
+      amplitude, in a sorted array. Best when few states are nonzero, as in
+      one-hot encodings.
+    - ``"sparse gpu"``: The ``"sparse"`` algorithm on most GPUs.
+    - ``"sparse cuda"``: The ``"sparse"`` algorithm on NVIDIA GPUs, using CUDA.
     - ``"dense"``: Dense simulator with good multithreaded performance.
     - ``"dense gpu"``: Dense simulator designed to run on most GPUs, including
       integrated Intel, AMD, and Apple GPUs, as well as NVIDIA GPUs. This simulator
       is generally recommended for simulations involving a large number of qubits.
+    - ``"dense cuda"``: Dense simulator on NVIDIA GPUs, using CUDA.
 
 
     Args:
@@ -121,7 +126,8 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         num_qubits: Number of qubits for the KBW simulator.
             Defaults to 32 for sparse mode, or 12 for dense mode.
         simulator: Simulation mode for the KBW simulator. Options are
-            ``"sparse"``, ``"dense"``, and ``"dense gpu"``.
+            ``"sparse"``, ``"sparse gpu"``, ``"sparse cuda"``, ``"dense"``,
+            ``"dense gpu"``, and ``"dense cuda"``.
             Defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator, either ``"live"`` or ``"batch"``.
             Defaults to ``"live"``.
@@ -131,7 +137,16 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         self,
         execution_target: BatchExecution | LiveExecution | None = None,
         num_qubits: Optional[int] = None,
-        simulator: Optional[Literal["sparse", "dense", "dense gpu"]] = None,
+        simulator: Optional[
+            Literal[
+                "sparse",
+                "sparse gpu",
+                "sparse cuda",
+                "dense",
+                "dense gpu",
+                "dense cuda",
+            ]
+        ] = None,
         execution: Optional[Literal["live", "batch"]] = None,
         gradient: bool = False,
         **kwargs,
