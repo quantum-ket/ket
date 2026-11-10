@@ -388,7 +388,7 @@ def libket_path():
     )
 
 
-API = load_lib("Libket", libket_path(), api_argtypes)
+API = load_lib("Libket", libket_path(), api_argtypes, logger_name="ket.libket")
 
 
 class HasProcess:  # pylint: disable=too-few-public-methods
@@ -513,9 +513,14 @@ class Block(HasProcess):
         return ptr
 
     def set(self, other: Block):
-        """Set the block to another block."""
-        API["ket_block_delete"](self._as_parameter_)
-        self._as_parameter_ = other.take()
+        """Set the block to another block, freeing the current one."""
+        ptr = other.take()
+        # Calling the finalizer frees the current block and disarms it, so
+        # it cannot free that block again when this object is collected.
+        if self._finalizer is not None:
+            self._finalizer()
+        self._as_parameter_ = ptr
+        self._finalizer = weakref.finalize(self, API["ket_block_delete"], ptr)
 
     def __repr__(self) -> str:
         if self._as_parameter_ is not None:

@@ -66,6 +66,7 @@ Examples:
 from importlib import metadata as _metadata
 
 from .clib import libs
+from .clib.log import set_log_level
 from .base import *
 from .base import __all__ as all_base
 from .operations import *
@@ -100,6 +101,7 @@ __all__ = (
     + all_measurement
     + all_fermion
     + ["qulib"]
+    + ["set_log_level"]
 )
 
 

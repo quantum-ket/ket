@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from ket import Process, H, Y, Z, ham, RZZ, RX, exp_value, sample
+from ket import Process, H, Y, Z, obs, RZZ, RX, exp_value, sample
 from plotly import express as px
 
 edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
@@ -20,7 +20,7 @@ process = Process(num_qubits=n, simulator="dense", execution="live")
 qubits = H(process.alloc(n))
 edges = list(map(qubits.at, edges))
 
-with ham():
+with obs():
     h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
     h_b = sum(Y(i) * Z(j) + Z(i) * Y(j) for i, j in edges)
 

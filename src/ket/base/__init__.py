@@ -31,10 +31,13 @@ from ..clib.libket import (
 
 from ..clib.libket.execution import LiveExecution, BatchExecution
 from ..clib.kbw import get_simulator
+from ..clib.log import get_logger, set_log_level
 from .qasm import qasm
 from .quant import Quant
 
 __all__ = ["Process", "Quant", "Parameter", "qasm"]
+
+_LOGGER = get_logger(__name__)
 
 
 class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
@@ -157,10 +160,18 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         ):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
+        # Pass on log levels set on the `ket` loggers since the last process.
+        set_log_level()
+
         if execution_target is not None:
             self.configuration = execution_target
             ptr = self.configuration.connect()
-            assert isinstance(ptr, c_void_p)
+            if not isinstance(ptr, c_void_p):
+                raise TypeError(
+                    f"{type(execution_target).__name__}.connect() must return the"
+                    f" configuration made by configure(), got {type(ptr).__name__}"
+                )
+            _LOGGER.debug("new process on %s", type(execution_target).__name__)
             super().__init__(ptr)
         else:
             simulator = "sparse" if simulator is None else simulator
@@ -168,6 +179,12 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 (32 if simulator == "sparse" else 12)
                 if num_qubits is None
                 else num_qubits
+            )
+            _LOGGER.debug(
+                "new process on KBW: simulator=%r, num_qubits=%d, execution=%r",
+                simulator,
+                num_qubits,
+                "live" if execution is None else execution,
             )
             super().__init__(
                 get_simulator(

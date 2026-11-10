@@ -20,6 +20,7 @@ from ctypes import (
 import json
 from abc import ABC, abstractmethod
 
+from ..wrapper import c_callback
 from . import (
     BatchCExecution,
     LiveCExecution,
@@ -50,6 +51,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_size_t,  # shots
             POINTER(c_char_p),  # sample_json
         )
+        @c_callback
         def sample(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             gates_json,
             qubits_to_sample,
@@ -72,6 +74,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_char_p,  # hamiltonian_list_json
             POINTER(c_double),  # result
         )
+        @c_callback
         def exp_value(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             gates_json,
             hamiltonian_list_json,
@@ -92,6 +95,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_size_t,  # shots
             POINTER(c_char_p),  # sample_json
         )
+        @c_callback
         def sample_native(
             gates_json, qubits_to_sample, qubits_to_sample_len, shots, result_json
         ):
@@ -112,6 +116,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_char_p,  # hamiltonian_list_json
             POINTER(c_double),  # result
         )
+        @c_callback
         def exp_value_native(
             gates_json,
             hamiltonian_list_json,
@@ -133,6 +138,7 @@ class BatchExecution(ABC):  # pylint: disable=too-many-instance-attributes
             POINTER(c_double),  # exp_result
             POINTER(c_char_p),  # grad
         )
+        @c_callback
         def gradient(  # pylint: disable=too-many-arguments,too-many-positional-arguments
             gates_json,
             hamiltonian_json,
@@ -242,6 +248,7 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_int32,
             c_char_p,  # gate_instruction_json
         )
+        @c_callback
         def compute_gate(gate_json):
             gate_dict = json.loads(gate_json)
             gate_name = gate_dict["gate"]
@@ -253,29 +260,29 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
                 gate_name, value_dict = list(gate_name.items())[0]
                 value = value_dict.get("Value")
 
-            try:
-                match gate_name:
-                    case "Hadamard":
-                        self.hadamard(target, control)
-                    case "PauliX":
-                        self.pauli_x(target, control)
-                    case "PauliY":
-                        self.pauli_y(target, control)
-                    case "PauliZ":
-                        self.pauli_z(target, control)
-                    case "RotationX":
-                        self.rotation_x(target, control, value)
-                    case "RotationY":
-                        self.rotation_y(target, control, value)
-                    case "RotationZ":
-                        self.rotation_z(target, control, value)
-                    case "Phase":
-                        self.phase(target, control, value)
-            except Exception:  # pylint: disable=broad-exception-caught
-                return 13
+            match gate_name:
+                case "Hadamard":
+                    self.hadamard(target, control)
+                case "PauliX":
+                    self.pauli_x(target, control)
+                case "PauliY":
+                    self.pauli_y(target, control)
+                case "PauliZ":
+                    self.pauli_z(target, control)
+                case "RotationX":
+                    self.rotation_x(target, control, value)
+                case "RotationY":
+                    self.rotation_y(target, control, value)
+                case "RotationZ":
+                    self.rotation_z(target, control, value)
+                case "Phase":
+                    self.phase(target, control, value)
+                case _:
+                    raise NotImplementedError(f"unknown gate {gate_name!r}")
             return 0
 
         @CFUNCTYPE(c_int32, POINTER(c_size_t), c_size_t, POINTER(c_uint64))
+        @c_callback
         def measure(qubits, qubits_size, result):
             qubits = qubits[:qubits_size]
             result[0] = self.measure(qubits)
@@ -289,6 +296,7 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_size_t,
             POINTER(c_char_p),
         )
+        @c_callback
         def dump(qubits, qubits_size, result_json):
             qubits = qubits[:qubits_size]
             result = self.dump(qubits)
@@ -305,6 +313,7 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_size_t,
             POINTER(c_char_p),
         )
+        @c_callback
         def sample(qubits, qubits_size, shots, result_json):
             qubits = qubits[:qubits_size]
             result = self.sample(qubits, shots)
@@ -313,6 +322,7 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
             return 0
 
         @CFUNCTYPE(c_int32, c_char_p, POINTER(c_double))
+        @c_callback
         def exp_value(h_json, result):
             h = json.loads(h_json)
             result[0] = self.exp_value(h)
@@ -322,9 +332,11 @@ class LiveExecution(ABC):  # pylint: disable=too-many-instance-attributes
             c_int32,
             c_char_p,  # json
         )
+        @c_callback
         def compute_native_gates(json_ptr):
             gate_dict = json.loads(json_ptr)
-            return self.compute_native_gates(gate_dict)
+            self.compute_native_gates(gate_dict)
+            return 0
 
         self._cb_compute_gate = compute_gate
         self._cb_compute_native_gates = compute_native_gates
@@ -455,6 +467,7 @@ class NativeGateSet(ABC):
             c_size_t,  # target
             POINTER(c_char_p),  # native_gate_json
         )
+        @c_callback
         def translate(gate_json, target, native_gate_json):
             flat = json.loads(gate_json)
             matrix = [
@@ -473,6 +486,7 @@ class NativeGateSet(ABC):
             c_size_t,  # target
             POINTER(c_char_p),  # native_gate_json  (out)
         )
+        @c_callback
         def cnot(control, target, native_gate_json):
             result = self.cnot(control, target)
             buf = json.dumps(result).encode("utf-8")

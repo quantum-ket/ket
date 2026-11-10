@@ -40,7 +40,8 @@ def grover(size: int, oracle, outcomes: int = 1, simulator: str = "dense") -> in
         with ket.around(ket.cat(ket.H, ket.X), s):
             ket.CZ(*s)  # Apply the diffusor function to the state.
 
-    return ket.measure(s).get()  # Measure the final state and return the result.
+    # Batch execution has no single-shot measure: sample once instead.
+    return ket.sample(s, shots=1).most_frequent_state()
 
 
 if __name__ == "__main__":

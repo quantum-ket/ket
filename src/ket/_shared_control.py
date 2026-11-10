@@ -15,11 +15,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .clib.libket import Block
+from .clib.log import get_logger
 from .clib.wrapper import LibketError
 from ._verification import _block_proprieties, _touched_qubits
 
 if TYPE_CHECKING:
     from .base import Process, Quant
+
+_LOGGER = get_logger(__name__)
 
 
 def _mark(process: Process, block: Block):
@@ -72,23 +75,44 @@ def append_controlled(process: Process, body: Block, control_qubits: Quant):
     touches_controls = bool(
         _touched_qubits(_block_proprieties(body)) & set(control_qubits.qubits)
     )
-    if (
-        not touches_controls
-        and process.shared_control_gain(
+    gain = 0
+    if touches_controls:
+        _LOGGER.debug(
+            "not sharing the controls %s: the block acts on a control qubit",
+            control_qubits.qubits,
+        )
+    else:
+        gain = process.shared_control_gain(
             body, num_controls, not process._control_aux_free
         ).value
-        > 0
-    ):
-        try:
-            aux = process._alloc_control_aux()
-        except LibketError:
-            aux = None
+        if gain > 0:
+            try:
+                aux = process._alloc_control_aux()
+            except LibketError:
+                _LOGGER.debug(
+                    "not sharing the controls %s: no qubit left for the auxiliary",
+                    control_qubits.qubits,
+                )
+        else:
+            _LOGGER.debug(
+                "not sharing the controls %s: it would not save CNOTs (gain %d)",
+                control_qubits.qubits,
+                gain,
+            )
 
     if aux is None:
         controlled = body.control(control_qubits.qubits)
         _mark(process, controlled)
         process.append_block(controlled)
         return
+
+    _LOGGER.info(
+        "sharing %d controls %s through the auxiliary qubit %d (saves about %d CNOTs)",
+        num_controls,
+        control_qubits.qubits,
+        aux.qubits[0],
+        gain,
+    )
 
     try:
         target = Block(process)

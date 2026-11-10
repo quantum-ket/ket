@@ -13,7 +13,6 @@ from typing import Literal
 from os import environ
 from os.path import dirname
 from .wrapper import load_lib, os_lib_name
-from .libket import API as libket
 
 api_argtypes = {
     "kbw_build_info": ([], [POINTER(c_uint8), c_size_t]),
@@ -43,13 +42,7 @@ def kbw_path():
     return environ.get("KBW_PATH", f'{dirname(__file__)}/libs/{os_lib_name("kbw")}')
 
 
-API = load_lib(
-    "KBW",
-    kbw_path(),
-    api_argtypes,
-    libket["ket_error_message"],
-    libket["ket_string_delete"],
-)
+API = load_lib("KBW", kbw_path(), api_argtypes, prefix="kbw", logger_name="ket.kbw")
 
 
 def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arguments
