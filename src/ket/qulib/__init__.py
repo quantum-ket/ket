@@ -1,6 +1,20 @@
-"""Quantum library.
+"""Quantum library: ready-made building blocks for quantum algorithms.
 
-Utilities for preparing quantum states and building quantum algorithms.
+- :mod:`~ket.qulib.prepare`: states such as GHZ, W, Dicke, or any amplitudes.
+- :mod:`~ket.qulib.oracle`: phase and XOR oracles, as used by Grover.
+- :mod:`~ket.qulib.gates`: gates from a unitary or diagonal matrix.
+- :mod:`~ket.qulib.ham`: Hamiltonians for Max-Cut, TSP, knapsack and mixers.
+- :mod:`~ket.qulib.qubo`: QUBO models, solved with :func:`exact_solver`,
+  :func:`simulated_annealing` or :func:`parallel_tempering`.
+- :func:`gate_count`, :func:`draw` and :func:`dump_matrix`: inspect a gate.
+
+.. code-block:: python
+
+    from ket import *
+
+    p = Process()
+    q = qulib.prepare.ghz(p.alloc(3))
+    print(sample(q).get())  # {0: ~1024, 7: ~1024}
 """
 
 from __future__ import annotations

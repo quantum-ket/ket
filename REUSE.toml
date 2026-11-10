@@ -6,4 +6,8 @@ version = 1
 SPDX-PackageName = "Ket"
 SPDX-PackageSupplier = "Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>"
 SPDX-PackageDownloadLocation = "https://gitlab.com/quantum-ket/ket"
-annotations = []
+
+[[annotations]]
+path = "src/ket/skills/**/SKILL.md"
+SPDX-FileCopyrightText = "2026 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>"
+SPDX-License-Identifier = "Apache-2.0"

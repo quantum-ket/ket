@@ -3,22 +3,25 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Bell state preparation."""
+"""Bell state and the CHSH inequality.
 
-from ket import *
+Prepares an entangled pair and measures the CHSH observable. Quantum
+mechanics reaches 2√2 ≈ 2.83, above the classical limit of 2.
+"""
+
 from math import sqrt
 
-process = Process()
-a, b = process.alloc(2)
+from ket import *
 
-X(a + b)
-CNOT(H(a), b)
+p = Process()
+a, b = p.alloc(2)
+CNOT(H(a), b)  # (|00⟩ + |11⟩)/√2
+
+print("samples:", sample(a + b).get())  # only 0 (|00⟩) and 3 (|11⟩)
 
 with obs():
-    a0 = Z(a)
-    a1 = X(a)
-    b0 = -(X(b) + Z(b)) / sqrt(2)
-    b1 = (X(b) - Z(b)) / sqrt(2)
-    h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
+    a0, a1 = Z(a), X(a)
+    b0, b1 = (Z(b) + X(b)) / sqrt(2), (Z(b) - X(b)) / sqrt(2)
+    chsh = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
 
-print(exp_value(h).get())
+print("CHSH:", exp_value(chsh).get())  # 2.828...

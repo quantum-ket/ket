@@ -3,43 +3,32 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Quantum teleportation protocol."""
+"""Quantum teleportation.
 
-import ket
+Alice sends the state of a qubit to Bob using a shared Bell pair and two
+classical bits. Live execution (the default) lets the program use
+measurement results right away, to choose Bob's corrections.
+"""
 
-
-def teleport(alice_msg, alice_aux, bob_aux):
-    """Teleport the information from alice_msg to bob_aux."""
-
-    ket.ctrl(alice_msg, ket.X)(alice_aux)
-    ket.H(alice_msg)
-
-    m0 = ket.measure(alice_msg)
-    m1 = ket.measure(alice_aux)
-
-    if m1.value == 1:
-        ket.X(bob_aux)
-    if m0.value == 1:
-        ket.Z(bob_aux)
-
-    return bob_aux
+from ket import *
 
 
-def bell(qubits):
-    """Bell state preparation."""
-    return ket.ctrl(ket.H(qubits[0]), ket.X)(qubits[1])
+def teleport(message, alice, bob):
+    """Move the state of `message` to `bob`; `alice` and `bob` are a Bell pair."""
+    CNOT(message, alice)
+    H(message)
+    if measure(alice).value:
+        X(bob)
+    if measure(message).value:
+        Z(bob)
+    return bob
 
 
-if __name__ == "__main__":
-    p = ket.Process(execution="live")
+p = Process()
+message = Z(H(p.alloc()))  # |–⟩
+alice, bob = p.alloc(2)
+CNOT(H(alice), bob)  # Bell pair
 
-    alice = p.alloc()  # alice = |0⟩
-    ket.H(alice)  # alice = |+⟩
-    ket.Z(alice)  # alice = |–⟩
-
-    bob = teleport(alice, *bell(p.alloc(2)))  # bob  <- alice
-    ket.H(bob)  # bob   = |1⟩
-    bob_m = ket.measure(bob)
-
-    print("Expected measure 1, result =", bob_m.value)
-    # Expected measure 1, result = 1
+bob = teleport(message, alice, bob)
+print("Bob's state:")
+print(dump(bob).show())  # |–⟩ = (|0⟩ − |1⟩)/√2

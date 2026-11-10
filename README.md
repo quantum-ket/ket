@@ -11,167 +11,128 @@ SPDX-License-Identifier: Apache-2.0
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![REUSE status](https://api.reuse.software/badge/gitlab.com/quantum-ket/ket)](https://api.reuse.software/info/gitlab.com/quantum-ket/ket)
 
-Ket is an embedded programming language that introduces the ease of Python to quantum programming, letting anyone quickly prototype and test a quantum application.
-
-Python is the most widely used programming language for machine learning and data science and has been the language of choice for quantum programming. Ket is a Python-embedded language, but many can use it as a Python library in most cases. So you can use Ket together with NumPy, SciPy, Pandas, and other popular Python libraries.
-
-Ket's goal is to streamline the development of hardware-independent classical quantum applications by providing transparent interaction of classical and quantum data. See <https://quantumket.org> to learn more about Ket.
+Ket is a Python library for quantum programming. You write quantum code as
+ordinary Python functions and run it on the built-in simulator, on a GPU, or on
+IBM Quantum and Amazon Braket, so it works with NumPy, SciPy and the rest of
+the Python ecosystem. Learn more at <https://quantumket.org>.
 
 ## Installation ⬇️
 
-Ket requires Python 3.10 or newer and is available for Linux, Windows, and macOS (both Apple silicon and Intel). If you are using a non-x86_64 (Intel/AMD) CPU, such as ARM, on Linux or Windows, you will need to install [Rust](https://www.rust-lang.org/tools/install) before installing Ket.
-
-You can install Ket using [`pip`](https://pip.pypa.io/en/stable/user_guide/). To do so, copy and paste the following command into your terminal:
+Ket needs Python 3.10 or newer, on Linux, Windows or macOS:
 
 ```shell
 pip install ket-lang
 ```
 
-## Documentation 📜
+On Linux or Windows with a non-x86_64 CPU (such as ARM), install
+[Rust](https://www.rust-lang.org/tools/install) first. Optional features:
 
-Documentation available at <https://quantumket.org>.
+| Extra              | Adds                                   |
+| ------------------ | -------------------------------------- |
+| `ket-lang[plot]`   | histograms and circuit drawings        |
+| `ket-lang[ibm]`    | IBM Quantum and Qiskit Aer (`ket.ibm`) |
+| `ket-lang[amazon]` | Amazon Braket (`ket.amazon`)           |
 
-## Examples 💡
+## Quick start 🚀
 
-### Grover's Algorithm
+```python
+from ket import *
+
+p = Process()          # a quantum simulator
+a, b = p.alloc(2)      # two qubits in |0⟩
+
+H(a)                   # superposition
+with control(a):       # entangle: flip b when a is |1⟩
+    X(b)
+
+print(sample(a + b).get())   # {0: ~1024, 3: ~1024}: always 00 or 11
+
+with obs():
+    zz = Z(a) * Z(b)
+print(exp_value(zz).get())   # 1.0: a and b always agree
+```
+
+The main concepts:
+
+- **`Process`** runs the program. It uses the sparse simulator by default; pass
+  `simulator="dense"` or `"dense gpu"`, or a device such as
+  `ket.ibm.IBMDevice`. In **live** execution (the default) results are ready
+  immediately; **batch** execution runs the whole circuit at the end, like a QPU.
+- **Gates** are functions: `H(q)`, `CNOT(a, b)`, `RX(θ, q)`. Your own functions
+  are gates too, and `adj(f)`, `ctrl(c, f)`, `with control(c):` and
+  `with around(f, q):` work on them.
+- **Results**: `measure(q).value` (one shot), `sample(q).get()` (counts),
+  `exp_value(h).get()` (expectation value), and `dump(q).show()` (state vector).
+- **`ket.qulib`** has state preparation, oracles, Hamiltonians and QUBO solvers.
+
+See [`examples/`](examples/) for complete programs, from a Bell pair to QAOA.
+
+## Using an AI coding agent 🤖
+
+Run this in your project to teach AI coding agents (Claude Code, Codex,
+Cursor, ...) how to write Ket code:
+
+```shell
+ket skills install
+```
+
+It adds the Ket skill to `.claude/skills/` and `.agents/skills/`, and a
+pointer to it in `AGENTS.md`. Run it again after upgrading Ket to update it.
+
+## Logging 🔎
+
+Ket logs through Python's `logging`. To see what the runtime and simulator do,
+such as how gates are decomposed or why an error happened:
 
 ```python
 import ket
-from math import sqrt, pi
-
-
-def grover(size: int, oracle) -> int:
-    p = ket.Process(simulator="dense", num_qubits=size)
-    s = ket.H(p.alloc(size))
-    steps = int((pi / 4) * sqrt(2**size))
-    for _ in range(steps):
-        oracle(s)
-        with ket.around(ket.cat(ket.H, ket.X), s):
-            ket.CZ(*s)
-    return ket.measure(s).value
-
-
-size = 8
-looking_for = 13
-print(grover(size, ket.qulib.oracle.phase_oracle(looking_for)))
-# 13
+ket.set_log_level("debug")   # or "info", "warning" (default), "error"
 ```
 
-### Quantum Teleportation
+or set `KET_LOG=debug` in the environment. See [`examples/logs.py`](examples/logs.py).
 
-```python
-import ket
+## Development 🔨
 
-
-def bell(qubits):
-    """Prepare a Bell (maximally entangled) pair."""
-    return ket.ctrl(ket.H(qubits[0]), ket.X)(qubits[1])
-
-
-def teleport(alice_msg, alice_aux, bob_aux):
-    """Teleport the quantum state of alice_msg to bob_aux."""
-    ket.ctrl(alice_msg, ket.X)(alice_aux)
-    ket.H(alice_msg)
-
-    m0 = ket.measure(alice_msg)
-    m1 = ket.measure(alice_aux)
-
-    if m1.value == 1:
-        ket.X(bob_aux)
-    if m0.value == 1:
-        ket.Z(bob_aux)
-
-    return bob_aux
-
-
-p = ket.Process(execution="live")
-
-alice = p.alloc()   # alice = |0⟩
-ket.H(alice)        # alice = |+⟩
-ket.Z(alice)        # alice = |–⟩
-
-bob = teleport(alice, *bell(p.alloc(2)))  # bob ← alice
-ket.H(bob)          # bob   = |1⟩
-print("Expected measure 1, result =", ket.measure(bob).value)
-# Expected measure 1, result = 1
-```
-
-## Setup for Ket Development 🔨
-
-To get started with Ket development, follow these steps:
-
-1. **Rust Installation**
-
-   Ensure that Rust is installed on your system. If not, follow the [Rust install guide](https://www.rust-lang.org/tools/install).
-
-   **Important**: For Rust development, make sure to use the exact same rustc version as the current ket distribution. This version-matching is not required if you are developing with Python or C FFI.
-
-2. **Clone and Compile**
-
-   Clone the Ket repository and compile the Rust libraries:
+1. Install [Rust](https://www.rust-lang.org/tools/install) and clone the
+   repository with its submodules:
 
    ```shell
    git clone --recursive https://gitlab.com/quantum-ket/ket.git
    cd ket
-
-   cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
-   cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml
-
-   # Link the libraries into the libs directory (paths are relative to it)
-   ln -s libket/target/debug/libket.so src/ket/clib/libs/libket.so
-   ln -s kbw/target/debug/libkbw.so src/ket/clib/libs/libkbw.so
    ```
 
-   The GPU simulators (`"dense gpu"`, `"sparse gpu"`) and the CUDA simulators (`"dense cuda"`, `"sparse cuda"`) need KBW built with the `gpu` and `cuda` features (Linux with glibc 2.34 or newer):
-
-   ```shell
-   cargo build -F gpu,cuda --manifest-path src/ket/clib/libs/kbw/Cargo.toml
-   ```
-
-   If the libraries are missing, importing `ket` compiles them in release mode (see `ket.clib.libs.make_libs`). On Linux with glibc 2.34 or newer, KBW is then built with the `gpu` and `cuda` features. Set these environment variables to change that:
-
-   | Variable         | Effect                                                  |
-   | ---------------- | ------------------------------------------------------- |
-   | `KET_BUILD_GPU`  | `1` builds KBW with the `gpu` feature, `0` without it.  |
-   | `KET_BUILD_CUDA` | `1` builds KBW with the `cuda` feature, `0` without it. |
-
-   For example, with `KET_BUILD_CUDA=0` set, the first `import ket` builds the GPU simulators but not the CUDA ones. The variables only take effect when the libraries are built: delete `libket.so` and `libkbw.so` from `src/ket/clib/libs/` to rebuild them.
-
-3. **Set Up Virtual Environment**
-
-   Set up a virtual environment for Python:
+2. Install Ket in editable mode, with the development tools:
 
    ```shell
    python3 -m venv venv
    source venv/bin/activate
-   ```
-
-4. **Install Dependencies**
-
-   Upgrade pip and install development requirements:
-
-   ```shell
-   pip install -U pip
    pip install -r requirements_dev.txt
-   ```
-
-5. **Install Ket**
-
-   Install Ket in editable mode:
-
-   ```shell
    pip install -e .
    ```
 
-6. **Run Tests**
+   The first `import ket` compiles the Rust libraries (Libket and KBW) in
+   release mode. On Linux with glibc 2.34 or newer, KBW is built with the GPU
+   (`gpu`) and CUDA (`cuda`) simulators; set `KET_BUILD_GPU=0` or
+   `KET_BUILD_CUDA=0` to leave them out. To rebuild, delete `libket.so` and
+   `libkbw.so` from `src/ket/clib/libs/`.
 
-   To ensure everything is correctly installed, run the tests:
+3. Run the tests:
 
    ```shell
    pytest
    ```
 
-You're now set up for Ket development! Happy coding! 🚀
+To build the Rust libraries yourself, for example in debug mode:
+
+```shell
+cargo build --manifest-path src/ket/clib/libs/libket/Cargo.toml
+cargo build --manifest-path src/ket/clib/libs/kbw/Cargo.toml  # add -F gpu,cuda for GPUs
+ln -s libket/target/debug/libket.so src/ket/clib/libs/libket.so
+ln -s kbw/target/debug/libkbw.so src/ket/clib/libs/libkbw.so
+```
+
+For Rust development, use the same `rustc` version as the current Ket
+release.
 
 ## Cite Ket 📖
 

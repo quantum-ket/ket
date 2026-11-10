@@ -2,65 +2,43 @@
 # SPDX-FileCopyrightText: 2020 Rafael de Santiago <r.santiago@ufsc.br>
 #
 # SPDX-License-Identifier: Apache-2.0
-"""Ket Quantum Programming Platform.
+"""Ket quantum programming.
 
-Ket is a comprehensive library designed for quantum programming, providing essential functions and
-classes to build quantum algorithms and applications. It facilitates the manipulation and storage of
-quantum states, measurement operations, and the computation of expected values.
+Every name below is available as ``ket.<name>`` (or ``from ket import *``),
+except :mod:`ket.qulib`, the library of ready-made algorithms.
 
-Explore the documentation of individual submodules for in-depth information and more practical code
-examples.
+Quick tour:
 
-All the functionality from the submodules is conveniently accessible within the ``ket`` namespace.
-Except for the ``qulib`` module.
+.. code-block:: python
 
-Examples:
+    from ket import *
 
-    - Grover algorithm
+    p = Process()          # runs on the KBW simulator
+    q = p.alloc(2)         # a `Quant` with 2 qubits: q[0], q[1], q[:1], ...
 
-    .. code-block:: python
+    H(q[0])                # gates take qubits and return them
+    with control(q[0]):    # every gate inside is controlled by q[0]
+        X(q[1])
 
-        from math import sqrt, pi
-        import ket
-        def grover(size: int, oracle) -> int:
-            p = ket.Process(simulator="dense", num_qubits=size)
-            s = ket.H(p.alloc(size))
-            steps = int((pi / 4) * sqrt(2**size))
-            for _ in range(steps):
-                oracle(s)
-                with ket.around(ket.H, s):
-                    ket.phase_oracle(0, s)
-            return ket.measure(s).value
+    print(sample(q).get())         # {0: ~1024, 3: ~1024}
 
-    - Quantum teleportation protocol
+    with obs():                    # build a Hamiltonian from Pauli operators
+        h = Z(q[0]) * Z(q[1])
+    print(exp_value(h).get())      # 1.0
 
-    .. code-block:: python
+    print(measure(q).value)        # 0 or 3, and the state collapses
 
-        import ket
-        def teleport(alice_msg, alice_aux, bob_aux):
-            ket.ctrl(alice_msg, ket.X)(alice_aux)
-            ket.H(alice_msg)
-            m0 = ket.measure(alice_msg)
-            m1 = ket.measure(alice_aux)
-            if m1.value == 1:
-                ket.X(bob_aux)
-            if m0.value == 1:
-                ket.Z(bob_aux)
-            return bob_aux
-        def bell(qubits):
-            return ket.ctrl(ket.H(qubits[0]), ket.X)(qubits[1])
-        def message(qubit):
-            ket.H(alice)
-            ket.Z(alice)
-        p = ket.Process()
-        alice = p.alloc()  # alice = |0⟩
-        message(alice)     # alice = |–⟩
-        bob = teleport(alice, *bell(p.alloc(2)))  # bob  <- alice
-        ket.H(bob)         # bob   = |1⟩
-        bob_m = ket.measure(bob)
-        print("Expected measure 1, result =", bob_m.value)
-        # Expected measure 1, result = 1
+Where to look next:
 
+- :class:`~ket.base.Process`: simulators, ``live`` vs ``batch`` execution,
+  and running on other backends.
+- :mod:`ket.gates`: the gate set, and :func:`~ket.gates.obs` for observables.
+- :mod:`ket.operations`: :func:`~ket.operations.control`,
+  :func:`~ket.operations.adj`, :func:`~ket.operations.around`,
+  :func:`~ket.operations.measure`, :func:`~ket.operations.sample`, and
+  :func:`~ket.operations.exp_value`.
+- :mod:`ket.qulib`: state preparation, oracles, Hamiltonians, and QUBO.
+- :func:`set_log_level`: see what the runtime and simulator are doing.
 """
 
 from importlib import metadata as _metadata

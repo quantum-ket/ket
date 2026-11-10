@@ -567,3 +567,13 @@ class TestParameterValueProperties:
         t = p.param(pi / 3)
         negated = -t
         assert negated.value == pytest.approx(-(pi / 3))
+
+
+def test_gradient_needs_batch_execution():
+    with pytest.raises(ValueError, match="gradients need batch execution"):
+        Process(gradient=True, execution="live")
+    Process(gradient=True, execution="batch")
+    p = Process(gradient=True)  # batch by default
+    q = p.alloc()
+    with pytest.raises(ket.clib.wrapper.LibketError, match="live execution"):
+        ket.measure(q)

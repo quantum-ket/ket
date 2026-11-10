@@ -3,52 +3,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Grover's search algorithm."""
+"""Grover's search.
 
-from math import sqrt, pi
-from typing import Callable
-import ket
+Finds the marked item among 2**n in about (π/4)√(2**n) oracle calls.
+"""
 
+from math import pi, sqrt
+from random import randrange
 
-def grover(size: int, oracle: Callable, outcomes: int = 1) -> int:
-    """Grover's search algorithm.
-
-    Args:
-        size (int): The number of qubits to use for the search.
-        oracle (Callable): The oracle function to use for the search.
-        outcomes (int): The number of outcomes to search for.
-
-    Returns:
-        int: The measured value from the search.
-
-    """
-
-    p = ket.Process(simulator="dense", num_qubits=size)
-
-    s = ket.H(
-        p.alloc(size)
-    )  # Initialize the state to a superposition of all possible outcomes.
-
-    steps = int(
-        (pi / 4) * sqrt(2**size / outcomes)
-    )  # Calculate the number of iterations for the algorithm.
-    for _ in range(steps):
-        oracle(s)  # Apply the oracle function to the state.
-        with ket.around(ket.cat(ket.H, ket.X), s):
-            ket.CZ(*s)  # Apply the diffusor function to the state.
-
-    return ket.measure(s).value  # Measure the final state and return the result.
+from ket import *
 
 
-if __name__ == "__main__":
-    from random import randint
+def grover(n: int, oracle) -> int:
+    """Return the state marked by `oracle` on `n` qubits."""
+    p = Process(simulator="dense", num_qubits=n)
+    q = H(p.alloc(n))
+    for _ in range(int(pi / 4 * sqrt(2**n))):
+        oracle(q)
+        with around(cat(H, X), q):  # diffusion operator
+            CZ(*q)
+    return measure(q).value
 
-    SIZE = 12
-    looking_for = randint(0, pow(2, SIZE) - 1)
 
-    print("Searching for value", looking_for, "using", SIZE, "qubits.")
-
-    print(
-        "Dense Simulation: measured",
-        grover(SIZE, ket.qulib.oracle.phase_oracle(looking_for)),
-    )
+n = 12
+target = randrange(2**n)
+print("looking for", target, "found", grover(n, qulib.oracle.phase_oracle(target)))

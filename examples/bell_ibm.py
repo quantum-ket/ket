@@ -3,25 +3,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Bell state preparation."""
+"""Bell state and CHSH on IBM Quantum.
+
+Same program as bell.py: only the Process changes. Without arguments,
+IBMDevice runs on the local Aer simulator.
+
+Requires: pip install ket-lang[ibm]
+"""
+
+from math import sqrt
 
 from ket import *
 from ket.ibm import IBMDevice
-from math import sqrt
 
-device = IBMDevice()
-
-process = Process(device)
-a, b = process.alloc(2)
-
-X(a + b)
+p = Process(IBMDevice())
+a, b = p.alloc(2)
 CNOT(H(a), b)
 
 with obs():
-    a0 = Z(a)
-    a1 = X(a)
-    b0 = -(X(b) + Z(b)) / sqrt(2)
-    b1 = (X(b) - Z(b)) / sqrt(2)
-    h = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
+    a0, a1 = Z(a), X(a)
+    b0, b1 = (Z(b) + X(b)) / sqrt(2), (Z(b) - X(b)) / sqrt(2)
+    chsh = a0 * b0 + a0 * b1 + a1 * b0 - a1 * b1
 
-print(exp_value(h).get())
+print("CHSH:", exp_value(chsh).get())

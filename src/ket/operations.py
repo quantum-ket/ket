@@ -1,8 +1,32 @@
-"""Functions to manipulate quantum operations.
+"""Build circuits from gates, and get results from them.
 
-This module provides essential functions in the Ket library for manipulating quantum operations.
-It includes functions for controlled and inverse operations, facilitating quantum circuit
-construction.
+In Ket, a gate is any function that applies gates to qubits, including your
+own. These functions turn gates into new gates:
+
+- :func:`control` (``with control(c):``) and :func:`ctrl`: add control qubits.
+- :func:`adj` and :func:`inverse`: the inverse of a gate.
+- :func:`around`: :math:`U V U^\\dagger`, as in ``with around(cat(H, X), q):``.
+- :func:`cat` and :func:`kron`: sequential and parallel composition.
+- :func:`using_aux`, :func:`undo` and :func:`kernel`: auxiliary qubits,
+  automatic uncomputation, and self-contained programs.
+
+And these get results from the quantum state:
+
+- :func:`measure`: one shot, collapsing the state (live execution only).
+- :func:`sample`: the counts of many shots.
+- :func:`exp_value`: the expectation value of an observable.
+- :func:`dump`: the full state vector (simulators only).
+
+.. code-block:: python
+
+    from ket import *
+
+    p = Process()
+    c, t = p.alloc(2)
+    H(c)
+    with control(c):
+        X(t)
+    print(sample(c + t).get())  # {0: ~1024, 3: ~1024}
 """
 
 from __future__ import annotations
@@ -222,7 +246,7 @@ def ctrl(
             from ket import *
             p = Process()
             c = p.alloc(2)
-            a, b = q.alloc(2)
+            a, b = p.alloc(2)
             # CNOT c[0] a
             ctrl(c[0], X)(a)
             # Toffoli c[0] c[1] a
@@ -767,6 +791,9 @@ def exp_value(
 
         .. code-block:: python
 
+            from ket import *
+            p = Process()
+            r = p.alloc(2)
             with obs(2) as q:
                 h = X(q[0]) * X(q[1])
             ev = exp_value(h, r)    # same as exp_value(h(r))

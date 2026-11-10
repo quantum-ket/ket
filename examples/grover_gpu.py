@@ -3,78 +3,42 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Grover's search algorithm."""
+"""Grover's search: CPU vs GPU simulation time.
 
-from random import randint
-from math import sqrt, pi
-from time import time
-import plotly.express as px
-import ket
+Requires: a GPU, and pip install ket-lang[plot]
+"""
 
+from math import pi, sqrt
+from random import randrange
+from time import perf_counter
 
-def grover(size: int, oracle, outcomes: int = 1, simulator: str = "dense") -> int:
-    """Grover's search algorithm.
+from plotly import express as px
 
-    Args:
-        size (int): The number of qubits to use for the search.
-        oracle (Callable): The oracle function to use for the search.
-        outcomes (int): The number of outcomes to search for.
-        simulator (str): The simulator to use for the process.
-
-    Returns:
-        int: The measured value from the search.
-
-    """
-
-    p = ket.Process(simulator=simulator, num_qubits=size, execution="batch")
-
-    s = ket.H(
-        p.alloc(size)
-    )  # Initialize the state to a superposition of all possible outcomes.
-
-    steps = int(
-        (pi / 4) * sqrt(2**size / outcomes)
-    )  # Calculate the number of iterations for the algorithm.
-    for _ in range(steps):
-        oracle(s)  # Apply the oracle function to the state.
-        with ket.around(ket.cat(ket.H, ket.X), s):
-            ket.CZ(*s)  # Apply the diffusor function to the state.
-
-    # Batch execution has no single-shot measure: sample once instead.
-    return ket.sample(s, shots=1).most_frequent_state()
+from ket import *
 
 
-if __name__ == "__main__":
+def grover(n: int, target: int, simulator: str) -> int:
+    """Return the state found by Grover's search on `simulator`."""
+    p = Process(simulator=simulator, num_qubits=n, execution="batch")
+    q = H(p.alloc(n))
+    for _ in range(int(pi / 4 * sqrt(2**n))):
+        qulib.oracle.phase_oracle(target, q)
+        with around(cat(H, X), q):
+            CZ(*q)
+    # `measure` needs live execution; in batch, sample a single shot.
+    return sample(q, shots=1).most_frequent_state()
 
-    data = {
-        "size": [],
-        "simulator": [],
-        "time": [],
-    }
 
-    for size in range(4, 20):
-        looking_for = randint(0, pow(2, size) - 1)
-        for simulator in ["dense", "dense gpu"]:
-            start = time()
-            result = grover(
-                size,
-                ket.qulib.oracle.phase_oracle(looking_for),
-                simulator=simulator,
-            )
-            end = time()
-            assert result == looking_for, "Grover algorithm failed!"
-            data["size"].append(size)
-            data["simulator"].append(simulator)
-            data["time"].append(end - start)
-            print(f"{simulator.upper():<9}: {end - start:3.4f}s.")
+data = {"qubits": [], "simulator": [], "time": []}
+for n in range(4, 20):
+    target = randrange(2**n)
+    for simulator in ["dense", "dense gpu"]:
+        start = perf_counter()
+        assert grover(n, target, simulator) == target
+        elapsed = perf_counter() - start
+        print(f"{n:2} qubits, {simulator:9}: {elapsed:.4f} s")
+        data["qubits"].append(n)
+        data["simulator"].append(simulator)
+        data["time"].append(elapsed)
 
-    fig = px.line(
-        data,
-        x="size",
-        y="time",
-        log_y=True,
-        color="simulator",
-        title="Grover's Algorithm Simulation Time",
-        labels={"size": "Number of Qubits", "time": "Time (s)"},
-    )
-    fig.show()
+px.line(data, x="qubits", y="time", color="simulator", log_y=True).show()

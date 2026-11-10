@@ -353,8 +353,8 @@ class Samples(HasProcess):
                 p = Process()
                 q = p.alloc(2)
                 X(q[0]) # Prepare state |01> (decimal 1)
-                m = measure(q, shots=100)
-                print(m.most_frequent_state())
+                s = sample(q, shots=100)
+                print(s.most_frequent_state())  # 1
         """
         state = max(self.get().items(), key=lambda sc: sc[1])[0]
         if not raw and self.postprocessing is not None:

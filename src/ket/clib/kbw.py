@@ -45,9 +45,31 @@ def kbw_path():
 API = load_lib("KBW", kbw_path(), api_argtypes, prefix="kbw", logger_name="ket.kbw")
 
 
+def execution_mode(
+    execution: Literal["live", "batch"] | None, gradient: bool
+) -> Literal["live", "batch"]:
+    """The execution mode of a KBW simulator.
+
+    Without an ``execution``, it is ``"batch"`` for gradients and ``"live"``
+    otherwise.
+
+    Raises:
+        ValueError: If ``gradient`` is set with live execution, which cannot
+            compute gradients.
+    """
+    if execution is None:
+        return "batch" if gradient else "live"
+    if gradient and execution == "live":
+        raise ValueError(
+            "gradients need batch execution: use execution='batch', or leave "
+            "execution unset"
+        )
+    return execution
+
+
 def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     num_qubits: int,
-    execution: Literal["live", "batch"] = "live",
+    execution: Literal["live", "batch"] | None = None,
     simulator: Literal[
         "sparse",
         "sparse v1",
@@ -69,8 +91,8 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     Args:
         num_qubits: Number of qubits to simulate.
         execution: Execution mode — ``"live"`` for gate-by-gate simulation or
-            ``"batch"`` for deferred execution (required for gradient support).
-            Defaults to ``"live"``.
+            ``"batch"`` for deferred execution (required for gradients).
+            Defaults to ``"batch"`` with ``gradient``, ``"live"`` otherwise.
         simulator: Simulator backend to use. Available options:
 
             - ``"sparse"``: Sparse state-vector simulator: stores only the
@@ -99,8 +121,8 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
         coupling_graph: Optional list of ``(control, target)`` qubit pairs
             describing the hardware connectivity. When provided, the compiler
             restricts two-qubit gates to connected pairs.
-        gradient: If ``True``, forces batch execution mode and enables
-            parameter-shift gradient computation. Defaults to ``False``.
+        gradient: If ``True``, enables parameter-shift gradient computation.
+            It needs batch execution. Defaults to ``False``.
         decompose: If ``True``, Libket decomposes gates into U/CNOT primitives
             before passing them to the simulator. Defaults to ``False``.
 
@@ -108,8 +130,7 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
         An opaque configuration pointer to be passed to the Ket
         :class:`~ket.Process`.
     """
-    if gradient:
-        execution = "batch"
+    execution = execution_mode(execution, gradient)
 
     coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
 

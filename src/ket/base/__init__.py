@@ -30,7 +30,7 @@ from ..clib.libket import (
 )
 
 from ..clib.libket.execution import LiveExecution, BatchExecution
-from ..clib.kbw import get_simulator
+from ..clib.kbw import execution_mode, get_simulator
 from ..clib.log import get_logger, set_log_level
 from .qasm import qasm
 from .quant import Quant
@@ -74,9 +74,9 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
     - **Live** (default): Quantum instructions are executed immediately upon invocation. This mode
       is ideal for interactive simulation.
 
-    - **Batch**: Quantum instructions are queued and executed only at the a measurement result is
-      requested. This mode better reflects the behavior of real quantum hardware and is recommended
-      for preparing code for deployment to QPUs.
+    - **Batch**: Quantum instructions are queued and executed only when a result is requested.
+      This mode better reflects the behavior of real quantum hardware and is recommended for
+      preparing code for deployment to QPUs.
 
     Batch Execution Example:
 
@@ -133,7 +133,9 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             ``"dense gpu"``, and ``"dense cuda"``.
             Defaults to ``"sparse"``.
         execution: Execution mode for the KBW simulator, either ``"live"`` or ``"batch"``.
-            Defaults to ``"live"``.
+            Defaults to ``"live"``, or to ``"batch"`` with ``gradient``.
+        gradient: Enable gradients of :meth:`param` parameters. Needs batch
+            execution: ``execution="live"`` raises :class:`ValueError`.
     """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -180,17 +182,19 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 if num_qubits is None
                 else num_qubits
             )
+            execution = execution_mode(execution, gradient)
             _LOGGER.debug(
-                "new process on KBW: simulator=%r, num_qubits=%d, execution=%r",
+                "new process on KBW: simulator=%r, num_qubits=%d, execution=%r%s",
                 simulator,
                 num_qubits,
-                "live" if execution is None else execution,
+                execution,
+                " (gradient)" if gradient else "",
             )
             super().__init__(
                 get_simulator(
                     num_qubits=num_qubits,
                     simulator=simulator,
-                    execution="live" if execution is None else execution,
+                    execution=execution,
                     gradient=gradient,
                     **kwargs,
                 ),

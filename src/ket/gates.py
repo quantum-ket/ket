@@ -731,6 +731,9 @@ def global_phase(
 
         .. code-block:: python
 
+            from math import pi
+            from ket import *
+
             @global_phase(pi / 2)
             def my_z_gate(qubit):
                 return RZ(pi, qubit)

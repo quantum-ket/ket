@@ -28,6 +28,9 @@ classifiers = [
     "Programming Language :: Rust",
 ]
 
+[project.scripts]
+ket = "ket.cli:main"
+
 [project.urls]
 Homepage = "https://quantumket.org"
 Source = "https://gitlab.com/quantum-ket/ket"

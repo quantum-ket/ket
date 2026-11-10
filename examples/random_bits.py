@@ -3,25 +3,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Quantum RNG."""
+"""Quantum random number generator.
 
-import ket
+A qubit in |+⟩ gives 0 or 1 with equal probability when measured.
+"""
 
-
-def random(n_bits: int) -> int:
-    """Generates a random n_bits-bit number using a quantum circuit.
-
-    Args:
-        n_bits (int): Number of bits for the random number.
-
-    Returns:
-        int: Random n_bits-bit number.
-    """
-    p = ket.Process(simulator="dense", num_qubits=n_bits)
-    return ket.measure(ket.H(p.alloc(n_bits))).value
+from ket import *
 
 
-if __name__ == "__main__":
-    # Example usage
-    N_BITS = 16
-    print(N_BITS, "bits random number:", random(N_BITS))
+def random_number(n_bits: int) -> int:
+    """Return a random integer in [0, 2**n_bits)."""
+    p = Process(simulator="dense", num_qubits=n_bits)
+    return measure(H(p.alloc(n_bits))).value
+
+
+print("16-bit random number:", random_number(16))
