@@ -8,11 +8,11 @@ Both types use a **QFT-based arithmetic** approach:
 
 - In-place addition/subtraction are implemented via phase rotations in the
   Quantum Fourier Transform basis.
-- Quantum comparisons (:meth:`~ket.qint.Qreal.__lt__`, etc.) produce
-  ancilla qubit results that are cleaned up automatically via
+- Quantum comparisons (``<``, ``>``, ``==``, and so on) produce
+  auxiliary qubit results that are cleaned up automatically via
   :func:`~ket.operations.undo`.
-- Multiplication and division are built from repeated addition in the Fourier
-  basis.
+- Multiplication is built from repeated addition in the Fourier basis, and
+  division from repeated subtraction (restoring long division).
 
 All operations produce **uncomputed** intermediate registers where possible,
 keeping the circuit depth manageable.
@@ -158,6 +158,108 @@ def _addi(lhs, rhs, m: int = 1):
             raise TypeError("`rhs` must be a Qint, Qreal, or an integer.")
 
 
+@is_permutation
+def _addi_signed(lhs: Quant, rhs: Quant | int, m: int = 1):
+    """In-place addition of a signed (two's-complement) right-hand side.
+
+    :func:`_addi` fills the missing high bits of a shorter ``rhs`` register
+    with 0, which is only right when it is not negative. A negative ``rhs``
+    of :math:`k` qubits holds :math:`r - 2^k`, where :math:`r` is its
+    unsigned value, so this subtracts :math:`2^k` when its sign qubit is 1.
+    """
+    _addi(lhs, rhs, m=m)
+    if isinstance(rhs, Quant) and len(rhs) < len(lhs):
+        with control(rhs[0]):
+            adj(_addi)(lhs, 2 ** len(rhs), m=m)
+
+
+def _negate(qubits: Quant):
+    """Two's-complement negation in place."""
+    X(qubits)
+    _addi(qubits, 1)
+
+
+def _divide(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
+    workspace: Quant,
+    dividend: Quant,
+    divisor: Quant | int,
+    shift: int,
+    divisor_negative: bool = False,
+):
+    """Signed division, truncated toward zero, by restoring long division.
+
+    Computes ``trunc(dividend * 2**shift / divisor)`` into the first
+    ``len(dividend) + max(shift, 0)`` qubits of ``workspace``, which must have
+    :func:`_division_size` qubits, all in state 0. The dividend and a quantum
+    divisor are signed (two's complement) and are not changed. An ``int``
+    divisor is the magnitude of a classical divisor, whose sign is
+    ``divisor_negative``.
+    """
+    n = len(dividend)
+    num_q = n + max(shift, 0)  # quotient bits
+    quantum = isinstance(divisor, Quant)
+    num_d = len(divisor) + max(-shift, 0) if quantum else divisor.bit_length()
+
+    quotient = workspace[:num_q]
+    remainder = workspace[num_q : 2 * num_q + num_d]
+
+    # remainder = |dividend| * 2**shift
+    _copy_abs(dividend, remainder[num_d : num_d + n])
+
+    if quantum:
+        # magnitude = |divisor| * 2**(-shift)
+        magnitude = workspace[2 * num_q + num_d :]
+        _copy_abs(divisor, magnitude[: len(divisor)])
+    else:
+        magnitude = divisor
+
+    # One quotient bit per step, most significant first: subtract the divisor
+    # from a window of the remainder, and add it back if the result is
+    # negative. The quotient bit is 1 when the subtraction is kept.
+    # (The window starts below 2 * divisor, so the difference fits in it and
+    # its first qubit is the sign.)
+    for j in range(num_q):
+        window = remainder[j : j + num_d + 1]
+        bit = quotient[j]
+        adj(_addi)(window, magnitude)
+        with control(window[0]):  # bit = 1 if negative
+            X(bit)
+        with control(bit):
+            _addi(window, magnitude)
+        X(bit)
+
+    # The quotient is negative when exactly one operand is.
+    with control(dividend[0]):
+        _negate(quotient)
+    if quantum:
+        with control(divisor[0]):
+            _negate(quotient)
+    elif divisor_negative:
+        _negate(quotient)
+
+
+def _copy_abs(source: Quant, target: Quant):
+    """Copy the absolute value of a two's-complement register to ``target``.
+
+    ``target`` has ``len(source)`` qubits in state 0. The result is unsigned,
+    so the most negative value, ``-2**(n-1)``, is copied correctly.
+    """
+    for src, dst in zip(source, target):
+        with control(src):
+            X(dst)
+    with control(source[0]):
+        _negate(target)
+
+
+def _division_size(n: int, divisor: Quant | int, shift: int) -> int:
+    """Number of workspace qubits for :func:`_divide`."""
+    num_q = n + max(shift, 0)
+    if isinstance(divisor, Quant):
+        num_d = len(divisor) + max(-shift, 0)
+        return 2 * num_q + 2 * num_d
+    return 2 * num_q + divisor.bit_length()
+
+
 class Qreal(Quant):  # pylint: disable=too-few-public-methods
     """A quantum register interpreted as a fixed-point signed real number.
 
@@ -211,6 +313,12 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return Qreal(super().copy(depends_on), exp=self.exp)
 
     def __iadd__(self, other: Any):
+        """In-place addition: ``self += other``.
+
+        ``other`` can be a number or another :class:`Qint`/:class:`Qreal` with
+        at most as many qubits. The result wraps around on overflow (two's
+        complement). ``self -= other`` is the inverse operation.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -220,12 +328,18 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
             other = round(other * 2**self.exp)
             m = 0
 
-        _addi(self, other, m=2**m)
+        _addi_signed(self, other, m=2**m)
         return self
 
     __isub__ = adj(__iadd__)
 
     def __add__(self, other: Any):
+        """Addition: ``self + other``, into a new auxiliary register.
+
+        The result is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, or add it into a clean register with
+        ``+=``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -237,6 +351,10 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return Qreal(undo(inner_add, result), exp=self.exp)
 
     def __sub__(self, other: Any):
+        """Subtraction: ``self - other``, into a new auxiliary register.
+
+        See :meth:`__add__`.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -254,8 +372,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         (the multiplier) controls an addition of the appropriately shifted
         ``other`` (the multiplicand) into ``result``.
 
-        This method is used internally by :meth:`~ket.qint.Qreal.__mul__` and
-        :meth:`~ket.qint.Qreal.__truediv__`.
+        This method is used internally by :meth:`~ket.qint.Qreal.__mul__`.
 
         Args:
             other: The multiplicand.
@@ -271,9 +388,14 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
             m = 0
 
         for i, q in enumerate(reversed(self)):
-            ctrl(q, _addi)(result, other, m=2 ** (i + m))
+            ctrl(q, _addi_signed)(result, other, m=2 ** (i + m))
 
     def __mul__(self, other: Any):
+        """Multiplication: ``self * other``, into a new auxiliary register.
+
+        The result has as many qubits as ``self``, and its exponent is the sum
+        of the exponents of the operands. See :meth:`__add__`.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -284,16 +406,67 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return Qreal(raw_result, exp=new_exp)
 
     def __truediv__(self, other: Any):
-        if not isinstance(other, (int, float, Quant)):
+        """Division: ``self / other``, into a new auxiliary register.
+
+        ``other`` can be another :class:`Qint`/:class:`Qreal` or a number.
+        The result keeps the size and exponent of ``self``, and is truncated
+        toward zero (``-7 / 2`` is ``-3`` for a :class:`Qint`). Values that do
+        not fit wrap around (two's complement). Dividing by zero gives an
+        undefined result for a quantum divisor, and raises
+        :class:`ZeroDivisionError` for a number.
+
+        A number that is not an integer is rounded to ``len(self)``
+        fractional bits. The division uses about :math:`2(n + m)` auxiliary
+        qubits, for an :math:`n`-qubit ``self`` and an :math:`m`-qubit
+        ``other``. See :meth:`__add__` for how to use the result.
+        """
+        if isinstance(other, Quant) and not isinstance(other, Qreal):
+            return NotImplemented
+        if not isinstance(other, (int, float, Qreal)):
             return NotImplemented
 
-        result_quant = self.ket_process.alloc_aux(len(self), depends_on=[self, other])
-        new_exp = self.exp - other.exp if isinstance(other, Qreal) else self.exp
+        n = len(self)
+        if isinstance(other, Qreal):
+            # x / y = (a / 2**ea) / (b / 2**eb) = (a * 2**eb / b) / 2**ea
+            shift = other.exp
+            divisor = other
+            negative = False
+        else:
+            if other == 0:
+                raise ZeroDivisionError("division by zero")
+            # x / c = (a * 2**f / round(|c| * 2**f)) / 2**ea
+            shift = 0
+            while shift < n and abs(other) * 2**shift != round(abs(other) * 2**shift):
+                shift += 1
+            divisor = round(abs(other) * 2**shift)
+            negative = other < 0
+            if divisor == 0:
+                raise ZeroDivisionError(
+                    f"{other} is zero at the precision of the dividend"
+                )
 
-        raw_result = undo(partial(adj(self.mul), other), result_quant)
-        return Qreal(raw_result, exp=new_exp)
+        size = _division_size(n, divisor, shift)
+        workspace = self.ket_process.alloc_aux(
+            size, depends_on=[self, other] if isinstance(other, Quant) else [self]
+        )
+        result = undo(
+            partial(
+                _divide,
+                dividend=self,
+                divisor=divisor,
+                shift=shift,
+                divisor_negative=negative,
+            ),
+            workspace,
+        )
+        num_q = n + max(shift, 0)
+        return Qreal(result[num_q - n : num_q], exp=self.exp)
 
     def __neg__(self):
+        """Negation: ``-self``, into a new auxiliary register.
+
+        See :meth:`__add__`.
+        """
         def neg(qint):
             X(qint)
             qint += 1
@@ -302,6 +475,11 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return Qreal(undo(neg, result), exp=self.exp)
 
     def __lt__(self, other: Any):
+        """Comparison ``self < other``: one auxiliary qubit, in state 1 when true.
+
+        The qubit is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, for example ``with control(a < b):``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -313,6 +491,11 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return undo(lt, result)[0]
 
     def __gt__(self, other: Any):
+        """Comparison ``self > other``: one auxiliary qubit, in state 1 when true.
+
+        The qubit is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, for example ``with control(a > b):``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -320,18 +503,33 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return result[0]
 
     def __ge__(self, other: Any):
+        """Comparison ``self >= other``: one auxiliary qubit, in state 1 when true.
+
+        The qubit is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, for example ``with control(a >= b):``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
         return undo(X, (self < other))
 
     def __le__(self, other: Any):
+        """Comparison ``self <= other``: one auxiliary qubit, in state 1 when true.
+
+        The qubit is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, for example ``with control(a <= b):``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
         return undo(X, (self > other))
 
     def __eq__(self, other: Any):
+        """Comparison ``self == other``: one auxiliary qubit, in state 1 when true.
+
+        The qubit is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, for example ``with control(a == b):``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
@@ -345,6 +543,11 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
         return undo(eq, result)
 
     def __ne__(self, other: Any):
+        """Comparison ``self != other``: one auxiliary qubit, in state 1 when true.
+
+        The qubit is uncomputed automatically, so it cannot be measured
+        directly: use it as a control, for example ``with control(a != b):``.
+        """
         if not isinstance(other, (int, float, Quant)):
             return NotImplemented
 
