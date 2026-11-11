@@ -136,6 +136,11 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
             Defaults to ``"live"``, or to ``"batch"`` with ``gradient``.
         gradient: Enable gradients of :meth:`param` parameters. Needs batch
             execution: ``execution="live"`` raises :class:`ValueError`.
+        precision: Floating-point precision of the KBW simulator: ``"single"``
+            (default) or ``"double"``. Double precision gives about 15 correct
+            digits instead of 7, for twice the memory; use it for deep circuits
+            or when small differences matter. The GPU and CUDA simulators are
+            single precision only.
     """
 
     def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -154,11 +159,12 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
         ] = None,
         execution: Optional[Literal["live", "batch"]] = None,
         gradient: bool = False,
+        precision: Optional[Literal["single", "double"]] = None,
         **kwargs,
     ):
 
         if execution_target is not None and any(
-            map(lambda a: a is not None, [num_qubits, simulator, execution])
+            map(lambda a: a is not None, [num_qubits, simulator, execution, precision])
         ):
             raise ValueError("Cannot specify arguments if configuration is provided")
 
@@ -183,12 +189,15 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                 else num_qubits
             )
             execution = execution_mode(execution, gradient)
+            precision = "single" if precision is None else precision
             _LOGGER.debug(
-                "new process on KBW: simulator=%r, num_qubits=%d, execution=%r%s",
+                "new process on KBW: simulator=%r, num_qubits=%d, execution=%r%s, "
+                "precision=%r",
                 simulator,
                 num_qubits,
                 execution,
                 " (gradient)" if gradient else "",
+                precision,
             )
             super().__init__(
                 get_simulator(
@@ -196,6 +205,7 @@ class Process(LibketProcess):  # pylint: disable=too-many-instance-attributes
                     simulator=simulator,
                     execution=execution,
                     gradient=gradient,
+                    precision=precision,
                     **kwargs,
                 ),
             )

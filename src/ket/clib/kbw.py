@@ -23,6 +23,7 @@ api_argtypes = {
             c_bool,  # use_live
             c_bool,  # decompose
             c_bool,  # gradient
+            c_bool,  # double_precision
             c_char_p,  # coupling_graph_json
         ],
         [c_void_p],  # qpu_config
@@ -85,6 +86,7 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     coupling_graph: list[tuple[int, int]] | None = None,
     gradient: bool = False,
     decompose: bool = False,
+    precision: Literal["single", "double"] = "single",
 ):
     """Create a KBW simulator configuration.
 
@@ -125,12 +127,24 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
             It needs batch execution. Defaults to ``False``.
         decompose: If ``True``, Libket decomposes gates into U/CNOT primitives
             before passing them to the simulator. Defaults to ``False``.
+        precision: Floating-point precision of the amplitudes: ``"single"``
+            (32 bits, the default) or ``"double"`` (64 bits, twice the memory).
+            Only the CPU simulators support ``"double"``; the GPU and CUDA
+            simulators log a warning and use ``"single"``.
+
+    Raises:
+        ValueError: If ``precision`` is not ``"single"`` or ``"double"``, or
+            if ``gradient`` is set with live execution.
 
     Returns:
         An opaque configuration pointer to be passed to the Ket
         :class:`~ket.Process`.
     """
     execution = execution_mode(execution, gradient)
+    if precision not in ("single", "double"):
+        raise ValueError(
+            f"unknown precision {precision!r}: use 'single' or 'double'"
+        )
 
     coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
 
@@ -140,6 +154,7 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
         execution != "batch",  # use_live
         decompose,  # decompose
         gradient,  # gradient
+        precision == "double",  # double_precision
         coupling_graph_json,  # coupling_graph
     )
 

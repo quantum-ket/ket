@@ -38,6 +38,7 @@ Process()                                   # sparse, live, up to 32 qubits
 Process(simulator="dense", num_qubits=20)   # dense: memory 2**n, faster for deep circuits
 Process(execution="batch")                  # QPU-like: runs once at the end
 Process(gradient=True)                      # p.param(...) gradients; always batch
+Process(precision="double")                 # f64 amplitudes (CPU simulators only)
 ```
 
 - Simulators: `"sparse"` (few nonzero amplitudes), `"dense"` (general),
