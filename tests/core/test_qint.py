@@ -193,3 +193,82 @@ def test_qint_comparisons():
     assert res_eq.value == 1  # 2 == 2 (True)
     assert res_gt.value == 1  # 2 > 1 (True)
     assert res_lt.value == 0  # 2 < 1 (False)
+
+
+def _trunc_div(a, b):
+    q = abs(a) // abs(b)
+    return q if (a >= 0) == (b >= 0) else -q
+
+
+@pytest.mark.parametrize("a", [-8, -7, -3, 0, 5, 7])
+@pytest.mark.parametrize("b", [-4, -3, -1, 1, 2, 3])
+def test_qint_division(a, b):
+    """Quantum division truncates toward zero, for any signs."""
+    p = Process(num_qubits=40)
+    qa = Qint(p.alloc(4), a)
+    qb = Qint(p.alloc(3), b)
+    qres = p.alloc(4).as_int()
+
+    qres += qa / qb
+
+    expected = _trunc_div(a, b)
+    if expected == 8:  # -8 / -1 wraps around in 4 bits
+        expected = -8
+    assert measure(qres).value == expected
+
+
+@pytest.mark.parametrize("b", [1, 2, 3, -2, -5])
+def test_qint_division_by_int(b):
+    p = Process()
+    qa = Qint(p.alloc(5), -13)
+    qres = p.alloc(5).as_int()
+
+    qres += qa / b
+
+    assert measure(qres).value == _trunc_div(-13, b)
+
+
+def test_qreal_division():
+    """Fixed-point division keeps the exponent of the dividend."""
+    p = Process(num_qubits=64)
+    x = p.alloc(7).as_real(2, 3.0)
+    y = p.alloc(4).as_real(1, 1.5)
+    res = p.alloc(7).as_real(2)
+
+    res += x / y
+    res += x / 0.5
+
+    assert measure(res).value == 2.0 + 6.0
+
+
+def test_qint_division_by_zero():
+    p = Process()
+    with pytest.raises(ZeroDivisionError):
+        _ = p.alloc(3).as_int(2) / 0
+
+
+@pytest.mark.parametrize("a", [-8, -3, 0, 5])
+@pytest.mark.parametrize("b", [-4, -1, 0, 3])
+def test_qint_add_shorter_signed(a, b):
+    """A shorter negative register is sign-extended, not zero-extended."""
+    p = Process(num_qubits=40)
+    qa = Qint(p.alloc(6), a)
+    qa += Qint(p.alloc(3), b)
+    assert measure(qa).value == a + b
+
+    p = Process(num_qubits=40)
+    qa = Qint(p.alloc(6), a)
+    qa -= Qint(p.alloc(3), b)
+    assert measure(qa).value == a - b
+
+    p = Process(num_qubits=40)
+    qres = p.alloc(6).as_int()
+    qres += Qint(p.alloc(6), a) * Qint(p.alloc(3), b)
+    assert measure(qres).value == (a * b + 32) % 64 - 32  # wraps in 6 bits
+
+
+def test_qreal_add_shorter_signed():
+    p = Process()
+    x = p.alloc(8).as_real(2, 1.25)
+    x += p.alloc(4).as_real(1, -2.5)
+    assert measure(x).value == -1.25

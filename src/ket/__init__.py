@@ -90,10 +90,9 @@ def ket_version() -> list[str]:
     information and combines it with the Python package version.
 
     Returns:
-        A list containing three version strings in the following order:
-            - ``"Ket v<version>"``, the Python package version.
-            - A build-info string from the ``libket`` Rust runtime library.
-            - A build-info string from the ``kbw`` quantum simulator library.
+        The versions of the Python package (``"Ket v<version>"``), of the
+        ``libket`` runtime library, and of the ``kbw`` simulator, in this
+        order.
     """
     from .clib.libket import (  # pylint: disable=import-outside-toplevel
         API as libket_api,

@@ -1,4 +1,4 @@
-"""Wrapper for Libket C API."""
+"""Base classes for execution targets: simulators, QPUs, and other backends."""
 
 from __future__ import annotations
 
@@ -428,9 +428,8 @@ class NativeGateSet(ABC):
 
     Subclass this to define how abstract gates are translated into the
     instruction set of a specific backend (hardware or simulator).  The
-    three methods, :meth:`translate`, :meth:`cnot`, and :meth:`swap`,
-    work at the Python level; all JSON marshalling with the C layer is
-    handled internally.
+    two methods, :meth:`translate` and :meth:`cnot`, work at the Python
+    level; all JSON marshalling with the C layer is handled internally.
 
     A :class:`NativeGateSet` instance can be passed directly to
     :meth:`BatchExecution.configure`.
@@ -445,9 +444,6 @@ class NativeGateSet(ABC):
 
             def cnot(self, control, target):
                 return [{"CNOT": {"control": control, "target": target}}]
-
-            def swap(self, a, b):
-                return [{"SWAP": {"a": a, "b": b}}]
 
         gate_set = MyGateSet()
         ptr = batch_exec.configure(native_gate_set=gate_set)

@@ -526,10 +526,9 @@ def pauli_string(
             before being passed to the `hamiltonian` function. Defaults to False.
 
     Returns:
-        A list of tuple:
-          - String represents a Pauli product (e.g., ``"ZIZX"``)
-            across all ``num_qubits``.
-          - Float representing the coefficients.
+        A list of ``(pauli_string, coefficient)`` tuples, where
+        ``pauli_string`` is a Pauli product across all ``num_qubits``
+        (e.g., ``"ZIZX"``) and ``coefficient`` is its float coefficient.
     """
     process = Process(num_qubits=num_qubits)
     qubits = process.alloc(num_qubits)
@@ -1252,9 +1251,9 @@ def gate_count(
             circuits). Both modes give the same counts.
 
     Returns:
-        A tuple containing:
-          - A ``collections.Counter`` with the tally of each gate type.
-          - The CNOT depth of the quantum circuit.
+        A ``(counts, depth)`` tuple, where ``counts`` is a
+        :class:`collections.Counter` with the tally of each gate type and
+        ``depth`` is the CNOT depth of the quantum circuit.
 
     Raises:
         ValueError: If the total number of qubits exceeds the specified ``qpu_size``,

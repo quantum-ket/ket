@@ -54,7 +54,7 @@ class Measurement(HasProcess):
     This class holds a reference for a measurement result. The result may not be available right
     after the measurement call, especially in batch execution.
 
-    To read the value, access the attribute :attr:`~ket.base.Measurement.value`.
+    To read the value, access the attribute :attr:`value`.
 
     You can instantiate this class by calling the :func:`~ket.operations.measure` function.
 
@@ -171,7 +171,7 @@ class Samples(HasProcess):
     This class holds a reference for a measurement sample result. The result may not be available
     right after the sample call, especially in batch execution.
 
-    To read the value, access the attribute :attr:`~ket.base.Sample.value`. If the value is not
+    To read the value, access the attribute :attr:`value`. If the value is not
     available, the measurement will return ``None``; otherwise, it will return a dictionary mapping
     measurement outcomes to their respective counts.
 
