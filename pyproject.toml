@@ -9,7 +9,7 @@ build-backend = "uv_build"
 
 [project]
 name = "ket-lang"
-version = "0.10.5.0b2"
+version = "0.10.5.0b3"
 description = "Ket quantum programming language interpreter and library"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -48,6 +48,7 @@ plot = [
 ]
 remote = ["requests", "PyJWT[crypto]", "bcrypt"]
 mps = ["quimb", "jax", "jaxlib", "cotengra"]
+composer = ["anywidget>=0.9", "traitlets"]
 
 [tool.uv.build-backend]
 module-name = "ket"

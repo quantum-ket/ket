@@ -1,0 +1,199 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Evandro Chagas Ribeiro da Rosa <evandro@quantuloop.com>
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+.kc-root {
+  --kc-fg: #0f1f2e;
+  --kc-muted: #5b6875;
+  --kc-bg: #f4f8ff;
+  --kc-panel: #e9f1fd;
+  --kc-border: #c6cdd5;
+  --kc-wire: #0f1f2e;
+  --kc-accent: #0f7cfb;
+  --kc-error: #d1242f;
+  --kc-gate-text: #f4f8ff;
+
+  font-family: var(--jp-ui-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-size: 13px;
+  color: var(--kc-fg);
+  background: var(--kc-bg);
+  border: 1px solid var(--kc-border);
+  border-radius: 4px;
+  padding: 10px;
+  outline: none;
+  user-select: none;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.kc-root:focus-visible { box-shadow: 0 0 0 2px var(--kc-accent); }
+.kc-root * { box-sizing: border-box; }
+.kc-root.kc-dragging { cursor: grabbing; }
+
+.kc-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--kc-border);
+}
+.kc-title { font-weight: 600; font-size: 14px; }
+.kc-group { display: inline-flex; align-items: center; gap: 6px; color: var(--kc-muted); }
+.kc-count { min-width: 1.5em; text-align: center; color: var(--kc-fg); font-variant-numeric: tabular-nums; }
+.kc-spacer { flex: 1; }
+
+.kc-btn {
+  font: inherit; color: var(--kc-fg); background: var(--kc-panel);
+  border: 1px solid var(--kc-border); border-radius: 6px;
+  padding: 3px 10px; cursor: pointer;
+}
+.kc-btn:hover:not(:disabled) { border-color: var(--kc-accent); }
+.kc-btn:disabled { opacity: 0.45; cursor: default; }
+.kc-btn.kc-small { padding: 0 8px; }
+.kc-btn.kc-small-text { padding: 0 8px; font-size: 11px; margin-left: 8px; }
+.kc-btn.kc-danger:hover { border-color: var(--kc-error); color: var(--kc-error); }
+.kc-link {
+  font: inherit; font-size: 11px; font-weight: normal; margin-left: 8px;
+  background: none; border: none; color: var(--kc-accent); cursor: pointer; padding: 0;
+}
+
+.kc-input {
+  font: inherit; color: var(--kc-fg); background: var(--kc-bg);
+  border: 1px solid var(--kc-border); border-radius: 5px; padding: 2px 6px;
+  user-select: text; min-width: 0;
+}
+.kc-input:focus { outline: none; border-color: var(--kc-accent); }
+.kc-file { width: 11em; font-family: var(--jp-code-font-family, monospace); }
+.kc-status { font-size: 11px; color: var(--kc-muted); max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kc-status-error { color: var(--kc-error); }
+.kc-num { width: 6em; }
+
+.kc-palette {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 0;
+  border-bottom: 1px solid var(--kc-border);
+}
+.kc-pgroup-title { font-size: 11px; color: var(--kc-muted); margin-bottom: 3px; }
+.kc-pgroup-items { display: flex; gap: 4px; }
+.kc-tile {
+  min-width: 34px; height: 30px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 1px; font-weight: 500; cursor: grab;
+  touch-action: none;
+}
+.kc-tile:hover { filter: brightness(1.1); }
+
+/* Gate colors of qulib.DRAW_STYLE["displaycolor"]. */
+.kc-root, .kc-ghost { --g: #0f7cfb; }
+.kc-gate-H { --g: #3f96fc; }
+.kc-gate-X, .kc-gate-CX, .kc-gate-SWAP, .kc-gate-CTRL, .kc-gate-ACTRL { --g: #0f7cfb; }
+.kc-gate-Y { --g: #0c63c9; }
+.kc-gate-Z { --g: #009cb3; }
+.kc-gate-RX, .kc-gate-SX, .kc-gate-RXX { --g: #063264; }
+.kc-gate-RY, .kc-gate-U3, .kc-gate-RYY { --g: #094a97; }
+.kc-gate-RZ, .kc-gate-RZZ, .kc-gate-P, .kc-gate-S, .kc-gate-SD, .kc-gate-T, .kc-gate-TD { --g: #008699; }
+.kc-inactive { --g: #6b7682; opacity: 0.5; }
+.kc-tile { background: var(--g); color: var(--kc-gate-text); }
+
+.kc-ghost {
+  position: fixed; z-index: 10000; pointer-events: none;
+  transform: translate(-50%, -50%); opacity: 0.85;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  font-family: system-ui, sans-serif; font-size: 13px;
+}
+.kc-ghost.kc-remove { opacity: 0.4; outline: 2px dashed #cf222e; }
+
+.kc-main { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 8px; }
+.kc-left { flex: 1 1 420px; min-width: 0; }
+.kc-side { flex: 0 1 300px; min-width: 240px; display: flex; flex-direction: column; gap: 8px; }
+
+.kc-canvas { overflow-x: auto; padding-bottom: 4px; }
+.kc-svg { display: block; touch-action: none; }
+.kc-svg text { dominant-baseline: middle; font-family: inherit; }
+.kc-wire { stroke: var(--kc-wire); stroke-width: 2; }
+.kc-qlabel { fill: var(--kc-fg); font-style: italic; font-size: 19px; text-anchor: end; font-family: "DejaVu Serif", "STIX Two Math", Georgia, serif !important; }
+.kc-qsub { font-size: 13px; font-style: normal; }
+.kc-colhead { cursor: pointer; }
+.kc-colhead rect { fill: transparent; }
+.kc-colhead:hover rect { fill: var(--kc-panel); }
+.kc-colhead text { fill: var(--kc-muted); text-anchor: middle; font-size: 11px; }
+.kc-colhead.kc-active rect { fill: var(--kc-accent); }
+.kc-colhead.kc-active text { fill: #fff; }
+.kc-dim { fill: var(--kc-bg); opacity: 0.6; pointer-events: none; }
+
+.kc-op-wrap { cursor: grab; }
+.kc-box { fill: var(--g); stroke: transparent; stroke-width: 2; }
+.kc-box-label { fill: var(--kc-gate-text); text-anchor: middle; font-size: 14px; pointer-events: none; }
+.kc-box-param { fill: var(--kc-gate-text); text-anchor: middle; font-size: 9.5px; font-style: italic; pointer-events: none; }
+.kc-connector { stroke: var(--g); stroke-width: 2; }
+.kc-ctrl { fill: var(--g); stroke: var(--g); stroke-width: 2; }
+.kc-ctrl.kc-actrl { fill: var(--kc-bg); }
+.kc-target { fill: var(--g); }
+.kc-target-plus { stroke: var(--kc-gate-text); stroke-width: 2.4; pointer-events: none; }
+.kc-swap { stroke: var(--g); stroke-width: 2.6; fill: none; }
+.kc-hit { fill: transparent; }
+.kc-selected { stroke: var(--kc-fg) !important; stroke-width: 2.5; stroke-dasharray: 4 2; }
+.kc-ctrl.kc-selected, .kc-target.kc-selected { stroke-dasharray: none; }
+.kc-highlight rect { fill: var(--kc-accent); opacity: 0.18; stroke: var(--kc-accent); stroke-dasharray: 4 3; pointer-events: none; }
+
+.kc-marg-bg { fill: var(--kc-panel); stroke: var(--kc-border); }
+.kc-marg { fill: var(--kc-accent); }
+.kc-marg-text { fill: var(--kc-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.kc-error {
+  color: var(--kc-error); background: color-mix(in srgb, var(--kc-error) 10%, transparent);
+  border-radius: 6px; padding: 6px 8px; margin-top: 6px; user-select: text;
+}
+
+.kc-panel {
+  background: var(--kc-panel); border: 1px solid var(--kc-border);
+  border-radius: 6px; padding: 8px 10px;
+}
+.kc-panel-title { font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; }
+.kc-panel-title.kc-gap { gap: 8px; }
+.kc-muted { color: var(--kc-muted); font-weight: normal; font-size: 11px; }
+.kc-hint { color: var(--kc-muted); font-size: 12px; margin-bottom: 6px; }
+.kc-field { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.kc-field .kc-input { flex: 1; font-family: var(--jp-code-font-family, monospace); }
+.kc-field-name { min-width: 3.5em; color: var(--kc-muted); font-family: var(--jp-code-font-family, monospace); }
+.kc-param { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.kc-param input[type="range"] { flex: 1; min-width: 60px; accent-color: var(--kc-accent); }
+
+.kc-states { max-height: 320px; overflow-y: auto; margin-top: 6px; }
+.kc-srow {
+  display: grid; grid-template-columns: auto 1fr auto auto; align-items: center;
+  gap: 6px; padding: 1px 0; font-variant-numeric: tabular-nums;
+}
+.kc-ket { font-family: var(--jp-code-font-family, monospace); }
+.kc-bar { height: 10px; background: var(--kc-bg); border-radius: 3px; overflow: hidden; min-width: 40px; }
+.kc-bar-fill { display: block; height: 100%; }
+.kc-amp { font-family: var(--jp-code-font-family, monospace); font-size: 11px; color: var(--kc-muted); }
+.kc-prob { font-size: 11px; min-width: 3.5em; text-align: right; }
+
+.kc-code { margin-top: 8px; }
+.kc-code summary { cursor: pointer; margin-bottom: 0; }
+.kc-code[open] summary { margin-bottom: 6px; }
+.kc-pre {
+  margin: 0; padding: 8px; background: var(--kc-bg); border-radius: 5px;
+  font-family: var(--jp-code-font-family, monospace); font-size: 12px;
+  overflow-x: auto; user-select: text; white-space: pre;
+}
+
+/* Dark notebook themes (JupyterLab, VS Code, Colab): same gate colors,
+ * draw's navy as the canvas. */
+body[data-jp-theme-light="false"] .kc-root,
+body.vscode-dark .kc-root,
+body.vscode-high-contrast .kc-root,
+html[theme="dark"] .kc-root {
+  --kc-fg: #f4f8ff;
+  --kc-muted: #9aa7b4;
+  --kc-bg: #0f1f2e;
+  --kc-panel: #16293b;
+  --kc-border: #2c4157;
+  --kc-wire: #c6cdd5;
+}
+body[data-jp-theme-light="false"] .kc-root .kc-box,
+body.vscode-dark .kc-root .kc-box,
+body.vscode-high-contrast .kc-root .kc-box,
+html[theme="dark"] .kc-root .kc-box { stroke: rgba(244, 248, 255, 0.35); stroke-width: 1; }
+body[data-jp-theme-light="false"] .kc-root .kc-tile,
+body.vscode-dark .kc-root .kc-tile,
+body.vscode-high-contrast .kc-root .kc-tile,
+html[theme="dark"] .kc-root .kc-tile { box-shadow: inset 0 0 0 1px rgba(244, 248, 255, 0.35); }
