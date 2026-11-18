@@ -5,7 +5,8 @@
 """Ket quantum programming.
 
 Every name below is available as ``ket.<name>`` (or ``from ket import *``),
-except :mod:`ket.qulib`, the library of ready-made algorithms.
+except :mod:`ket.qulib`, the library of ready-made algorithms, and
+:mod:`ket.composer`, the circuit editor.
 
 Quick tour:
 
@@ -38,6 +39,9 @@ Where to look next:
   :func:`~ket.operations.measure`, :func:`~ket.operations.sample`, and
   :func:`~ket.operations.exp_value`.
 - :mod:`ket.qulib`: state preparation, oracles, Hamiltonians, and QUBO.
+- :class:`ket.composer.Composer`: drag-and-drop circuit editor for Jupyter
+  notebooks that returns a gate (``pip install ket-lang[composer]``;
+  ``from ket.composer import Composer``).
 - :func:`set_log_level`: see what the runtime and simulator are doing.
 """
 

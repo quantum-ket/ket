@@ -7,8 +7,6 @@
 - :mod:`~ket.qulib.qubo`: QUBO models, solved with :func:`exact_solver`,
   :func:`simulated_annealing` or :func:`parallel_tempering`.
 - :func:`gate_count`, :func:`draw` and :func:`dump_matrix`: inspect a gate.
-- :mod:`~ket.qulib.composer`: drag-and-drop circuit editor for Jupyter
-  notebooks that returns a gate (``pip install ket-lang[composer]``).
 
 .. code-block:: python
 
@@ -85,19 +83,7 @@ __all__ = [
     "exact_solver",
     "GateCount",
     "gate_count",
-    "composer",
 ]
-
-
-def __getattr__(name):
-    # The composer imports the widget libraries: load it only when used.
-    # ``from . import composer`` would call this function again through
-    # ``hasattr``, so the submodule is imported by its full name.
-    if name == "composer":
-        import importlib  # pylint: disable=import-outside-toplevel
-
-        return importlib.import_module(f"{__name__}.composer")
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def dump_matrix(

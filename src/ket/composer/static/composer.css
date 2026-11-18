@@ -83,7 +83,7 @@
 /* Gate colors of qulib.DRAW_STYLE["displaycolor"]. */
 .kc-root, .kc-ghost { --g: #0f7cfb; }
 .kc-gate-H { --g: #3f96fc; }
-.kc-gate-X, .kc-gate-CX, .kc-gate-SWAP, .kc-gate-CTRL, .kc-gate-ACTRL { --g: #0f7cfb; }
+.kc-gate-X, .kc-gate-CX, .kc-gate-CNOT, .kc-gate-SWAP, .kc-gate-CTRL, .kc-gate-ACTRL { --g: #0f7cfb; }
 .kc-gate-Y { --g: #0c63c9; }
 .kc-gate-Z { --g: #009cb3; }
 .kc-gate-RX, .kc-gate-SX, .kc-gate-RXX { --g: #063264; }
@@ -107,6 +107,7 @@
 .kc-canvas { overflow-x: auto; padding-bottom: 4px; }
 .kc-svg { display: block; touch-action: none; }
 .kc-svg text { dominant-baseline: middle; font-family: inherit; }
+.kc-regsep { stroke: var(--kc-border); stroke-width: 1; stroke-dasharray: 6 4; }
 .kc-wire { stroke: var(--kc-wire); stroke-width: 2; }
 .kc-qlabel { fill: var(--kc-fg); font-style: italic; font-size: 19px; text-anchor: end; font-family: "DejaVu Serif", "STIX Two Math", Georgia, serif !important; }
 .kc-qsub { font-size: 13px; font-style: normal; }
@@ -116,6 +117,15 @@
 .kc-colhead text { fill: var(--kc-muted); text-anchor: middle; font-size: 11px; }
 .kc-colhead.kc-active rect { fill: var(--kc-accent); }
 .kc-colhead.kc-active text { fill: #fff; }
+.kc-insert { cursor: pointer; opacity: 0.35; }
+.kc-insert:hover, .kc-svg:hover .kc-insert:hover { opacity: 1; }
+.kc-svg:hover .kc-insert { opacity: 0.6; }
+.kc-insert circle { fill: var(--kc-bg); stroke: var(--kc-accent); stroke-width: 1.5; }
+.kc-insert path { stroke: var(--kc-accent); stroke-width: 1.6; pointer-events: none; }
+.kc-insert:hover circle { fill: var(--kc-accent); }
+.kc-insert:hover path { stroke: var(--kc-gate-text); }
+.kc-insert-guide { stroke: var(--kc-accent); stroke-width: 2; stroke-dasharray: 4 3; opacity: 0; pointer-events: none; }
+.kc-insert:hover .kc-insert-guide { opacity: 1; }
 .kc-dim { fill: var(--kc-bg); opacity: 0.6; pointer-events: none; }
 
 .kc-op-wrap { cursor: grab; }
@@ -131,6 +141,12 @@
 .kc-hit { fill: transparent; }
 .kc-selected { stroke: var(--kc-fg) !important; stroke-width: 2.5; stroke-dasharray: 4 2; }
 .kc-ctrl.kc-selected, .kc-target.kc-selected { stroke-dasharray: none; }
+.kc-groupbox { fill: color-mix(in srgb, var(--kc-accent) 5%, transparent); stroke: var(--kc-muted); stroke-width: 1.2; stroke-dasharray: 5 3; }
+.kc-groupbox-on { stroke: var(--kc-accent); stroke-width: 1.8; fill: color-mix(in srgb, var(--kc-accent) 10%, transparent); }
+.kc-marquee { fill: color-mix(in srgb, var(--kc-accent) 12%, transparent); stroke: var(--kc-accent); stroke-width: 1; stroke-dasharray: 3 2; pointer-events: none; }
+.kc-ghost-many { background: var(--kc-accent, #0f7cfb); color: #f4f8ff; padding: 0 10px; }
+.kc-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.kc-btn.kc-small-btn { padding: 2px 9px; }
 .kc-highlight rect { fill: var(--kc-accent); opacity: 0.18; stroke: var(--kc-accent); stroke-dasharray: 4 3; pointer-events: none; }
 
 .kc-marg-bg { fill: var(--kc-panel); stroke: var(--kc-border); }
@@ -156,6 +172,14 @@
 .kc-param { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .kc-param input[type="range"] { flex: 1; min-width: 60px; accent-color: var(--kc-accent); }
 
+.kc-seg { display: inline-flex; border: 1px solid var(--kc-border); border-radius: 5px; overflow: hidden; }
+.kc-seg-btn {
+  font: inherit; font-size: 11px; font-weight: normal; color: var(--kc-muted);
+  background: var(--kc-bg); border: none; padding: 1px 8px; cursor: pointer;
+}
+.kc-seg-btn + .kc-seg-btn { border-left: 1px solid var(--kc-border); }
+.kc-seg-btn:hover { color: var(--kc-fg); }
+.kc-seg-btn.kc-seg-on { background: var(--kc-accent); color: var(--kc-gate-text); }
 .kc-states { max-height: 320px; overflow-y: auto; margin-top: 6px; }
 .kc-srow {
   display: grid; grid-template-columns: auto 1fr auto auto; align-items: center;
@@ -167,14 +191,31 @@
 .kc-amp { font-family: var(--jp-code-font-family, monospace); font-size: 11px; color: var(--kc-muted); }
 .kc-prob { font-size: 11px; min-width: 3.5em; text-align: right; }
 
-.kc-code { margin-top: 8px; }
-.kc-code summary { cursor: pointer; margin-bottom: 0; }
-.kc-code[open] summary { margin-bottom: 6px; }
-.kc-pre {
-  margin: 0; padding: 8px; background: var(--kc-bg); border-radius: 5px;
-  font-family: var(--jp-code-font-family, monospace); font-size: 12px;
-  overflow-x: auto; user-select: text; white-space: pre;
-}
+.kc-results { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: stretch; }
+.kc-results > .kc-state { flex: 1 1 320px; min-width: 0; }
+.kc-results > .kc-bloch { flex: 1 1 320px; min-width: 0; }
+.kc-copy-area { position: fixed; left: -9999px; top: 0; opacity: 0; }
+.kc-bl-grid { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.kc-bl-item { display: flex; flex-direction: column; align-items: center; }
+.kc-bl-name { font-family: "DejaVu Serif", "STIX Two Math", Georgia, serif; font-size: 16px; }
+.kc-bl-name sub { font-style: normal; font-size: 11px; }
+.kc-bl-svg { display: block; overflow: visible; }
+.kc-bl-svg text { dominant-baseline: middle; text-anchor: middle; font-family: inherit; }
+.kc-bl-ball { fill: color-mix(in srgb, var(--kc-accent) 7%, var(--kc-bg)); stroke: var(--kc-fg); stroke-width: 1.2; }
+.kc-bl-ring { fill: none; stroke: var(--kc-muted); stroke-width: 1; }
+.kc-bl-faint { opacity: 0.55; }
+.kc-bl-back { stroke-dasharray: 2 3; opacity: 0.6; }
+.kc-bl-axis { stroke: var(--kc-muted); stroke-width: 0.8; stroke-dasharray: 1 2; }
+.kc-bl-label { fill: var(--kc-muted); font-size: 11px; font-style: italic; }
+.kc-bl-ket { fill: var(--kc-muted); font-size: 10px; text-anchor: start !important; }
+.kc-bl-vec { stroke: var(--kc-accent); stroke-width: 2.4; stroke-linecap: round; }
+.kc-bl-tip { fill: var(--kc-accent); }
+/* Bloch vector shorter than 1: entangled or mixed qubit. */
+.kc-root { --kc-mixed: #e8890c; }
+.kc-bl-vec.kc-bl-mixed { stroke: var(--kc-mixed); }
+.kc-bl-tip.kc-bl-mixed { fill: var(--kc-mixed); }
+.kc-bl-key { display: inline-block; width: 14px; height: 3px; border-radius: 2px; background: var(--kc-accent); vertical-align: middle; }
+.kc-bl-key.kc-bl-mixed { background: var(--kc-mixed); }
 
 /* Dark notebook themes (JupyterLab, VS Code, Colab): same gate colors,
  * draw's navy as the canvas. */
