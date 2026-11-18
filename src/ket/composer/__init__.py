@@ -71,9 +71,7 @@ def simulate_circuit(data: dict, upto: int | None = None) -> dict:
 
     circuit = Circuit(data)
     if circuit.num_qubits > MAX_SIMULATED_QUBITS:
-        raise ValueError(
-            f"simulation is limited to {MAX_SIMULATED_QUBITS} qubits"
-        )
+        raise ValueError(f"simulation is limited to {MAX_SIMULATED_QUBITS} qubits")
     gate = circuit.gate(upto)
     process = Process(
         execution="live",
@@ -124,7 +122,9 @@ def bloch_vectors(states: dict[int, complex], num_qubits: int) -> list[list[floa
     vectors = []
     for qubit in range(num_qubits):
         bit = 1 << (num_qubits - 1 - qubit)
-        coherence = 0j  # <0|rho|1> of the qubit: sum of conj(a_b) * a_(b with the bit set)
+        coherence = (
+            0j  # <0|rho|1> of the qubit: sum of conj(a_b) * a_(b with the bit set)
+        )
         z = 0.0
         for basis, amp in states.items():
             prob = abs(amp) ** 2
@@ -283,7 +283,14 @@ if _WIDGET_AVAILABLE:
             self.observe(self._fit_registers, names=["num_qubits"])
             self.observe(
                 self._update,
-                names=["num_qubits", "registers", "ops", "params", "simulate", "sim_column"],
+                names=[
+                    "num_qubits",
+                    "registers",
+                    "ops",
+                    "params",
+                    "simulate",
+                    "sim_column",
+                ],
             )
             self.on_msg(self._on_msg)
             self._update()
@@ -298,7 +305,9 @@ if _WIDGET_AVAILABLE:
                 registers[-1][1] += extra
             else:
                 while extra < 0:
-                    take = min(-extra, registers[-1][1] - (1 if len(registers) == 1 else 0))
+                    take = min(
+                        -extra, registers[-1][1] - (1 if len(registers) == 1 else 0)
+                    )
                     registers[-1][1] -= take
                     extra += take
                     if registers[-1][1] == 0:
@@ -454,4 +463,3 @@ else:  # pragma: no cover - depends on the environment
 
         def __init__(self, *_args, **_kwargs):
             raise ImportError(_INSTALL_MSG)
-

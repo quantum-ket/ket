@@ -467,6 +467,7 @@ class Qreal(Quant):  # pylint: disable=too-few-public-methods
 
         See :meth:`__add__`.
         """
+
         def neg(qint):
             X(qint)
             qint += 1

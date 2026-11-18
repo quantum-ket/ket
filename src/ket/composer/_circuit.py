@@ -196,9 +196,7 @@ class Expression:  # pylint: disable=too-few-public-methods
 
     def _check(self, node):
         if isinstance(node, ast.Constant):
-            if isinstance(node.value, bool) or not isinstance(
-                node.value, (int, float)
-            ):
+            if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
                 raise ValueError(f"invalid constant in {self.source!r}")
         elif isinstance(node, ast.BinOp) and isinstance(node.op, _BIN_OPS):
             self._check(node.left)
@@ -244,9 +242,7 @@ def _gate_arg_names(gate: Callable | None, count: int) -> list[str]:
         return default
     try:
         params = [
-            p.name
-            for p in signature(gate).parameters.values()
-            if p.kind in _POSITIONAL
+            p.name for p in signature(gate).parameters.values() if p.kind in _POSITIONAL
         ]
     except (TypeError, ValueError):
         return default
@@ -324,7 +320,8 @@ class Circuit:
         if self.num_qubits < 1:
             raise ValueError("the circuit needs at least one qubit")
         self.registers: list[list] = [
-            [str(n), int(s)] for n, s in (data.get("registers") or [["q", self.num_qubits]])
+            [str(n), int(s)]
+            for n, s in (data.get("registers") or [["q", self.num_qubits]])
         ]
         _check_registers(self.registers)
         if sum(size for _, size in self.registers) != self.num_qubits:
@@ -400,9 +397,7 @@ class Circuit:
             for op in ops:
                 for qubit in op.qubits:
                     if qubit in used:
-                        raise ValueError(
-                            f"two gates on qubit {qubit} in column {col}"
-                        )
+                        raise ValueError(f"two gates on qubit {qubit} in column {col}")
                     used.add(qubit)
 
     @property
@@ -439,7 +434,9 @@ class Circuit:
                 ops.append(entry)
         return {
             "num_qubits": sum(sizes),
-            "registers": [[name, size] for (name, _), size in zip(self.registers, sizes)],
+            "registers": [
+                [name, size] for (name, _), size in zip(self.registers, sizes)
+            ],
             "ops": ops,
             "params": dict(self.defaults),
         }
@@ -575,7 +572,9 @@ def _quant_code(circuit: Circuit, qubits: list[int]) -> str:
     if len(qubits) == 1:
         return circuit.label(qubits[0])
     if len({reg for reg, _ in where}) == 1:
-        return f"{circuit.registers[where[0][0]][0]}.at({[local for _, local in where]})"
+        return (
+            f"{circuit.registers[where[0][0]][0]}.at({[local for _, local in where]})"
+        )
     return " + ".join(circuit.label(q) for q in qubits)
 
 
@@ -803,7 +802,9 @@ def circuit_from_gate(
         columns[col] = bool(controls)
         for q in qubits:
             last[q] = col
-        ops += [{"gate": "CTRL", "col": col, "qubits": [c], "params": []} for c in controls]
+        ops += [
+            {"gate": "CTRL", "col": col, "qubits": [c], "params": []} for c in controls
+        ]
         ops.append({"gate": name, "col": col, "qubits": [target], "params": params})
 
     return {"num_qubits": num_qubits, "registers": registers, "ops": ops, "params": {}}

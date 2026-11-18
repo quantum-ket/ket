@@ -96,7 +96,9 @@ class APIWrapper:  # pylint: disable=R0903
                 # (for example, a provider's `sample`): raise it as it was.
                 name, exc = callback_error
                 if hasattr(exc, "add_note"):
-                    exc.add_note(f"(raised in the {name!r} callback of {self.lib_name})")
+                    exc.add_note(
+                        f"(raised in the {name!r} callback of {self.lib_name})"
+                    )
                 raise exc
             # A short, static message (not freed); the library logged the
             # cause of the error to the `ket` logger.

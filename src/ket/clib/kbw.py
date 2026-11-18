@@ -142,9 +142,7 @@ def get_simulator(  # pylint: disable=too-many-arguments,too-many-positional-arg
     """
     execution = execution_mode(execution, gradient)
     if precision not in ("single", "double"):
-        raise ValueError(
-            f"unknown precision {precision!r}: use 'single' or 'double'"
-        )
+        raise ValueError(f"unknown precision {precision!r}: use 'single' or 'double'")
 
     coupling_graph_json = json.dumps(coupling_graph).encode("utf-8")
 

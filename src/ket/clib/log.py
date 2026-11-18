@@ -187,9 +187,7 @@ def _configure_from_env():
         return
     if not LOGGER.handlers and not logging.getLogger().handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(
-            logging.Formatter("[%(levelname)s %(name)s] %(message)s")
-        )
+        handler.setFormatter(logging.Formatter("[%(levelname)s %(name)s] %(message)s"))
         LOGGER.addHandler(handler)
 
 
