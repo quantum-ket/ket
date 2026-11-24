@@ -154,9 +154,7 @@ def test_knapsack_one_hot_slack():
     qubo = QUBO(3)
     x = qubo.qubits
     qubo.maximize(sum(v * B(q) for v, q in zip(values, x)))
-    qubo.less_equal(
-        sum(w * B(q) for w, q in zip(weights, x)), 5, encoding="one_hot"
-    )
+    qubo.less_equal(sum(w * B(q) for w, q in zip(weights, x)), 5, encoding="one_hot")
     assert qubo.num_qubits == 3 + 6
     state, _ = exact_solver(qubo, qubo.num_qubits)
     assert qubo.is_feasible(state)
@@ -174,9 +172,7 @@ def test_infeasible_states_have_higher_energy():
 def test_energy_matches_simulation():
     qubo = knapsack()
     for state in (0, 5, 37, 63):
-        assert energy(qubo, state, qubo.num_qubits) == pytest.approx(
-            qubo.energy(state)
-        )
+        assert energy(qubo, state, qubo.num_qubits) == pytest.approx(qubo.energy(state))
 
 
 def test_one_hot_var():

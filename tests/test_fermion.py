@@ -1,4 +1,5 @@
 """Unit tests for fermionic operator functionality in ket."""
+
 # pylint: disable=invalid-name
 
 # SPDX-FileCopyrightText: 2026 Maria Eduarda W. M. Vianna <mewmvianna@gmail.com>
@@ -28,9 +29,7 @@ def test_dict_creation():
     assert a1 == ket.AnnihilateFermion(1)
 
     expected_word = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-        * ket.CreateFermion(2)
+        ket.CreateFermion(0) * ket.AnnihilateFermion(1) * ket.CreateFermion(2)
     )
 
     assert word == expected_word
@@ -211,15 +210,13 @@ def test_simplify_boundary_case():
 
     assert a2 not in sentence
 
+
 def test_single_orbital_number_operator():
     """Test number operator for a single orbital."""
 
     operator = ket.number_operator(4, orbital=2)
 
-    expected_term = (
-        ket.CreateFermion(2)
-        * ket.AnnihilateFermion(2)
-    )
+    expected_term = ket.CreateFermion(2) * ket.AnnihilateFermion(2)
 
     assert expected_term in operator
     assert len(operator) == 1
@@ -233,10 +230,7 @@ def test_total_number_operator():
     assert len(operator) == 4
 
     for orbital in range(4):
-        expected_term = (
-            ket.CreateFermion(orbital)
-            * ket.AnnihilateFermion(orbital)
-        )
+        expected_term = ket.CreateFermion(orbital) * ket.AnnihilateFermion(orbital)
 
         assert expected_term in operator
 
@@ -258,10 +252,7 @@ def test_number_operator_invalid_orbital():
 def test_particle_number_conservation_one_body():
     """Test particle-number conservation for one-body operators."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence({term: 1.0})
 
@@ -296,10 +287,7 @@ def test_particle_number_non_conserving():
 def test_particle_number_mixed_sentence():
     """Test mixed sentence containing non-conserving terms."""
 
-    conserving = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    conserving = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     non_conserving = ket.CreateFermion(0)
 
@@ -316,10 +304,7 @@ def test_particle_number_mixed_sentence():
 def test_spin_z_conservation_alpha():
     """Test spin-z conservation for alpha-spin operators."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(2)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(2)
 
     sentence = ket.FermionSentence({term: 1.0})
 
@@ -329,10 +314,7 @@ def test_spin_z_conservation_alpha():
 def test_spin_z_conservation_beta():
     """Test spin-z conservation for beta-spin operators."""
 
-    term = (
-        ket.CreateFermion(1)
-        * ket.AnnihilateFermion(3)
-    )
+    term = ket.CreateFermion(1) * ket.AnnihilateFermion(3)
 
     sentence = ket.FermionSentence({term: 1.0})
 
@@ -342,10 +324,7 @@ def test_spin_z_conservation_beta():
 def test_spin_z_non_conserving():
     """Test spin-flip operator detection."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence({term: 1.0})
 
@@ -355,10 +334,7 @@ def test_spin_z_non_conserving():
 def test_spin_z_user_defined_override():
     """Test spin-z conservation with explicit spin labels."""
 
-    term = (
-        ket.CreateFermion(0, spin="b")
-        * ket.AnnihilateFermion(2, spin="b")
-    )
+    term = ket.CreateFermion(0, spin="b") * ket.AnnihilateFermion(2, spin="b")
 
     sentence = ket.FermionSentence({term: 1.0})
 
@@ -368,15 +344,9 @@ def test_spin_z_user_defined_override():
 def test_spin_z_mixed_sentence():
     """Test mixed sentence containing spin-flip terms."""
 
-    conserving = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(2)
-    )
+    conserving = ket.CreateFermion(0) * ket.AnnihilateFermion(2)
 
-    spin_flip = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    spin_flip = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence(
         {
@@ -387,13 +357,11 @@ def test_spin_z_mixed_sentence():
 
     assert not sentence.conserves_spin_z()
 
+
 def test_two_body_number_conserving_one_body():
     """Test one-body number-conserving operators."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence({term: 1.0})
 
@@ -463,15 +431,9 @@ def test_fermion_adjoint_annihilation():
 def test_fermion_adjoint_reverses_order():
     """Test that adjoint reverses operator order."""
 
-    op = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    op = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
-    expected = (
-        ket.CreateFermion(1)
-        * ket.AnnihilateFermion(0)
-    )
+    expected = ket.CreateFermion(1) * ket.AnnihilateFermion(0)
 
     assert op.adjoint() == expected
 
@@ -479,11 +441,7 @@ def test_fermion_adjoint_reverses_order():
 def test_double_adjoint_fermion():
     """Test that applying adjoint twice returns the original operator."""
 
-    op = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-        * ket.CreateFermion(2)
-    )
+    op = ket.CreateFermion(0) * ket.AnnihilateFermion(1) * ket.CreateFermion(2)
 
     assert op.adjoint().adjoint() == op
 
@@ -491,10 +449,7 @@ def test_double_adjoint_fermion():
 def test_sentence_adjoint_real_coefficients():
     """Test adjoint of a sentence with real coefficients."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence({term: 2.0})
 
@@ -506,10 +461,7 @@ def test_sentence_adjoint_real_coefficients():
 def test_sentence_adjoint_complex_coefficients():
     """Test complex conjugation under adjoint."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence({term: 1 + 2j})
 
@@ -521,10 +473,7 @@ def test_sentence_adjoint_complex_coefficients():
 def test_double_adjoint_sentence():
     """Test that applying adjoint twice returns the original sentence."""
 
-    term = (
-        ket.CreateFermion(0)
-        * ket.AnnihilateFermion(1)
-    )
+    term = ket.CreateFermion(0) * ket.AnnihilateFermion(1)
 
     sentence = ket.FermionSentence(
         {

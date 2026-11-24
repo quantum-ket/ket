@@ -26,12 +26,16 @@ SIMULATORS = [
     pytest.param(
         "dense gpu",
         id="dense gpu",
-        marks=pytest.mark.skipif(not _available("dense gpu", 2), reason="no GPU simulator"),
+        marks=pytest.mark.skipif(
+            not _available("dense gpu", 2), reason="no GPU simulator"
+        ),
     ),
     pytest.param(
         "sparse gpu",
         id="sparse gpu",
-        marks=pytest.mark.skipif(not _available("sparse gpu", 2), reason="no GPU simulator"),
+        marks=pytest.mark.skipif(
+            not _available("sparse gpu", 2), reason="no GPU simulator"
+        ),
     ),
 ]
 
@@ -53,7 +57,10 @@ def _hamiltonian(q, n, seed):
     with obs():
         h = 0.5
         for _ in range(40):
-            factors = [rng.choice((X, Y, Z))(q[j]) for j in rng.sample(range(n), rng.randint(1, 3))]
+            factors = [
+                rng.choice((X, Y, Z))(q[j])
+                for j in rng.sample(range(n), rng.randint(1, 3))
+            ]
             term = factors[0]
             for factor in factors[1:]:
                 term = term * factor
@@ -71,7 +78,9 @@ def _exp_value(simulator, n, seed):
 @pytest.mark.parametrize("simulator", SIMULATORS)
 def test_exp_value_matches_dense(simulator):
     n = 8
-    assert _exp_value(simulator, n, 3) == pytest.approx(_exp_value("dense", n, 3), abs=1e-5)
+    assert _exp_value(simulator, n, 3) == pytest.approx(
+        _exp_value("dense", n, 3), abs=1e-5
+    )
 
 
 @pytest.mark.parametrize("simulator", SIMULATORS)

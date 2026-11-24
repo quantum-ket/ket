@@ -81,6 +81,23 @@ def test_rotation_gates(angle):
     assert validate_matrix(dump_matrix(ket.RZ(angle)), rz_matrix(angle))
 
 
+def rbs_matrix(theta):
+    return [
+        [1, 0, 0, 0],
+        [0, cos(theta), sin(theta), 0],
+        [0, -sin(theta), cos(theta), 0],
+        [0, 0, 0, 1],
+    ]
+
+
+@pytest.mark.parametrize("angle", [0, pi / 4, pi / 3, pi / 2, 0.7, pi, 3 * pi / 2])
+def test_rbs_gate(angle):
+    """Test the RBS gate against its documented matrix."""
+    assert validate_matrix(
+        dump_matrix(ket.RBS(angle), num_qubits=[1, 1]), rbs_matrix(angle)
+    )
+
+
 def test_u3_gate_parameter_grid():
     """Test U3 gate across a grid of theta, phi, and lambda parameters."""
     angles = [0, pi / 2, pi, 2 * pi]

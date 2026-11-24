@@ -90,7 +90,9 @@ def test_short_error_message_and_cause_in_log(caplog):
         ):
             with control(q[0]):
                 X(q[0])
-    assert any("qubit 0 controls its own PauliX gate" in e for e in _logged_errors(caplog))
+    assert any(
+        "qubit 0 controls its own PauliX gate" in e for e in _logged_errors(caplog)
+    )
 
 
 @pytest.mark.parametrize(

@@ -54,20 +54,18 @@ from __future__ import annotations
 
 # pylint: disable=protected-access
 
-from contextlib import contextmanager
 from ctypes import c_size_t
 from math import pi, prod, isclose
 from functools import reduce, wraps
 from typing import Any, Callable
 import functools
-import contextvars
 
 from ket.clib.libket import search_process, API as libket, Block
 
 from .base import Process, Quant, Parameter
 from .operations import ctrl, cat, kron, around
 
-from .expv import Pauli, Hamiltonian, ObsQubits
+from .expv import Pauli, Hamiltonian, _bind_observable, _build_obs, obs
 
 __all__ = [
     "I",
@@ -109,71 +107,6 @@ def _gate_docstring(name, matrix, effect=None) -> str:
 
         :math:`{matrix}`{f"; :math:`{effect}`" if effect is not None else ""}
     """
-
-
-_build_obs = contextvars.ContextVar("build_obs", default=False)
-
-
-@contextmanager
-def obs(num_qubits: int | None = None):
-    r"""Context manager for constructing quantum observables in symbolic form.
-
-    Inside a ``with obs():`` block, the Pauli gate functions
-    (:func:`~ket.gates.X`, :func:`~ket.gates.Y`, :func:`~ket.gates.Z`,
-    :func:`~ket.gates.I`) return :class:`~ket.expv.Pauli` objects instead of
-    applying the physical gate to the circuit. These objects can be combined
-    with arithmetic operators to build :class:`~ket.expv.Hamiltonian` objects
-    suitable for :func:`~ket.operations.exp_value`.
-
-    This approach mirrors the mathematical notation for observables and
-    avoids manually constructing :class:`~ket.expv.Pauli` instances.
-
-    Example:
-
-        .. code-block:: python
-
-            from ket import *
-
-            p = Process()
-            q = p.alloc(4)
-
-            edges = [(q[0], q[1]), (q[1], q[2]), (q[2], q[3])]
-
-            with obs():
-                # MaxCut QUBO cost Hamiltonian
-                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
-
-            ev = exp_value(h_c)
-
-    Pass ``num_qubits`` to build an observable before allocating any qubits.
-    The block then yields that many placeholder qubits
-    (:class:`~ket.expv.ObsQubits`) and the result is an *unbound*
-    Hamiltonian. Bind it to real qubits with
-    :meth:`~ket.expv.Hamiltonian.bind`, the call shorthand ``h_c(qubits)``,
-    or by passing the qubits to :func:`~ket.operations.exp_value` or
-    :func:`~ket.gates.evolve`:
-
-        .. code-block:: python
-
-            from ket import *
-
-            with obs(4) as q:
-                edges = [(q[0], q[1]), (q[1], q[2]), (q[2], q[3])]
-                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
-
-            p = Process()
-            r = p.alloc(4)
-            ev = exp_value(h_c, r)    # same as exp_value(h_c(r))
-
-    Args:
-        num_qubits: Number of placeholder qubits to yield. If ``None``, the
-            block yields ``None`` and observables are built on process qubits.
-    """
-    token = _build_obs.set(True)
-    try:
-        yield None if num_qubits is None else ObsQubits(num_qubits)
-    finally:
-        _build_obs.reset(token)
 
 
 def I(  # pylint: disable=invalid-name missing-function-docstring
@@ -663,8 +596,8 @@ def RBS(  # pylint: disable=invalid-name missing-function-docstring
     def inner(qubits_a: Quant, qubits_b: Quant) -> tuple[Quant, Quant]:
         for qubit_a, qubit_b in zip(qubits_a, qubits_b):
             with around(cat(kron(H, I), CNOT), qubit_a, qubit_b):
-                RY(theta / 2, qubit_a)
-                RY(theta / 2, qubit_b)
+                RY(theta, qubit_a)
+                RY(theta, qubit_b)
         return qubits_a, qubits_b
 
     if qubits_a is None and qubits_b is None:
@@ -890,7 +823,10 @@ def _rzg(angle, qubits):
 _RGATE = {"X": RX, "Y": RY, "Z": RZ}
 
 
-def evolve(hamiltonian: Hamiltonian | Pauli, qubits: Quant | None = None):
+def evolve(
+    hamiltonian: Hamiltonian | Pauli | Callable[[Quant], Hamiltonian | Pauli],
+    qubits: Quant | None = None,
+):
     r"""Time evolution :math:`e^{-iHt}` for a Hamiltonian.
 
     For each Pauli term :math:`c_k P_k` in the Hamiltonian, applies the
@@ -922,18 +858,29 @@ def evolve(hamiltonian: Hamiltonian | Pauli, qubits: Quant | None = None):
 
             evolve(H_free, q)   # unbound Hamiltonian, same as evolve(H_free(q))
 
+    A function that builds the Hamiltonian from the qubits also works, so
+    ``partial(evolve, h)`` is a gate:
+
+        .. code-block:: python
+
+            def cost(edges, q):
+                return -0.5 * sum(1 - Z(q[i]) * Z(q[j]) for i, j in edges)
+
+            evolve(partial(cost, [(0, 1), (1, 2)]), q)
+
     Args:
         hamiltonian: The Hamiltonian to
             simulate. The coefficient of each term serves as the rotation
-            angle.
-        qubits: Qubits to bind an unbound Hamiltonian to: placeholder ``i``
-            becomes ``qubits[i]``. Required for an unbound Hamiltonian and not
-            allowed for a bound one.
+            angle. It may also be a function that takes ``qubits`` and returns
+            the Hamiltonian; it is called inside a ``with obs():`` block.
+        qubits: Qubits to bind an unbound Hamiltonian to, or to call a
+            Hamiltonian function on: placeholder ``i`` becomes
+            ``qubits[i]``. Required for an unbound Hamiltonian or a function,
+            and not allowed for a bound Hamiltonian.
     """
 
-    if qubits is not None:
-        hamiltonian = hamiltonian.bind(qubits)
-    elif not hamiltonian.is_bound:
+    hamiltonian = _bind_observable(hamiltonian, qubits)
+    if not hamiltonian.is_bound:
         raise ValueError(
             "Cannot evolve an unbound Hamiltonian; "
             "pass the qubits to evolve or bind it first"

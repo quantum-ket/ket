@@ -761,7 +761,7 @@ def sample(qubits: Quant, shots: int = 2048) -> Samples:
 
 
 def exp_value(
-    hamiltonian: Hamiltonian | Pauli, qubits: Quant | None = None
+    hamiltonian: Hamiltonian | Pauli | Callable, qubits: Quant | None = None
 ) -> ExpValue:
     """Calculate the expectation value of a Hamiltonian for the current quantum state.
 
@@ -800,11 +800,12 @@ def exp_value(
 
     Args:
         hamiltonian:
-            The observable to evaluate.
+            The observable to evaluate, or a function that takes ``qubits``
+            and returns it (called inside a ``with obs():`` block).
         qubits:
-            Qubits to bind an unbound observable to: placeholder ``i``
-            becomes ``qubits[i]``. Required for an unbound observable and not
-            allowed for a bound one.
+            Qubits to bind an unbound observable to, or to call a function
+            on: placeholder ``i`` becomes ``qubits[i]``. Required for an
+            unbound observable or a function; not allowed for a bound one.
 
     Returns:
         A handle to the expectation value result.

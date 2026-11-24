@@ -40,7 +40,9 @@ def test_double_precision_is_more_accurate(simulator):
 
 @pytest.mark.parametrize("simulator", ["dense", "sparse"])
 def test_double_precision_runs_circuits(simulator):
-    p = Process(simulator=simulator, num_qubits=3, precision="double", execution="batch")
+    p = Process(
+        simulator=simulator, num_qubits=3, precision="double", execution="batch"
+    )
     q = p.alloc(3)
     CNOT(H(q[0]), q[1])
     CNOT(q[1], q[2])
@@ -65,7 +67,9 @@ def test_gpu_simulators_warn_and_use_single_precision(simulator, caplog):
     with caplog.at_level(logging.WARNING, logger="ket"):
         error = _error(simulator, "double")
     assert error > 1e-9
-    assert any("only supports single precision" in r.getMessage() for r in caplog.records)
+    assert any(
+        "only supports single precision" in r.getMessage() for r in caplog.records
+    )
 
 
 def test_single_precision_does_not_warn(caplog):

@@ -7,7 +7,25 @@ import math
 
 import pytest
 
-from ket import Process, dump, H, RY, RX, RZ, P, S, T, Z, SWAP, X, CNOT, QFT, adj, ctrl, control
+from ket import (
+    Process,
+    dump,
+    H,
+    RY,
+    RX,
+    RZ,
+    P,
+    S,
+    T,
+    Z,
+    SWAP,
+    X,
+    CNOT,
+    QFT,
+    adj,
+    ctrl,
+    control,
+)
 from ket.composer import circuit_gate, circuit_code, circuit_from_gate, Circuit
 from ket.composer import simulate_circuit
 
@@ -102,8 +120,14 @@ def test_simulate_circuit():
             ],
             "two gates",
         ),
-        ([{"gate": "RX", "col": 0, "qubits": [0], "params": ["__import__('os')"]}], "unsupported"),
-        ([{"gate": "RX", "col": 0, "qubits": [0], "params": ["x.real"]}], "unsupported"),
+        (
+            [{"gate": "RX", "col": 0, "qubits": [0], "params": ["__import__('os')"]}],
+            "unsupported",
+        ),
+        (
+            [{"gate": "RX", "col": 0, "qubits": [0], "params": ["x.real"]}],
+            "unsupported",
+        ),
         ([{"gate": "SWAP", "col": 0, "qubits": [1, 1]}], "twice"),
     ],
 )
@@ -199,7 +223,9 @@ def test_import_ket_does_not_load_the_widget():
     import sys  # pylint: disable=import-outside-toplevel
 
     code = "import sys, ket; print('anywidget' in sys.modules, 'ket.composer' in sys.modules)"
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
     assert out.stdout.split() == ["False", "False"]
 
 
@@ -239,16 +265,22 @@ def test_save_and_load_buttons(tmp_path):
     path = str(tmp_path / "ghz.json")
     comp = Composer(num_qubits=3)
     comp.ops = list(GHZ["ops"])
-    comp._on_msg(comp, {"action": "save", "path": path}, [])  # pylint: disable=protected-access
+    comp._on_msg(
+        comp, {"action": "save", "path": path}, []
+    )  # pylint: disable=protected-access
     assert comp.status == f"Saved {path}"
 
     comp.clear()
-    comp._on_msg(comp, {"action": "load", "path": path}, [])  # pylint: disable=protected-access
+    comp._on_msg(
+        comp, {"action": "load", "path": path}, []
+    )  # pylint: disable=protected-access
     assert comp.status == f"Loaded {path}"
     assert set(_states(comp)) == {0, 7}
 
     missing = str(tmp_path / "missing.json")
-    comp._on_msg(comp, {"action": "load", "path": missing}, [])  # pylint: disable=protected-access
+    comp._on_msg(
+        comp, {"action": "load", "path": missing}, []
+    )  # pylint: disable=protected-access
     assert comp.status.startswith("Could not load")
     assert set(_states(comp)) == {0, 7}  # Unchanged
 
@@ -258,7 +290,9 @@ def test_load_invalid_file(tmp_path):
     from ket.composer import Composer  # pylint: disable=import-outside-toplevel
 
     path = tmp_path / "bad.json"
-    path.write_text('{"num_qubits": 2, "ops": [{"gate": "FOO", "col": 0, "qubits": [0]}]}')
+    path.write_text(
+        '{"num_qubits": 2, "ops": [{"gate": "FOO", "col": 0, "qubits": [0]}]}'
+    )
     with pytest.raises(ValueError, match="unknown gate"):
         Composer(file=path)
     path.write_text("not json")
@@ -346,7 +380,9 @@ def test_circuit_from_gate_layout():
     ops = circuit_from_gate(gate, 3)["ops"]
     by_col = {}
     for op in ops:
-        by_col.setdefault(op["col"], []).append((op["gate"], op["qubits"], op["params"]))
+        by_col.setdefault(op["col"], []).append(
+            (op["gate"], op["qubits"], op["params"])
+        )
     assert by_col[0] == [("H", [0], []), ("H", [1], []), ("X", [2], [])]
     assert by_col[1] == [("CTRL", [0], []), ("X", [1], [])]
     assert by_col[2] == [("P", [0], ["pi/2"]), ("RX", [1], ["pi/2"])]
@@ -526,7 +562,10 @@ def test_circuit_from_gate_uses_parameter_names():
 
     data = circuit_from_gate(oracle, [2, 1])
     assert data["registers"] == [["inputs", 2], ["target", 1]]
-    assert circuit_from_gate(oracle, {"x": 2, "y": 1})["registers"] == [["x", 2], ["y", 1]]
+    assert circuit_from_gate(oracle, {"x": 2, "y": 1})["registers"] == [
+        ["x", 2],
+        ["y", 1],
+    ]
     assert circuit_from_gate(QFT, 3)["registers"] == [["qubits", 3]]
     assert circuit_from_gate(lambda q: H(q), 2)["registers"] == [["q", 2]]
 
@@ -587,7 +626,10 @@ GROUPED = {
 
 
 def test_groups_do_not_change_the_gate():
-    plain = {**GROUPED, "ops": [{k: v for k, v in op.items() if k != "group"} for op in GROUPED["ops"]]}
+    plain = {
+        **GROUPED,
+        "ops": [{k: v for k, v in op.items() if k != "group"} for op in GROUPED["ops"]],
+    }
     p = Process()
     a = circuit_gate(GROUPED)(p.alloc(4))
     p = Process()
@@ -605,7 +647,12 @@ def test_groups_survive_crop_and_save(tmp_path):
         ("X", None),
     ]
     with pytest.raises(ValueError, match="group must be a string"):
-        Circuit({"num_qubits": 1, "ops": [{"gate": "X", "col": 0, "qubits": [0], "group": 3}]})
+        Circuit(
+            {
+                "num_qubits": 1,
+                "ops": [{"gate": "X", "col": 0, "qubits": [0], "group": 3}],
+            }
+        )
 
     pytest.importorskip("anywidget")
     from ket.composer import Composer  # pylint: disable=import-outside-toplevel
@@ -623,7 +670,12 @@ def test_greek_parameter_names():
         "params": {"alpha": 0.2, "θ": 0.3},
         "ops": [
             {"gate": "RX", "col": 0, "qubits": [0], "params": ["2*alpha + θ"]},
-            {"gate": "RZ", "col": 1, "qubits": [0], "params": ["lambda/2"]},  # keyword -> lambda_
+            {
+                "gate": "RZ",
+                "col": 1,
+                "qubits": [0],
+                "params": ["lambda/2"],
+            },  # keyword -> lambda_
             {"gate": "RY", "col": 2, "qubits": [0], "params": ["Omega + theta_1"]},
         ],
     }
@@ -653,3 +705,80 @@ def test_greek_parameter_names():
     q = p.alloc(1)
     reference(q)
     assert _close(from_code, dump(q).states) and _close(from_gate, dump(q).states)
+
+
+def _maxcut(q):
+    from ket import Z as PauliZ  # pylint: disable=import-outside-toplevel
+
+    return -0.5 * sum(1 - PauliZ(q[i]) * PauliZ(q[i + 1]) for i in range(2))
+
+
+def test_simulate_with_observable():
+    data = {
+        "num_qubits": 3,
+        "ops": [{"gate": "H", "col": 0, "qubits": [i]} for i in range(3)],
+    }
+    result = simulate_circuit(data, obs=_maxcut)
+    energies = {row[0]: row[5] for row in result["states"]}
+    # -(number of cut edges) of the path 0-1-2; q[0] is the leftmost bit.
+    assert energies == {
+        0: 0.0,
+        1: -1.0,
+        2: -2.0,
+        3: -1.0,
+        4: -1.0,
+        5: -2.0,
+        6: -1.0,
+        7: 0.0,
+    }
+    assert result["energy_range"] == [-2.0, 0.0]
+    assert math.isclose(result["energy"], -1.0, abs_tol=1e-9)
+
+    without = simulate_circuit(data)
+    assert "energy" not in without and len(without["states"][0]) == 5
+
+
+def test_observable_off_diagonal_and_unbound():
+    from ket import obs, X as PauliX  # pylint: disable=import-outside-toplevel
+
+    with obs(2) as q:
+        ham = PauliX(q[0]) + 2 * Z(q[1])
+    data = {
+        "num_qubits": 2,
+        "registers": [["a", 1], ["b", 1]],
+        "ops": [{"gate": "H", "col": 0, "qubits": [0]}],
+    }
+    result = simulate_circuit(data, obs=ham)
+    # |+>|0>: <X> = 1 and <2Z> = 2; X has no diagonal, so each basis state has 2.
+    assert math.isclose(result["energy"], 3.0, abs_tol=1e-9)
+    assert [row[5] for row in result["states"]] == [2.0, 2.0]
+
+    # One argument per register, as the composer gate.
+    result = simulate_circuit(data, obs=lambda a, b: Z(a) * Z(b))
+    assert math.isclose(result["energy"], 0.0, abs_tol=1e-9)
+    with pytest.raises(TypeError, match="Hamiltonian"):
+        simulate_circuit(data, obs=lambda a, b: 3)
+
+
+def test_widget_observable():
+    pytest.importorskip("anywidget")
+    from ket.composer import Composer  # pylint: disable=import-outside-toplevel
+
+    comp = Composer(num_qubits=3, obs=_maxcut)
+    assert comp.has_obs and comp.obs is _maxcut
+    comp.ops = [{"gate": "H", "col": 0, "qubits": [i], "params": []} for i in range(3)]
+    assert math.isclose(comp.sim_result["energy"], -1.0, abs_tol=1e-9)
+
+    comp.sim_column = -1
+    comp.ops = comp.ops + [
+        {"gate": "H", "col": 1, "qubits": [i], "params": []} for i in range(3)
+    ]
+    assert math.isclose(comp.sim_result["energy"], 0.0, abs_tol=1e-9)  # Back to |000>
+    comp.sim_column = 0
+    assert math.isclose(comp.sim_result["energy"], -1.0, abs_tol=1e-9)
+
+    comp.obs = None
+    assert not comp.has_obs and "energy" not in comp.sim_result
+
+    comp.obs = lambda q: 3
+    assert "Hamiltonian" in comp.error

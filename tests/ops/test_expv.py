@@ -12,6 +12,7 @@ from ket import (
     Process,
     obs,
     commutator,
+    dump,
     evolve,
     exp_value,
     X,
@@ -253,6 +254,56 @@ def test_evolve_unbound():
 
     with pytest.raises(ValueError, match="unbound Hamiltonian"):
         evolve(h)
+
+
+def _triangle_cost(edges, q):
+    return -1 / 2 * sum(1 - Z(q[i]) * Z(q[j]) for i, j in edges)
+
+
+def test_hamiltonian_function_in_exp_value_and_evolve():
+    """``exp_value`` and ``evolve`` call a ``(qubits) -> Hamiltonian`` function."""
+    from functools import partial
+
+    from ket import qulib
+
+    cost = partial(_triangle_cost, [(0, 1), (1, 2), (2, 0)])
+
+    p = Process()
+    q = H(p.alloc(3))
+    assert exp_value(cost, q).get() == pytest.approx(-1.5, abs=1e-5)
+
+    def with_obs(q):  # A function with its own ``with obs():`` also works.
+        with obs():
+            return cost(q)
+
+    assert exp_value(with_obs, q).get() == pytest.approx(-1.5, abs=1e-5)
+
+    # ``partial(evolve, f)`` is a gate: it matches evolving the bound Hamiltonian.
+    p1, p2 = Process(), Process()
+    q1, q2 = H(p1.alloc(3)), H(p2.alloc(3))
+    partial(evolve, cost)(q1)
+    with obs():
+        ham = cost(q2)
+    evolve(ham)  # Outside obs(): there, the rotation gates would build Paulis.
+    assert dump(q1).states.keys() == dump(q2).states.keys()
+    assert all(
+        cmath.isclose(dump(q1).states[k], dump(q2).states[k], abs_tol=1e-6)
+        for k in dump(q1).states
+    )
+
+    # The case from the bug report: drawing a Trotter step of a cost function.
+    qulib.draw(partial(evolve, partial(_triangle_cost, [(0, 1), (1, 2), (2, 0)])), 3)
+
+
+def test_hamiltonian_function_errors():
+    p = Process()
+    q = p.alloc(2)
+    with pytest.raises(ValueError, match="needs the qubits"):
+        exp_value(lambda q: Z(q[0]))
+    with pytest.raises(TypeError, match="must return a Hamiltonian"):
+        evolve(lambda q: 3, q)
+    with pytest.raises(TypeError, match="not callable"):
+        exp_value(3, q)
 
 
 def test_unbound_qubo_with_b():

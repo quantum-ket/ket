@@ -56,7 +56,9 @@ import operator
 from numbers import Number
 from itertools import product
 from functools import reduce
-from typing import Literal
+from contextlib import contextmanager
+import contextvars
+from typing import Callable, Literal
 from fractions import Fraction
 
 from .base import Parameter, Process, Quant
@@ -135,6 +137,71 @@ class ObsQubits:
 
     def __repr__(self) -> str:
         return f"<Ket 'ObsQubits' {self.qubits}>"
+
+
+_build_obs = contextvars.ContextVar("build_obs", default=False)
+
+
+@contextmanager
+def obs(num_qubits: int | None = None):
+    r"""Context manager for constructing quantum observables in symbolic form.
+
+    Inside a ``with obs():`` block, the Pauli gate functions
+    (:func:`~ket.gates.X`, :func:`~ket.gates.Y`, :func:`~ket.gates.Z`,
+    :func:`~ket.gates.I`) return :class:`~ket.expv.Pauli` objects instead of
+    applying the physical gate to the circuit. These objects can be combined
+    with arithmetic operators to build :class:`~ket.expv.Hamiltonian` objects
+    suitable for :func:`~ket.operations.exp_value`.
+
+    This approach mirrors the mathematical notation for observables and
+    avoids manually constructing :class:`~ket.expv.Pauli` instances.
+
+    Example:
+
+        .. code-block:: python
+
+            from ket import *
+
+            p = Process()
+            q = p.alloc(4)
+
+            edges = [(q[0], q[1]), (q[1], q[2]), (q[2], q[3])]
+
+            with obs():
+                # MaxCut QUBO cost Hamiltonian
+                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
+
+            ev = exp_value(h_c)
+
+    Pass ``num_qubits`` to build an observable before allocating any qubits.
+    The block then yields that many placeholder qubits
+    (:class:`~ket.expv.ObsQubits`) and the result is an *unbound*
+    Hamiltonian. Bind it to real qubits with
+    :meth:`~ket.expv.Hamiltonian.bind`, the call shorthand ``h_c(qubits)``,
+    or by passing the qubits to :func:`~ket.operations.exp_value` or
+    :func:`~ket.gates.evolve`:
+
+        .. code-block:: python
+
+            from ket import *
+
+            with obs(4) as q:
+                edges = [(q[0], q[1]), (q[1], q[2]), (q[2], q[3])]
+                h_c = -0.5 * sum(1 - Z(i) * Z(j) for i, j in edges)
+
+            p = Process()
+            r = p.alloc(4)
+            ev = exp_value(h_c, r)    # same as exp_value(h_c(r))
+
+    Args:
+        num_qubits: Number of placeholder qubits to yield. If ``None``, the
+            block yields ``None`` and observables are built on process qubits.
+    """
+    token = _build_obs.set(True)
+    try:
+        yield None if num_qubits is None else ObsQubits(num_qubits)
+    finally:
+        _build_obs.reset(token)
 
 
 def _check_same_process(lhs: HasProcess, rhs: HasProcess):
@@ -742,6 +809,28 @@ class Hamiltonian(HasProcess):
         return "$" + " + ".join(p._repr_latex_no_math_() for p in self.terms) + "$"
 
 
+def _bind_observable(
+    hamiltonian: Hamiltonian | Pauli | Callable, qubits: Quant | None
+) -> Hamiltonian | Pauli:
+    """The observable of ``exp_value`` and ``evolve``, bound to ``qubits``.
+
+    A function ``(qubits) -> Hamiltonian`` is called inside ``with obs():``
+    and needs ``qubits``; an unbound result is bound to them.
+    """
+    if isinstance(hamiltonian, (Hamiltonian, Pauli)):
+        return hamiltonian if qubits is None else hamiltonian.bind(qubits)
+    if qubits is None:
+        raise ValueError("a function that builds the Hamiltonian needs the qubits")
+    with obs():
+        result = hamiltonian(qubits)
+    if not isinstance(result, (Hamiltonian, Pauli)):
+        raise TypeError(
+            "the Hamiltonian function must return a Hamiltonian or a Pauli "
+            f"operator, got {type(result).__name__}"
+        )
+    return result if result.is_bound else result.bind(qubits)
+
+
 def commutator(a: Hamiltonian, b: Hamiltonian) -> Hamiltonian:
     r"""Calculate the commutator of two Hamiltonians.
 
@@ -806,10 +895,13 @@ class ExpValue(HasProcess):
 
     pauli_map = {"X": "PauliX", "Y": "PauliY", "Z": "PauliZ"}
 
-    def __init__(self, hamiltonian: Hamiltonian | Pauli, qubits: Quant | None = None):
-        if qubits is not None:
-            hamiltonian = hamiltonian.bind(qubits)
-        elif not hamiltonian.is_bound:
+    def __init__(
+        self,
+        hamiltonian: Hamiltonian | Pauli | Callable[[Quant], Hamiltonian | Pauli],
+        qubits: Quant | None = None,
+    ):
+        hamiltonian = _bind_observable(hamiltonian, qubits)
+        if not hamiltonian.is_bound:
             raise ValueError(
                 "Cannot compute the expectation value of an unbound Hamiltonian; "
                 "pass the qubits to exp_value or bind it first"

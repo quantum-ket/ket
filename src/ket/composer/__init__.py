@@ -14,7 +14,7 @@ from cmath import phase
 import json
 from os import PathLike
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from ._circuit import (
     GATES,
@@ -25,6 +25,9 @@ from ._circuit import (
     circuit_from_gate,
     registers_of,
 )
+
+if TYPE_CHECKING:
+    from ..expv import Hamiltonian
 
 try:
     import anywidget
@@ -50,12 +53,20 @@ _INSTALL_MSG = (
 )
 
 
-def simulate_circuit(data: dict, upto: int | None = None) -> dict:
+def simulate_circuit(
+    data: dict, upto: int | None = None, obs: Callable | None = None
+) -> dict:
     """Run a composer circuit on KBW in live execution and summarize the state.
 
     Args:
         data: Circuit dictionary, as returned by :meth:`Composer.to_dict`.
         upto: Last column to include; ``None`` includes them all.
+        obs: Observable, see :func:`bind_observable`. With it, each row of
+            ``"states"`` gets a sixth item, the energy
+            :math:`\\left<b\\right|H\\left|b\\right>` of its basis state, and the
+            result gets the ``"energy"`` of the state (the expected value of
+            the observable) and the ``"energy_range"`` ``[min, max]`` of the
+            basis states of the state.
 
     Returns:
         A dictionary with the nonzero ``"states"`` (``[basis, real, imag,
@@ -66,8 +77,11 @@ def simulate_circuit(data: dict, upto: int | None = None) -> dict:
         was truncated.
     """
     # Imported here to keep this module light when only the model is used.
-    from ..base import Process  # pylint: disable=import-outside-toplevel
-    from ..operations import dump  # pylint: disable=import-outside-toplevel
+    # pylint: disable=import-outside-toplevel
+    from ..base import Process
+    from ..operations import dump, exp_value
+
+    # pylint: enable=import-outside-toplevel
 
     circuit = Circuit(data)
     if circuit.num_qubits > MAX_SIMULATED_QUBITS:
@@ -82,11 +96,96 @@ def simulate_circuit(data: dict, upto: int | None = None) -> dict:
     registers = [process.alloc(size) for _, size in circuit.registers]
     gate(*registers)
 
-    return _summarize(dump(*registers).states, circuit.num_qubits)
+    hamiltonian = None if obs is None else bind_observable(obs, registers)
+    result = _summarize(
+        dump(*registers).states,
+        circuit.num_qubits,
+        None if hamiltonian is None else diagonal_energy(hamiltonian),
+    )
+    if hamiltonian is not None:
+        result["energy"] = float(exp_value(hamiltonian).get())
+    return result
 
 
-def _summarize(states: dict[int, complex], num_qubits: int) -> dict:
-    """Nonzero states, most probable first, and P(1) of each qubit."""
+def bind_observable(obs: Callable, registers: list) -> Hamiltonian:
+    """The observable of a composer, as a Hamiltonian on the given registers.
+
+    Args:
+        obs: A function that takes one qubit register per positional argument,
+            as the composer gate, and returns a
+            :class:`~ket.expv.Hamiltonian` or :class:`~ket.expv.Pauli`. It is
+            called inside a ``with obs():`` block, so ``X``, ``Y`` and ``Z``
+            build Pauli operators. It may also be an unbound Hamiltonian (made
+            with ``with obs(n) as q:``), which is bound to all the qubits of
+            the circuit, in order.
+        registers: Qubits of each register of the circuit.
+
+    Raises:
+        TypeError: If ``obs`` does not give a Hamiltonian or Pauli operator.
+    """
+    # pylint: disable=import-outside-toplevel
+    from ..expv import Hamiltonian, Pauli
+    from ..gates import obs as obs_context
+
+    # pylint: enable=import-outside-toplevel
+    qubits = registers[0]
+    for register in registers[1:]:
+        qubits = qubits + register
+    if isinstance(obs, (Hamiltonian, Pauli)):
+        hamiltonian = obs
+    else:
+        with obs_context():
+            hamiltonian = obs(*registers)
+    if not isinstance(hamiltonian, (Hamiltonian, Pauli)):
+        raise TypeError(
+            "the observable must give a Hamiltonian or a Pauli operator, "
+            f"got {type(hamiltonian).__name__}"
+        )
+    if not hamiltonian.is_bound:
+        hamiltonian = hamiltonian.bind(qubits)
+    if isinstance(hamiltonian, Pauli):
+        hamiltonian = Hamiltonian([hamiltonian], hamiltonian.ket_process)
+    return hamiltonian
+
+
+def diagonal_energy(hamiltonian: Hamiltonian) -> list[tuple[float, list[int]]]:
+    """Diagonal of a Hamiltonian as ``[(coefficient, z_qubits), ...]``.
+
+    The energy :math:`\\left<b\\right|H\\left|b\\right>` of a basis state ``b``
+    only gets contributions from the terms made of ``Z`` and ``I``: each adds
+    its coefficient, negated if an odd number of its ``Z`` qubits are
+    :math:`\\left|1\\right>`. Terms with ``X`` or ``Y`` have zero diagonal.
+    Qubit indices are the ones of the process, which match the circuit qubits.
+    """
+    diagonal = []
+    for term in hamiltonian.terms:
+        if any(pauli in ("X", "Y") for pauli in term.map.values()):
+            continue
+        z_qubits = sorted(q for q, pauli in term.map.items() if pauli == "Z")
+        diagonal.append((complex(term.coef).real, z_qubits))
+    return diagonal
+
+
+def _basis_energy(
+    basis: int, num_qubits: int, diagonal: list[tuple[float, list[int]]]
+) -> float:
+    energy = 0.0
+    for coef, z_qubits in diagonal:
+        parity = sum((basis >> (num_qubits - 1 - q)) & 1 for q in z_qubits) & 1
+        energy += -coef if parity else coef
+    return energy
+
+
+def _summarize(
+    states: dict[int, complex],
+    num_qubits: int,
+    diagonal: list[tuple[float, list[int]]] | None = None,
+) -> dict:
+    """Nonzero states, most probable first, and P(1) of each qubit.
+
+    With ``diagonal`` (see :func:`diagonal_energy`), each row also has the
+    energy of its basis state, and the result their ``"energy_range"``.
+    """
     marginals = [0.0] * num_qubits
     rows = []
     for basis, amp in states.items():
@@ -96,15 +195,22 @@ def _summarize(states: dict[int, complex], num_qubits: int) -> dict:
         for qubit in range(num_qubits):
             if (basis >> (num_qubits - 1 - qubit)) & 1:
                 marginals[qubit] += prob
-        rows.append([basis, amp.real, amp.imag, prob, phase(amp)])
+        row = [basis, amp.real, amp.imag, prob, phase(amp)]
+        if diagonal is not None:
+            row.append(_basis_energy(basis, num_qubits, diagonal))
+        rows.append(row)
     rows.sort(key=lambda row: (-round(row[3], 9), row[0]))
-    return {
+    result = {
         "states": rows[:MAX_SHOWN_STATES],
         "num_states": len(rows),
         "truncated": len(rows) > MAX_SHOWN_STATES,
         "marginals": [min(1.0, m) for m in marginals],
         "bloch": bloch_vectors(states, num_qubits),
     }
+    if diagonal is not None and rows:
+        energies = [row[5] for row in rows]
+        result["energy_range"] = [min(energies), max(energies)]
+    return result
 
 
 def bloch_vectors(states: dict[int, complex], num_qubits: int) -> list[list[float]]:
@@ -150,6 +256,8 @@ if _WIDGET_AVAILABLE:
         take a snapshot with :attr:`gate`. With ``simulate=True``, the KBW
         simulator runs the circuit in live execution on every edit, and the
         editor shows the quantum state and a Bloch sphere for each qubit.
+        With an observable, ``obs``, the editor also shows the energy of the
+        state and of each basis state.
 
         The composer needs the optional dependencies of the ``composer``
         extra:
@@ -216,6 +324,15 @@ if _WIDGET_AVAILABLE:
 
                 composer(p.alloc(3), p.alloc(1))
 
+            Energy of an observable, such as a MaxCut cost Hamiltonian:
+
+            .. code-block:: python
+
+                def cost(q):
+                    return -0.5 * sum(1 - Z(q[i]) * Z(q[i + 1]) for i in range(3))
+
+                composer = Composer(num_qubits=4, obs=cost)
+
         Args:
             num_qubits: Number of qubits of the circuit; a list of sizes, one
                 qubit register each, named after the parameters of ``gate``;
@@ -230,6 +347,17 @@ if _WIDGET_AVAILABLE:
                 positional argument. Its instructions become the gates of the
                 composer; gates such as SWAP or QFT appear as the elementary
                 gates Ket decomposes them into, and global phases are dropped.
+            obs: Observable whose energy the simulation reports: a function
+                that takes the qubit registers, as the gate of the composer,
+                and returns a :class:`~ket.expv.Hamiltonian` or
+                :class:`~ket.expv.Pauli`. It runs inside a ``with obs():``
+                block, so ``X``, ``Y`` and ``Z`` build Pauli operators. An
+                unbound Hamiltonian, made with ``with obs(n) as q:``, also
+                works; it binds to the qubits of the circuit, in order. The
+                editor then shows the expected value of the observable for the
+                state, and colors each basis state :math:`\\left|b\\right>` by
+                its energy :math:`\\left<b\\right|H\\left|b\\right>` instead of by
+                its phase.
 
         Raises:
             ValueError: If ``file`` exists but has no valid circuit, if
@@ -252,6 +380,7 @@ if _WIDGET_AVAILABLE:
         code = traitlets.Unicode("").tag(sync=True)
         error = traitlets.Unicode("").tag(sync=True)
         sim_result = traitlets.Dict({}).tag(sync=True)
+        has_obs = traitlets.Bool(False).tag(sync=True)
         file = traitlets.Unicode("circuit.json").tag(sync=True)
         status = traitlets.Unicode("").tag(sync=True)
 
@@ -261,13 +390,16 @@ if _WIDGET_AVAILABLE:
             simulate: bool = True,
             file: str | PathLike | None = None,
             gate: Callable | None = None,
+            obs: Callable | None = None,
             **kwargs,
         ):
             registers = registers_of(num_qubits, gate)
+            self._obs = obs
             super().__init__(
                 num_qubits=sum(size for _, size in registers),
                 registers=registers,
                 simulate=simulate,
+                has_obs=obs is not None,
                 catalog=[g.to_json() for g in GATES.values()],
                 **kwargs,
             )
@@ -293,6 +425,21 @@ if _WIDGET_AVAILABLE:
                 ],
             )
             self.on_msg(self._on_msg)
+            self._update()
+
+        @property
+        def obs(self) -> Callable | None:
+            """Observable of the simulation, as the ``obs`` argument.
+
+            Set it to change the observable (``None`` removes it); the
+            editor updates the energies.
+            """
+            return self._obs
+
+        @obs.setter
+        def obs(self, value: Callable | None):
+            self._obs = value
+            self.has_obs = value is not None
             self._update()
 
         def _fit_registers(self, _change=None):
@@ -399,6 +546,7 @@ if _WIDGET_AVAILABLE:
                 self.sim_result = simulate_circuit(
                     self.to_dict(),
                     None if self.sim_column < 0 else self.sim_column,
+                    self._obs,
                 )
             except Exception as err:  # pylint: disable=broad-except
                 self.sim_result = {}

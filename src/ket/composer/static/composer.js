@@ -89,15 +89,54 @@ function fmt(x, digits = 3) {
   return v.toFixed(digits);
 }
 
+// Signed, as +1.000 and −1.000; zero has no sign.
+function fmtSigned(x, digits = 3) {
+  const text = fmt(x, digits);
+  if (Number(text) > 0) return `+${text}`;
+  if (Number(text) < 0) return `−${text.slice(1)}`;
+  return text;
+}
+
 function phaseColor(ph) {
   // Phase 0 is blue; the hue turns with the phase.
   const hue = ((((ph * 180) / Math.PI + 215) % 360) + 360) % 360;
   return `hsl(${hue}, 70%, 50%)`;
 }
 
-// Copied gates, shared by every composer of the page (the module is loaded
-// once): {ops (columns from 0), minQ, maxQ, width}.
-let CLIPBOARD = null;
+// Energy of a basis state, as a fraction of the range [lo, hi] of the
+// state: lowest is blue (cold), highest is red (hot).
+function energyColor(energy, lo, hi) {
+  const t = hi - lo > 1e-12 ? (energy - lo) / (hi - lo) : 0;
+  return `hsl(${230 - 225 * t}, 70%, 50%)`;
+}
+
+// Copied gates: {ops (columns from 0), minQ, maxQ, width, params}.
+// anywidget imports this module once per widget, so a module variable is not
+// shared: the clipboard lives on globalThis, for every composer of the page,
+// and in localStorage, for composers in other notebooks or tabs. Writing it
+// fires CLIPBOARD_EVENT, so that the other composers show their Paste button.
+const CLIPBOARD_KEY = "ket-composer-clipboard";
+const CLIPBOARD_EVENT = "ket-composer-clipboard";
+
+function getClipboard() {
+  try {
+    const raw = globalThis.localStorage?.getItem(CLIPBOARD_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // No storage (private window, blocked site data) or bad data.
+  }
+  return globalThis.__ketComposerClipboard || null;
+}
+
+function setClipboard(data) {
+  globalThis.__ketComposerClipboard = data;
+  try {
+    globalThis.localStorage?.setItem(CLIPBOARD_KEY, JSON.stringify(data));
+  } catch {
+    // The page-wide copy still works.
+  }
+  globalThis.dispatchEvent?.(new CustomEvent(CLIPBOARD_EVENT));
+}
 
 function render({ model, el }) {
   const state = {
@@ -293,12 +332,16 @@ function render({ model, el }) {
     if (!chosen.length) return false;
     const minCol = Math.min(...chosen.map((op) => op.col));
     const qs = chosen.flatMap((op) => op.qubits);
-    CLIPBOARD = {
+    // Slider values of the free parameters, for a composer that lacks them.
+    const params = model.get("params") || {};
+    const names = new Set((model.get("param_names") || []).filter((name) => name in params));
+    setClipboard({
       ops: chosen.map((op) => ({ ...clone(op), col: op.col - minCol })),
       minQ: Math.min(...qs),
       maxQ: Math.max(...qs),
       width: Math.max(...chosen.map((op) => op.col)) - minCol + 1,
-    };
+      params: Object.fromEntries([...names].map((name) => [name, params[name]])),
+    });
     return true;
   }
 
@@ -306,6 +349,7 @@ function render({ model, el }) {
   // qubits when they fit, shifting the later columns to make room. The
   // pasted gates are selected, ready to be dragged into place.
   function paste() {
+    const CLIPBOARD = getClipboard();
     if (!CLIPBOARD) return;
     const n = nq();
     const span = CLIPBOARD.maxQ - CLIPBOARD.minQ;
@@ -327,7 +371,10 @@ function render({ model, el }) {
       return copy;
     });
     selectOps(pasted);
-    commit([...next, ...pasted]);
+    // Keep the slider values of the source composer, but not over ours.
+    const params = model.get("params") || {};
+    const missing = Object.entries(CLIPBOARD.params || {}).filter(([name]) => !(name in params));
+    commit([...next, ...pasted], missing.length ? { params: { ...params, ...Object.fromEntries(missing) } } : {});
   }
 
   function updateOp(index, changes) {
@@ -896,7 +943,7 @@ function render({ model, el }) {
       indices.length > 1 && !oneGroup ? btn("Group", `Group the selected gates (${MOD}G)`, groupSelection) : null,
       grouped ? btn("Ungroup", `Ungroup (${MOD}Shift+G)`, ungroupSelection) : null,
       btn("Copy", `Copy (${MOD}C)`, () => { copySelection(); renderInspector(); }),
-      CLIPBOARD ? btn("Paste", `Paste after the selection (${MOD}V)`, paste) : null,
+      getClipboard() ? btn("Paste", `Paste after the selection (${MOD}V)`, paste) : null,
       btn(indices.length > 1 ? "Remove" : "Remove gate", "Remove (Delete)", () => removeOps(indices), "kc-danger"),
     );
   }
@@ -908,7 +955,7 @@ function render({ model, el }) {
         h("div", { class: "kc-panel-title" }, "Gate"),
         h("div", { class: "kc-hint" }, "Drag gates from the palette onto the wires. Click a gate to edit it. ● and ○ control every gate in their column."),
         h("div", { class: "kc-hint" }, `Drag on an empty area, or Shift+click, to select several gates; then group (${MOD}G), copy (${MOD}C) and paste (${MOD}V) them.`),
-        CLIPBOARD ? h("div", { class: "kc-actions" }, btn("Paste", `Paste after the last column (${MOD}V)`, paste)) : null,
+        getClipboard() ? h("div", { class: "kc-actions" }, btn("Paste", `Paste after the last column (${MOD}V)`, paste)) : null,
       );
       return;
     }
@@ -1117,19 +1164,39 @@ function render({ model, el }) {
     const format = state.basisFormat;
     // Same width for every ket (monospace font), so that the bars line up.
     const ketWidth = Math.max(...result.states.map(([basis]) => basisKets(basis, format).length));
-    const rows = result.states.map(([basis, re, im, prob, ph]) =>
+    // With an observable, the bars show the energy <b|H|b> of each basis
+    // state, relative to the lowest and highest of the state.
+    const withEnergy = typeof result.energy === "number" && Array.isArray(result.energy_range);
+    const [lo, hi] = withEnergy ? result.energy_range : [0, 0];
+    const rows = result.states.map(([basis, re, im, prob, ph, energy]) =>
       h(
         "div",
-        { class: "kc-srow", title: `${basisKets(basis, format)}: amplitude ${fmt(re, 5)} ${im < 0 ? "−" : "+"} ${fmt(Math.abs(im), 5)}i, phase ${fmt((ph * 180) / Math.PI, 1)}°` },
+        {
+          class: `kc-srow${withEnergy ? " kc-srow-energy" : ""}`,
+          title: `${basisKets(basis, format)}: amplitude ${fmt(re, 5)} ${im < 0 ? "−" : "+"} ${fmt(Math.abs(im), 5)}i, phase ${fmt((ph * 180) / Math.PI, 1)}°${withEnergy ? `, energy ${fmtSigned(energy, 5)}` : ""}`,
+        },
         h("span", { class: "kc-ket", style: `min-width:${ketWidth}ch` }, basisKets(basis, format)),
-        h("span", { class: "kc-bar" }, h("span", { class: "kc-bar-fill", style: `width:${(prob * 100).toFixed(2)}%;background:${phaseColor(ph)}` })),
+        h("span", { class: "kc-bar" }, h("span", { class: "kc-bar-fill", style: `width:${(prob * 100).toFixed(2)}%;background:${withEnergy ? energyColor(energy, lo, hi) : phaseColor(ph)}` })),
         h("span", { class: "kc-amp" }, `${fmt(re)}${im < 0 ? "−" : "+"}${fmt(Math.abs(im))}i`),
+        withEnergy ? h("span", { class: "kc-energy", title: "Energy ⟨b|H|b⟩ of the basis state" }, `E = ${fmtSigned(energy)}`) : null,
         h("span", { class: "kc-prob" }, `${(prob * 100).toFixed(1)}%`),
       ),
     );
+    const energyBox = withEnergy
+      ? h(
+          "div",
+          { class: "kc-energy-box" },
+          h("span", { class: "kc-energy-total", title: "Expected value ⟨ψ|H|ψ⟩ of the observable" }, "⟨H⟩ = ", h("b", {}, fmtSigned(result.energy, 5))),
+          h("span", { class: "kc-spacer" }),
+          h("span", { class: "kc-muted" }, fmtSigned(lo)),
+          h("span", { class: "kc-energy-scale", style: `background:linear-gradient(to right, ${energyColor(0, 0, 1)}, ${energyColor(0.5, 0, 1)}, ${energyColor(1, 0, 1)})` }),
+          h("span", { class: "kc-muted" }, fmtSigned(hi)),
+        )
+      : null;
     put(statePanel, 
       title,
-      h("div", { class: "kc-muted" }, `${result.num_states} basis state${result.num_states === 1 ? "" : "s"}${result.truncated ? `, showing the ${result.states.length} most probable` : ""} · bar color = phase · one ket per register, ${format === "bits" ? `${qubitText(0)} is the leftmost bit` : "first qubit is the most significant bit"}`),
+      energyBox,
+      h("div", { class: "kc-muted" }, `${result.num_states} basis state${result.num_states === 1 ? "" : "s"}${result.truncated ? `, showing the ${result.states.length} most probable` : ""} · bar color = ${withEnergy ? "energy ⟨b|H|b⟩, lowest to highest of the state" : "phase"} · one ket per register, ${format === "bits" ? `${qubitText(0)} is the leftmost bit` : "first qubit is the most significant bit"}`),
       h("div", { class: "kc-states" }, rows),
     );
   }
@@ -1337,6 +1404,7 @@ function render({ model, el }) {
     "change:sim_result",
     "change:sim_column",
     "change:simulate",
+    "change:has_obs",
     "change:param_names",
     "change:code",
     "change:error",
@@ -1347,8 +1415,17 @@ function render({ model, el }) {
   for (const ev of events) model.on(ev, onChange);
   model.on("change:params", renderParams);
   model.on("change:catalog", renderPalette);
+  // Copies made in another composer, here or in another tab.
+  const onClipboard = () => renderInspector();
+  const onStorage = (e) => {
+    if (e.key === CLIPBOARD_KEY) renderInspector();
+  };
+  globalThis.addEventListener?.(CLIPBOARD_EVENT, onClipboard);
+  globalThis.addEventListener?.("storage", onStorage);
 
   return () => {
+    globalThis.removeEventListener?.(CLIPBOARD_EVENT, onClipboard);
+    globalThis.removeEventListener?.("storage", onStorage);
     for (const ev of events) model.off(ev, onChange);
     model.off("change:params", renderParams);
     model.off("change:catalog", renderPalette);

@@ -190,6 +190,11 @@
 .kc-bar-fill { display: block; height: 100%; }
 .kc-amp { font-family: var(--jp-code-font-family, monospace); font-size: 11px; color: var(--kc-muted); }
 .kc-prob { font-size: 11px; min-width: 3.5em; text-align: right; }
+.kc-srow-energy { grid-template-columns: auto 1fr auto auto auto; }
+.kc-energy { font-family: var(--jp-code-font-family, monospace); font-size: 11px; min-width: 7.5em; text-align: right; }
+.kc-energy-box { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; font-variant-numeric: tabular-nums; }
+.kc-energy-total { font-size: 13px; }
+.kc-energy-scale { width: 80px; height: 8px; border-radius: 3px; }
 
 .kc-results { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: stretch; }
 .kc-results > .kc-state { flex: 1 1 320px; min-width: 0; }

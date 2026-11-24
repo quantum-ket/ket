@@ -43,6 +43,9 @@ except Exception as error:  # pylint: disable=broad-exception-caught
 process = Process(num_qubits=2)
 a, b = process.alloc(2)
 try:
-    qasm(a + b, 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\nh q[0]\ncx q[0], q[1];')
+    qasm(
+        a + b,
+        'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\nh q[0]\ncx q[0], q[1];',
+    )
 except Exception as error:  # pylint: disable=broad-exception-caught
     print("exception:", error)
